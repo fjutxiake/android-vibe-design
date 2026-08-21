@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.DarkMode
@@ -26,17 +27,48 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.aeibi.design.data.project.ProjectRepositoryProvider
+import com.aeibi.design.data.project.InMemoryProjectRepository
+import com.aeibi.design.domain.repository.ProjectRepository
+import com.aeibi.design.domain.model.Project
 import com.aeibi.design.theme.VibeDesignTheme
 import com.aeibi.design.theme.spacing
 
 @Composable
-@OptIn(ExperimentalMaterial3Api::class)
-fun ProjectsScreen(
+fun ProjectsRoute(
   modifier: Modifier = Modifier,
   isDarkTheme: Boolean = false,
   onThemeToggle: () -> Unit = {},
   onSettingsClick: () -> Unit = {},
   onProjectClick: (String) -> Unit = {},
+  projectRepository: ProjectRepository = ProjectRepositoryProvider.instance,
+) {
+  val viewModel: ProjectsViewModel =
+    viewModel(factory = ProjectsViewModelFactory(projectRepository))
+  val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+  ProjectsScreen(
+    modifier = modifier,
+    projects = uiState.projects,
+    isDarkTheme = isDarkTheme,
+    onThemeToggle = onThemeToggle,
+    onSettingsClick = onSettingsClick,
+    onProjectClick = onProjectClick,
+    onCreateProject = viewModel::createProject,
+  )
+}
+
+@Composable
+@OptIn(ExperimentalMaterial3Api::class)
+fun ProjectsScreen(
+  projects: List<Project>,
+  modifier: Modifier = Modifier,
+  isDarkTheme: Boolean = false,
+  onThemeToggle: () -> Unit = {},
+  onSettingsClick: () -> Unit = {},
+  onProjectClick: (String) -> Unit = {},
+  onCreateProject: (String, String, String?) -> Unit = { _, _, _ -> },
 ) {
   val spacing = MaterialTheme.spacing
   var showNewProjectSheet by rememberSaveable { mutableStateOf(false) }
@@ -70,94 +102,47 @@ fun ProjectsScreen(
       contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.lg),
       verticalArrangement = Arrangement.spacedBy(spacing.md),
     ) {
-      item {
+      items(projects, key = { it.id }) { project ->
         ProjectListItem(
-          name = "日常发芽",
-          description = "不焦虑的日常习惯记录",
-          updatedAt = "刚刚修改",
-          onClick = { onProjectClick("daily-growth") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "周末去哪",
-          description = "根据心情生成短途路线",
-          updatedAt = "昨天修改",
-          onClick = { onProjectClick("weekend-trip") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-2") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-3") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-4") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-5") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-6") },
-        )
-      }
-      item {
-        ProjectListItem(
-          name = "专注计时器",
-          description = "把大任务切成可完成的小段",
-          updatedAt = "8月6日修改",
-          onClick = { onProjectClick("focus-timer-7") },
+          name = project.name,
+          description = project.description,
+          updatedAt = formatUpdatedAt(project.updatedAt),
+          iconUri = project.iconUri,
+          onClick = { onProjectClick(project.id) },
         )
       }
     }
   }
 
   if (showNewProjectSheet) {
-    NewProjectBottomSheet(onDismiss = { showNewProjectSheet = false })
+    NewProjectBottomSheet(
+      onDismiss = { showNewProjectSheet = false },
+      onCreateProject = onCreateProject,
+    )
   }
 }
 
 @Preview(showBackground = true)
 @Composable
 fun ProjectsScreenPreview() {
-  VibeDesignTheme(dynamicColor = false) { ProjectsScreen() }
+  VibeDesignTheme(dynamicColor = false) {
+    ProjectsScreen(projects = InMemoryProjectRepository.defaultProjects())
+  }
 }
 
 @Preview(showBackground = true, widthDp = 340, heightDp = 700)
 @Composable
 fun ProjectsScreenPortraitPreview() {
-  VibeDesignTheme(dynamicColor = false) { ProjectsScreen() }
+  VibeDesignTheme(dynamicColor = false) {
+    ProjectsScreen(projects = InMemoryProjectRepository.defaultProjects())
+  }
+}
+
+private fun formatUpdatedAt(updatedAt: Long): String {
+  val age = System.currentTimeMillis() - updatedAt
+  return when {
+    age < 60 * 60 * 1000L -> "刚刚修改"
+    age < 2 * 24 * 60 * 60 * 1000L -> "昨天修改"
+    else -> java.text.SimpleDateFormat("M月d日修改", java.util.Locale.CHINA).format(updatedAt)
+  }
 }

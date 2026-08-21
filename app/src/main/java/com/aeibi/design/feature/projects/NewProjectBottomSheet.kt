@@ -42,7 +42,10 @@ import com.aeibi.design.theme.spacing
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun NewProjectBottomSheet(onDismiss: () -> Unit) {
+fun NewProjectBottomSheet(
+  onDismiss: () -> Unit,
+  onCreateProject: (String, String, String?) -> Unit = { _, _, _ -> },
+) {
   var name by rememberSaveable { mutableStateOf("") }
   var description by rememberSaveable { mutableStateOf("") }
   var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -120,7 +123,16 @@ fun NewProjectBottomSheet(onDismiss: () -> Unit) {
         horizontalArrangement = Arrangement.SpaceBetween,
       ) {
         TextButton(onClick = onDismiss) { Text("取消") }
-        Button(onClick = onDismiss, enabled = name.isNotBlank()) { Text("创建项目") }
+        Button(
+          onClick = {
+            onCreateProject(name, description, iconUri)
+            onDismiss()
+          },
+          modifier = Modifier.testTag("create_project_button"),
+          enabled = name.isNotBlank(),
+        ) {
+          Text("创建项目")
+        }
       }
     }
   }

@@ -9,7 +9,8 @@ import androidx.navigation3.ui.NavDisplay
 import com.aeibi.design.data.settings.AppSettings
 import com.aeibi.design.feature.build.ProjectBuildScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
-import com.aeibi.design.feature.projects.ProjectsScreen
+import com.aeibi.design.data.project.ProjectRepositoryProvider
+import com.aeibi.design.feature.projects.ProjectsRoute
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.AppSettingsEvent
 import com.aeibi.design.feature.settings.SettingsScreen
@@ -48,7 +49,7 @@ fun AppNavigation(
           )
         }
         entry<ProjectPicker> {
-          ProjectsScreen(
+          ProjectsRoute(
             modifier = Modifier.fillMaxSize(),
             isDarkTheme = settings.isDarkTheme,
             onThemeToggle = { onSettingsEvent(AppSettingsEvent.ToggleThemeMode) },
@@ -56,6 +57,7 @@ fun AppNavigation(
             onProjectClick = { projectId ->
               backStack.add(ProjectChat(projectId, DefaultSessionId))
             },
+            projectRepository = ProjectRepositoryProvider.instance,
           )
         }
         entry<ProjectPreview> { route ->
