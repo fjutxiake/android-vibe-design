@@ -14,7 +14,6 @@
 .cxx
 local.properties
 prototype
-docs
 .agents
 .idea
 .kotlin
