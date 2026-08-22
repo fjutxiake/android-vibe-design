@@ -22,9 +22,10 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 fun ProjectWorkspaceScreen(
   projectId: String,
-  sessionId: String,
+  sessionId: String?,
   modifier: Modifier = Modifier,
   onProjectPickerClick: () -> Unit = {},
+  onNewChatClick: () -> Unit = {},
   onSessionSelected: (String) -> Unit = {},
   onPreviewClick: () -> Unit = {},
   onBuildClick: () -> Unit = {},
@@ -41,6 +42,10 @@ fun ProjectWorkspaceScreen(
     drawerContent = {
       SessionDrawer(
         selectedSessionId = sessionId,
+        onNewChatClick = {
+          scope.launch { drawerState.close() }
+          onNewChatClick()
+        },
         onSessionSelected = { selectedSessionId ->
           scope.launch { drawerState.close() }
           onSessionSelected(selectedSessionId)

@@ -14,8 +14,6 @@ import com.aeibi.design.feature.settings.SettingsScreen
 import com.aeibi.design.feature.versions.ProjectVersionsScreen
 import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
-private const val DefaultSessionId = "new-session"
-
 @Composable
 fun AppNavigation() {
   val backStack = rememberNavBackStack(ProjectPicker)
@@ -35,6 +33,10 @@ fun AppNavigation() {
               backStack.removeLastOrNull()
               backStack.add(route.copy(sessionId = sessionId))
             },
+            onNewChatClick = {
+              backStack.removeLastOrNull()
+              backStack.add(route.copy(sessionId = null))
+            },
             onPreviewClick = { backStack.add(ProjectPreview(route.projectId)) },
             onBuildClick = { backStack.add(ProjectBuild(route.projectId)) },
             onVersionsClick = { backStack.add(ProjectVersions(route.projectId)) },
@@ -47,7 +49,7 @@ fun AppNavigation() {
             modifier = Modifier.fillMaxSize(),
             onSettingsClick = { backStack.add(ApplicationSettings) },
             onProjectClick = { projectId ->
-              backStack.add(ProjectChat(projectId, DefaultSessionId))
+              backStack.add(ProjectChat(projectId))
             },
           )
         }

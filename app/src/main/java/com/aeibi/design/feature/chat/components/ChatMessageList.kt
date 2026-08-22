@@ -9,7 +9,7 @@ import androidx.compose.ui.Modifier
 @Composable
 fun ChatMessageList(
   projectId: String,
-  sessionId: String,
+  sessionId: String?,
   modifier: Modifier = Modifier,
 ) {
   Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {

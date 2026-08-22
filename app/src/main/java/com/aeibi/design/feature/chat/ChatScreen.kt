@@ -10,7 +10,7 @@ import com.aeibi.design.feature.chat.components.ChatMessageList
 @Composable
 fun ChatScreen(
   projectId: String,
-  sessionId: String,
+  sessionId: String?,
   modifier: Modifier = Modifier,
 ) {
   Column(modifier = modifier.fillMaxSize()) {

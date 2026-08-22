@@ -6,7 +6,7 @@ import kotlinx.serialization.Serializable
 @Serializable
 data class ProjectChat(
   val projectId: String,
-  val sessionId: String,
+  val sessionId: String? = null,
 ) : NavKey
 
 @Serializable data object ProjectPicker : NavKey

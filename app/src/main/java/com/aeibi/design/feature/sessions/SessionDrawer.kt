@@ -17,7 +17,8 @@ import com.aeibi.design.theme.spacing
 
 @Composable
 fun SessionDrawer(
-  selectedSessionId: String,
+  selectedSessionId: String?,
+  onNewChatClick: () -> Unit,
   onSessionSelected: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
@@ -25,9 +26,8 @@ fun SessionDrawer(
 
   ModalDrawerSheet(modifier = modifier.fillMaxWidth(0.86f).fillMaxHeight()) {
     Column(modifier = Modifier.padding(spacing.md)) {
-      Text(text = "Chat Sessions")
       Button(
-        onClick = { onSessionSelected("new-session") },
+        onClick = onNewChatClick,
         modifier = Modifier.fillMaxWidth().padding(vertical = spacing.sm),
       ) {
         Icon(imageVector = Icons.Filled.Add, contentDescription = null)

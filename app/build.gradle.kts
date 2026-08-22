@@ -2,6 +2,9 @@ plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
   alias(libs.plugins.kotlin.serialization)
+  alias(libs.plugins.ksp)
+  alias(libs.plugins.room3)
+  alias(libs.plugins.hilt)
 }
 
 android {
@@ -43,6 +46,10 @@ kotlin {
     jvmToolchain(17)
 }
 
+room3 {
+  schemaDirectory("$projectDir/schemas")
+}
+
 dependencies {
   val composeBom = platform(libs.androidx.compose.bom)
   implementation(composeBom)
@@ -79,4 +86,12 @@ dependencies {
   implementation(libs.androidx.navigation3.ui)
   implementation(libs.androidx.navigation3.runtime)
   implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+  // Local database
+  implementation(libs.androidx.room3.runtime)
+  ksp(libs.androidx.room3.compiler)
+
+  // Dependency injection
+  implementation(libs.hilt.android)
+  ksp(libs.hilt.compiler)
 }

@@ -9,11 +9,11 @@ import androidx.compose.ui.Modifier
 
 @Composable
 fun SessionList(
-  selectedSessionId: String,
+  selectedSessionId: String?,
   onSessionSelected: (String) -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val sessions = listOf("new-session" to "新的对话", "session-2" to "项目页面设计")
+  val sessions = listOf("session-2" to "项目页面设计")
 
   sessions.forEach { (id, title) ->
     ListItem(
