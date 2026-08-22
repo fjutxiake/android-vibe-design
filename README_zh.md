@@ -6,10 +6,10 @@
 [![Platform](https://img.shields.io/badge/platform-Android-3DDC84?logo=android&logoColor=white)](#)
 [![AI Powered](https://img.shields.io/badge/AI-powered-blueviolet)](#)
 
-**Create, iterate, and export mobile UI with AI — entirely on Android.**
+**完全在 Android 设备上，借助 AI 创建、迭代并导出移动端 UI。**
 
-> Android Vibe Design is currently in early development.
+> Android Vibe Design 目前仍处于早期开发阶段。
 
-## Contributing
+## 参与贡献
 
-Contributions are welcome! Before submitting an issue or pull request, please read the [contribution guidelines](docs/CONTRIBUTING.md).
+欢迎参与项目贡献！在提交 Issue 或 Pull Request 前，请先阅读[贡献指南](docs/CONTRIBUTING_zh.md)。
