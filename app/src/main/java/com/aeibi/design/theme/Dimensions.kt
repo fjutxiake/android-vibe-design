@@ -11,9 +11,7 @@ import androidx.compose.ui.unit.dp
 @Immutable
 data class Dimensions(
   val borderThin: Dp = 1.dp,
-  val borderSelected: Dp = 2.dp,
   val iconLarge: Dp = 36.dp,
-  val themeOptionHeight: Dp = 72.dp,
   val projectListIcon: Dp = 84.dp,
   val projectPickerIcon: Dp = 96.dp,
 )

@@ -19,15 +19,21 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.core.content.ContextCompat
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.fallback
-import com.aeibi.design.theme.SystemAppIconShape
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
+import com.aeibi.design.theme.systemAppIconShape
+import android.graphics.Color
+import android.graphics.drawable.ColorDrawable
+import androidx.core.graphics.drawable.toDrawable
+
 
 @Composable
 fun ProjectListItem(
@@ -38,10 +44,17 @@ fun ProjectListItem(
   onClick: () -> Unit = {},
 ) {
   val context = LocalContext.current
-  val defaultIcon = context.packageManager.defaultActivityIcon
   val spacing = MaterialTheme.spacing
   val dimensions = MaterialTheme.dimensions
   val shape = MaterialTheme.shapes.small
+  val appIconShape = systemAppIconShape()
+
+  val defaultIcon =
+    if (LocalInspectionMode.current) {
+        Color.LTGRAY.toDrawable()
+    } else {
+      context.packageManager.defaultActivityIcon
+    }
 
   Row(
     modifier =
@@ -62,7 +75,7 @@ fun ProjectListItem(
           .error(defaultIcon)
           .build(),
       contentDescription = "$name App Icon",
-      modifier = Modifier.size(dimensions.projectListIcon).clip(SystemAppIconShape),
+      modifier = Modifier.size(dimensions.projectListIcon).clip(appIconShape),
       contentScale = ContentScale.Fit,
     )
 

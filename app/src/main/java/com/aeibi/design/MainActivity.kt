@@ -8,10 +8,6 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.ui.Modifier
-import androidx.lifecycle.compose.collectAsStateWithLifecycle
-import androidx.lifecycle.viewmodel.compose.viewModel
-import com.aeibi.design.feature.settings.AppSettingsViewModel
-import com.aeibi.design.feature.settings.AppSettingsViewModelFactory
 import com.aeibi.design.navigation.AppNavigation
 import com.aeibi.design.theme.VibeDesignTheme
 
@@ -21,19 +17,9 @@ class MainActivity : ComponentActivity() {
 
     enableEdgeToEdge()
     setContent {
-      val settingsViewModel: AppSettingsViewModel =
-        viewModel(factory = AppSettingsViewModelFactory(applicationContext))
-      val settings = settingsViewModel.settings.collectAsStateWithLifecycle()
-
-      VibeDesignTheme(
-        darkTheme = settings.value.isDarkTheme,
-        colorTheme = settings.value.colorTheme,
-      ) {
+      VibeDesignTheme {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-          AppNavigation(
-            settings = settings.value,
-            onSettingsEvent = settingsViewModel::onEvent,
-          )
+          AppNavigation()
         }
       }
     }

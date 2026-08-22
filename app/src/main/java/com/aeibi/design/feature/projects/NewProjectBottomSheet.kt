@@ -36,9 +36,9 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import coil3.compose.AsyncImage
-import com.aeibi.design.theme.SystemAppIconShape
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
+import com.aeibi.design.theme.systemAppIconShape
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -53,6 +53,7 @@ fun NewProjectBottomSheet(onDismiss: () -> Unit) {
     rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
       iconUri = uri?.toString()
     }
+  val appIconShape = systemAppIconShape()
 
   ModalBottomSheet(
     onDismissRequest = onDismiss,
@@ -73,7 +74,7 @@ fun NewProjectBottomSheet(onDismiss: () -> Unit) {
         modifier =
           Modifier
             .size(dimensions.projectPickerIcon)
-            .clip(SystemAppIconShape)
+            .clip(appIconShape)
             .background(MaterialTheme.colorScheme.primaryContainer)
             .clickable {
               photoPicker.launch(

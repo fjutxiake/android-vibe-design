@@ -2,10 +2,13 @@ package com.aeibi.design.theme
 
 import android.graphics.Color
 import android.graphics.drawable.AdaptiveIconDrawable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.asComposePath
+import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.LayoutDirection
 import androidx.core.graphics.drawable.toDrawable
@@ -33,3 +36,11 @@ object SystemAppIconShape : Shape {
     return Outline.Generic(drawable.iconMask.asComposePath())
   }
 }
+
+@Composable
+fun systemAppIconShape(): Shape =
+  if (LocalInspectionMode.current) {
+    RoundedCornerShape(percent = 22)
+  } else {
+    SystemAppIconShape
+  }

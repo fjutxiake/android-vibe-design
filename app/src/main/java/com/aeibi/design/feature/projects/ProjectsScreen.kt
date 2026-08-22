@@ -8,8 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
-import androidx.compose.material.icons.filled.DarkMode
-import androidx.compose.material.icons.filled.LightMode
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -33,8 +31,6 @@ import com.aeibi.design.theme.spacing
 @OptIn(ExperimentalMaterial3Api::class)
 fun ProjectsScreen(
   modifier: Modifier = Modifier,
-  isDarkTheme: Boolean = false,
-  onThemeToggle: () -> Unit = {},
   onSettingsClick: () -> Unit = {},
   onProjectClick: (String) -> Unit = {},
 ) {
@@ -44,14 +40,8 @@ fun ProjectsScreen(
     modifier = modifier.fillMaxSize(),
     topBar = {
       TopAppBar(
-        title = { Text("Aeibi") },
+        title = { Text("Vibe Design") },
         actions = {
-          IconButton(onClick = onThemeToggle) {
-            Icon(
-              imageVector = if (isDarkTheme) Icons.Filled.LightMode else Icons.Filled.DarkMode,
-              contentDescription = if (isDarkTheme) "切换到浅色模式" else "切换到深色模式",
-            )
-          }
           IconButton(
             onClick = { showNewProjectSheet = true },
             modifier = Modifier.testTag("new_project_button"),
