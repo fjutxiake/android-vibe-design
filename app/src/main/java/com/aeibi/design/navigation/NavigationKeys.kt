@@ -23,3 +23,6 @@ data class ProjectSettings(val projectId: String) : NavKey
 
 @Serializable
 data object ApplicationSettings : NavKey
+
+@Serializable
+data object ApplicationAiProviders : NavKey
