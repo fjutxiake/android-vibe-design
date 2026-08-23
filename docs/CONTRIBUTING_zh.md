@@ -123,7 +123,37 @@ PR 描述建议包含：
 
 ## Code Style
 
-请保持代码：
+项目使用 ktlint 和根目录的 `.editorconfig` 统一 Kotlin 与 Kotlin DSL 代码格式。
+
+自动格式化项目：
+
+```bash
+./gradlew ktlintFormat
+```
+
+仅检查格式，不修改文件：
+
+```bash
+./gradlew ktlintCheck
+```
+
+Pull Request 会由 CI 自动验证。条件允许时，建议在提交 Pull Request 前运行相同的格式、Lint 和测试检查：
+
+```bash
+./gradlew ktlintCheck check assembleDebug
+```
+
+### 可选的 Git Pre-commit Hook
+
+如需在本地更早发现格式问题，可以安装 ktlint pre-commit Hook：
+
+```bash
+./gradlew addKtlintCheckGitPreCommitHook
+```
+
+该 Hook 会在每次提交前检查已暂存的 Kotlin 和 Kotlin DSL 文件。它是可选配置，仅对当前 clone 生效，不能替代必需的 CI 检查。
+
+此外，请保持代码：
 
 - 简洁易读
 - 遵循 Android 官方开发规范

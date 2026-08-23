@@ -125,7 +125,37 @@ For feature requests, please describe:
 
 ## Code Style
 
-Please keep the code:
+Kotlin and Kotlin DSL formatting is enforced by ktlint using the rules in the root `.editorconfig` file.
+
+Format the project:
+
+```bash
+./gradlew ktlintFormat
+```
+
+Check formatting without changing files:
+
+```bash
+./gradlew ktlintCheck
+```
+
+Pull Requests are verified by CI. Run the same formatting, lint, and test checks locally before opening a Pull Request when possible:
+
+```bash
+./gradlew ktlintCheck check assembleDebug
+```
+
+### Optional Git Pre-commit Hook
+
+For earlier local feedback, you can install the ktlint pre-commit hook:
+
+```bash
+./gradlew addKtlintCheckGitPreCommitHook
+```
+
+The hook checks staged Kotlin and Kotlin DSL files before each commit. It is optional, local to the current clone, and does not replace the required CI checks.
+
+In addition, keep the code:
 
 - Clear and readable
 - Consistent with Android development conventions
