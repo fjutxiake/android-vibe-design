@@ -10,15 +10,15 @@ import androidx.compose.ui.unit.dp
 
 @Immutable
 data class Dimensions(
-  val borderThin: Dp = 1.dp,
-  val iconLarge: Dp = 36.dp,
-  val projectListIcon: Dp = 84.dp,
-  val projectPickerIcon: Dp = 96.dp,
+    val borderThin: Dp = 1.dp,
+    val iconLarge: Dp = 36.dp,
+    val projectListIcon: Dp = 84.dp,
+    val projectPickerIcon: Dp = 96.dp
 )
 
 internal val LocalDimensions = staticCompositionLocalOf { Dimensions() }
 
 val MaterialTheme.dimensions: Dimensions
-  @Composable
-  @ReadOnlyComposable
-  get() = LocalDimensions.current
+    @Composable
+    @ReadOnlyComposable
+    get() = LocalDimensions.current

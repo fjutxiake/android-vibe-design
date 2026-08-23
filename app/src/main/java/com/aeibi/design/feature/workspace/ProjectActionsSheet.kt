@@ -19,34 +19,46 @@ import androidx.compose.ui.Modifier
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun ProjectActionsSheet(
-  onDismiss: () -> Unit,
-  onBuildClick: () -> Unit,
-  onVersionsClick: () -> Unit,
-  onProjectSettingsClick: () -> Unit,
-  onAppSettingsClick: () -> Unit,
+    onDismiss: () -> Unit,
+    onBuildClick: () -> Unit,
+    onVersionsClick: () -> Unit,
+    onProjectSettingsClick: () -> Unit,
+    onAppSettingsClick: () -> Unit
 ) {
-  ModalBottomSheet(onDismissRequest = onDismiss) {
-    Column(modifier = Modifier.navigationBarsPadding()) {
-      ListItem(
-        headlineContent = { Text("打包与构建") },
-        leadingContent = { Icon(Icons.Filled.Build, contentDescription = null) },
-        modifier = Modifier.clickable { onDismiss(); onBuildClick() },
-      )
-      ListItem(
-        headlineContent = { Text("版本管理") },
-        leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
-        modifier = Modifier.clickable { onDismiss(); onVersionsClick() },
-      )
-      ListItem(
-        headlineContent = { Text("项目设置") },
-        leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
-        modifier = Modifier.clickable { onDismiss(); onProjectSettingsClick() },
-      )
-      ListItem(
-        headlineContent = { Text("应用设置") },
-        leadingContent = { Icon(Icons.Filled.Settings, contentDescription = null) },
-        modifier = Modifier.clickable { onDismiss(); onAppSettingsClick() },
-      )
+    ModalBottomSheet(onDismissRequest = onDismiss) {
+        Column(modifier = Modifier.navigationBarsPadding()) {
+            ListItem(
+                headlineContent = { Text("打包与构建") },
+                leadingContent = { Icon(Icons.Filled.Build, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onBuildClick()
+                }
+            )
+            ListItem(
+                headlineContent = { Text("版本管理") },
+                leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onVersionsClick()
+                }
+            )
+            ListItem(
+                headlineContent = { Text("项目设置") },
+                leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onProjectSettingsClick()
+                }
+            )
+            ListItem(
+                headlineContent = { Text("应用设置") },
+                leadingContent = { Icon(Icons.Filled.Settings, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onAppSettingsClick()
+                }
+            )
+        }
     }
-  }
 }

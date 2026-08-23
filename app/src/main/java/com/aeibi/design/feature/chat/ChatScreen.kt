@@ -8,17 +8,13 @@ import com.aeibi.design.feature.chat.components.ChatComposer
 import com.aeibi.design.feature.chat.components.ChatMessageList
 
 @Composable
-fun ChatScreen(
-  projectId: String,
-  sessionId: String?,
-  modifier: Modifier = Modifier,
-) {
-  Column(modifier = modifier.fillMaxSize()) {
-    ChatMessageList(
-      projectId = projectId,
-      sessionId = sessionId,
-      modifier = Modifier.weight(1f),
-    )
-    ChatComposer()
-  }
+fun ChatScreen(projectId: String, sessionId: String?, modifier: Modifier = Modifier) {
+    Column(modifier = modifier.fillMaxSize()) {
+        ChatMessageList(
+            projectId = projectId,
+            sessionId = sessionId,
+            modifier = Modifier.weight(1f)
+        )
+        ChatComposer()
+    }
 }

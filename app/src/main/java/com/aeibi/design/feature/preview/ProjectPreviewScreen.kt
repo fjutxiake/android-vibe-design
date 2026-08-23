@@ -20,37 +20,37 @@ import androidx.compose.ui.Modifier
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun ProjectPreviewScreen(
-  projectId: String,
-  modifier: Modifier = Modifier,
-  onBackClick: () -> Unit = {},
-  onFullscreenClick: () -> Unit = {},
+    projectId: String,
+    modifier: Modifier = Modifier,
+    onBackClick: () -> Unit = {},
+    onFullscreenClick: () -> Unit = {}
 ) {
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    topBar = {
-      TopAppBar(
-        title = { Text("在线预览") },
-        navigationIcon = {
-          IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-          }
-        },
-        actions = {
-          IconButton(onClick = onFullscreenClick) {
-            Icon(Icons.Filled.Fullscreen, contentDescription = "全屏预览")
-          }
-        },
-      )
-    },
-  ) { innerPadding ->
-    Box(
-      modifier = Modifier.fillMaxSize().padding(innerPadding),
-      contentAlignment = Alignment.Center,
-    ) {
-      Text(
-        text = "项目 $projectId 的在线预览区域",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("在线预览") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                },
+                actions = {
+                    IconButton(onClick = onFullscreenClick) {
+                        Icon(Icons.Filled.Fullscreen, contentDescription = "全屏预览")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "项目 $projectId 的在线预览区域",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
-  }
 }

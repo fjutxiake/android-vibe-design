@@ -16,31 +16,27 @@ import kotlin.math.roundToInt
 
 /** A Compose shape that matches the current device's adaptive app icon mask. */
 object SystemAppIconShape : Shape {
-  override fun createOutline(
-    size: Size,
-    layoutDirection: LayoutDirection,
-    density: Density,
-  ): Outline {
-    val drawable =
-      AdaptiveIconDrawable(Color.BLACK.toDrawable(),
-          Color.TRANSPARENT.toDrawable(),
-      ).apply {
-        setBounds(
-          0,
-          0,
-          size.width.roundToInt(),
-          size.height.roundToInt(),
-        )
-      }
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline {
+        val drawable =
+            AdaptiveIconDrawable(
+                Color.BLACK.toDrawable(),
+                Color.TRANSPARENT.toDrawable()
+            ).apply {
+                setBounds(
+                    0,
+                    0,
+                    size.width.roundToInt(),
+                    size.height.roundToInt()
+                )
+            }
 
-    return Outline.Generic(drawable.iconMask.asComposePath())
-  }
+        return Outline.Generic(drawable.iconMask.asComposePath())
+    }
 }
 
 @Composable
-fun systemAppIconShape(): Shape =
-  if (LocalInspectionMode.current) {
+fun systemAppIconShape(): Shape = if (LocalInspectionMode.current) {
     RoundedCornerShape(percent = 22)
-  } else {
+} else {
     SystemAppIconShape
-  }
+}

@@ -5,9 +5,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun ChatMessageItem(
-  text: String,
-  modifier: Modifier = Modifier,
-) {
-  Text(text = text, modifier = modifier)
+fun ChatMessageItem(text: String, modifier: Modifier = Modifier) {
+    Text(text = text, modifier = modifier)
 }

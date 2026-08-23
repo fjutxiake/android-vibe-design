@@ -16,26 +16,23 @@ import androidx.compose.ui.Modifier
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-  modifier: Modifier = Modifier,
-  onBackClick: () -> Unit = {},
-) {
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    topBar = {
-      TopAppBar(
-        title = { Text("设置") },
-        navigationIcon = {
-          IconButton(onClick = onBackClick) {
-            Icon(
-              imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-              contentDescription = "返回",
+fun SettingsScreen(modifier: Modifier = Modifier, onBackClick: () -> Unit = {}) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("设置") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = "返回"
+                        )
+                    }
+                }
             )
-          }
-        },
-      )
-    },
-  ) { innerPadding ->
-    Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
-  }
+        }
+    ) { innerPadding ->
+        Box(modifier = Modifier.fillMaxSize().padding(innerPadding))
+    }
 }

@@ -8,18 +8,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 
 @Composable
-fun SessionList(
-  selectedSessionId: String?,
-  onSessionSelected: (String) -> Unit,
-  modifier: Modifier = Modifier,
-) {
-  val sessions = listOf("session-2" to "项目页面设计")
+fun SessionList(selectedSessionId: String?, onSessionSelected: (String) -> Unit, modifier: Modifier = Modifier) {
+    val sessions = listOf("session-2" to "项目页面设计")
 
-  sessions.forEach { (id, title) ->
-    ListItem(
-      headlineContent = { Text(title) },
-      supportingContent = { if (id == selectedSessionId) Text("当前会话") },
-      modifier = modifier.fillMaxWidth().clickable { onSessionSelected(id) },
-    )
-  }
+    sessions.forEach { (id, title) ->
+        ListItem(
+            headlineContent = { Text(title) },
+            supportingContent = { if (id == selectedSessionId) Text("当前会话") },
+            modifier = modifier.fillMaxWidth().clickable { onSessionSelected(id) }
+        )
+    }
 }

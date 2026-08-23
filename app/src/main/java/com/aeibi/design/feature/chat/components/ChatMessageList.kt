@@ -7,12 +7,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 
 @Composable
-fun ChatMessageList(
-  projectId: String,
-  sessionId: String?,
-  modifier: Modifier = Modifier,
-) {
-  Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-    ChatEmptyState(projectId = projectId, sessionId = sessionId)
-  }
+fun ChatMessageList(projectId: String, sessionId: String?, modifier: Modifier = Modifier) {
+    Box(modifier = modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        ChatEmptyState(projectId = projectId, sessionId = sessionId)
+    }
 }

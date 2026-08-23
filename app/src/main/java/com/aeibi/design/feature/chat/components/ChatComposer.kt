@@ -19,23 +19,23 @@ import com.aeibi.design.theme.spacing
 
 @Composable
 fun ChatComposer(modifier: Modifier = Modifier) {
-  val spacing = MaterialTheme.spacing
+    val spacing = MaterialTheme.spacing
 
-  Row(
-    modifier = modifier.fillMaxWidth().imePadding().padding(spacing.xs),
-    verticalAlignment = Alignment.CenterVertically,
-  ) {
-    IconButton(onClick = {}) {
-      Icon(imageVector = Icons.Filled.Add, contentDescription = "添加工具")
+    Row(
+        modifier = modifier.fillMaxWidth().imePadding().padding(spacing.xs),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(onClick = {}) {
+            Icon(imageVector = Icons.Filled.Add, contentDescription = "添加工具")
+        }
+        OutlinedTextField(
+            value = "",
+            onValueChange = {},
+            modifier = Modifier.weight(1f),
+            placeholder = { Text("向 AI 描述你想构建的内容") }
+        )
+        IconButton(onClick = {}) {
+            Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+        }
     }
-    OutlinedTextField(
-      value = "",
-      onValueChange = {},
-      modifier = Modifier.weight(1f),
-      placeholder = { Text("向 AI 描述你想构建的内容") },
-    )
-    IconButton(onClick = {}) {
-      Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
-    }
-  }
 }

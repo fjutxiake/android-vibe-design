@@ -43,86 +43,86 @@ import com.aeibi.design.theme.systemAppIconShape
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
 fun NewProjectBottomSheet(onDismiss: () -> Unit) {
-  var name by rememberSaveable { mutableStateOf("") }
-  var description by rememberSaveable { mutableStateOf("") }
-  var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
-  val spacing = MaterialTheme.spacing
-  val dimensions = MaterialTheme.dimensions
-  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  val photoPicker =
-    rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-      iconUri = uri?.toString()
-    }
-  val appIconShape = systemAppIconShape()
-
-  ModalBottomSheet(
-    onDismissRequest = onDismiss,
-    sheetState = sheetState,
-    containerColor = MaterialTheme.colorScheme.surface,
-  ) {
-    Column(
-      modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg),
-      verticalArrangement = Arrangement.spacedBy(spacing.md),
-    ) {
-      Text(
-        text = "新建项目",
-        style = MaterialTheme.typography.headlineSmall,
-        fontWeight = FontWeight.SemiBold,
-      )
-      Box(
-        contentAlignment = Alignment.Center,
-        modifier =
-          Modifier
-            .size(dimensions.projectPickerIcon)
-            .clip(appIconShape)
-            .background(MaterialTheme.colorScheme.primaryContainer)
-            .clickable {
-              photoPicker.launch(
-                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
-              )
-            }
-            .testTag("pick_project_icon_button"),
-      ) {
-        if (iconUri == null) {
-          Icon(
-            imageVector = Icons.Filled.AddPhotoAlternate,
-            contentDescription = "选择应用图标",
-            tint = MaterialTheme.colorScheme.primary,
-            modifier = Modifier.size(dimensions.iconLarge),
-          )
-        } else {
-          AsyncImage(
-            model = iconUri,
-            contentDescription = "已选择的应用图标",
-            modifier = Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
-          )
+    var name by rememberSaveable { mutableStateOf("") }
+    var description by rememberSaveable { mutableStateOf("") }
+    var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
+    val spacing = MaterialTheme.spacing
+    val dimensions = MaterialTheme.dimensions
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val photoPicker =
+        rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
+            iconUri = uri?.toString()
         }
-      }
-      OutlinedTextField(
-        value = name,
-        onValueChange = { name = it },
-        modifier = Modifier.fillMaxWidth().testTag("project_name_input"),
-        label = { Text("名称") },
-        placeholder = { Text("例如：周末去哪") },
-        singleLine = true,
-      )
-      OutlinedTextField(
-        value = description,
-        onValueChange = { description = it },
-        modifier = Modifier.fillMaxWidth().testTag("project_description_input"),
-        label = { Text("描述") },
-        placeholder = { Text("用一句话说明这个 App") },
-        minLines = 3,
-        maxLines = 4,
-      )
-      Row(
-        modifier = Modifier.fillMaxWidth().padding(top = spacing.sm, bottom = spacing.lg),
-        horizontalArrangement = Arrangement.SpaceBetween,
-      ) {
-        TextButton(onClick = onDismiss) { Text("取消") }
-        Button(onClick = onDismiss, enabled = name.isNotBlank()) { Text("创建项目") }
-      }
+    val appIconShape = systemAppIconShape()
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg),
+            verticalArrangement = Arrangement.spacedBy(spacing.md)
+        ) {
+            Text(
+                text = "新建项目",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.SemiBold
+            )
+            Box(
+                contentAlignment = Alignment.Center,
+                modifier =
+                Modifier
+                    .size(dimensions.projectPickerIcon)
+                    .clip(appIconShape)
+                    .background(MaterialTheme.colorScheme.primaryContainer)
+                    .clickable {
+                        photoPicker.launch(
+                            PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                        )
+                    }
+                    .testTag("pick_project_icon_button")
+            ) {
+                if (iconUri == null) {
+                    Icon(
+                        imageVector = Icons.Filled.AddPhotoAlternate,
+                        contentDescription = "选择应用图标",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(dimensions.iconLarge)
+                    )
+                } else {
+                    AsyncImage(
+                        model = iconUri,
+                        contentDescription = "已选择的应用图标",
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                }
+            }
+            OutlinedTextField(
+                value = name,
+                onValueChange = { name = it },
+                modifier = Modifier.fillMaxWidth().testTag("project_name_input"),
+                label = { Text("名称") },
+                placeholder = { Text("例如：周末去哪") },
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = description,
+                onValueChange = { description = it },
+                modifier = Modifier.fillMaxWidth().testTag("project_description_input"),
+                label = { Text("描述") },
+                placeholder = { Text("用一句话说明这个 App") },
+                minLines = 3,
+                maxLines = 4
+            )
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(top = spacing.sm, bottom = spacing.lg),
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                TextButton(onClick = onDismiss) { Text("取消") }
+                Button(onClick = onDismiss, enabled = name.isNotBlank()) { Text("创建项目") }
+            }
+        }
     }
-  }
 }

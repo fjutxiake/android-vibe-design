@@ -18,32 +18,28 @@ import androidx.compose.ui.Modifier
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun ProjectVersionsScreen(
-  projectId: String,
-  modifier: Modifier = Modifier,
-  onBackClick: () -> Unit = {},
-) {
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    topBar = {
-      TopAppBar(
-        title = { Text("版本管理") },
-        navigationIcon = {
-          IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-          }
-        },
-      )
-    },
-  ) { innerPadding ->
-    Box(
-      modifier = Modifier.fillMaxSize().padding(innerPadding),
-      contentAlignment = Alignment.Center,
-    ) {
-      Text(
-        text = "项目 $projectId 的版本记录区域",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+fun ProjectVersionsScreen(projectId: String, modifier: Modifier = Modifier, onBackClick: () -> Unit = {}) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("版本管理") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "项目 $projectId 的版本记录区域",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
-  }
 }

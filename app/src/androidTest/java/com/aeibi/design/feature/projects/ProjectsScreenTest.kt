@@ -10,17 +10,17 @@ import org.junit.Test
 /** UI tests for [ProjectsScreen]. */
 class ProjectsScreenTest {
 
-  @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
+    @get:Rule val composeTestRule = createAndroidComposeRule<ComponentActivity>()
 
-  @Before
-  fun setup() {
-    composeTestRule.setContent { ProjectsScreen() }
-  }
-
-  @Test
-  fun projectItems_exist() {
-    listOf("日常发芽", "周末去哪", "专注计时器").forEach {
-      composeTestRule.onNodeWithText(it).assertExists()
+    @Before
+    fun setup() {
+        composeTestRule.setContent { ProjectsScreen() }
     }
-  }
+
+    @Test
+    fun projectItems_exist() {
+        listOf("日常发芽", "周末去哪", "专注计时器").forEach {
+            composeTestRule.onNodeWithText(it).assertExists()
+        }
+    }
 }

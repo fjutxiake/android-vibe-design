@@ -10,11 +10,11 @@ import com.aeibi.design.theme.spacing
 
 @Composable
 fun BuildLog(modifier: Modifier = Modifier) {
-  val spacing = MaterialTheme.spacing
+    val spacing = MaterialTheme.spacing
 
-  Text(
-    text = "暂无构建记录",
-    modifier = modifier.fillMaxWidth().padding(vertical = spacing.lg),
-    color = MaterialTheme.colorScheme.onSurfaceVariant,
-  )
+    Text(
+        text = "暂无构建记录",
+        modifier = modifier.fillMaxWidth().padding(vertical = spacing.lg),
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }

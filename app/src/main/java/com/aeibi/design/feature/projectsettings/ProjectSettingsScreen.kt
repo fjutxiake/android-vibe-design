@@ -18,32 +18,28 @@ import androidx.compose.ui.Modifier
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun ProjectSettingsScreen(
-  projectId: String,
-  modifier: Modifier = Modifier,
-  onBackClick: () -> Unit = {},
-) {
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    topBar = {
-      TopAppBar(
-        title = { Text("项目设置") },
-        navigationIcon = {
-          IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-          }
-        },
-      )
-    },
-  ) { innerPadding ->
-    Box(
-      modifier = Modifier.fillMaxSize().padding(innerPadding),
-      contentAlignment = Alignment.Center,
-    ) {
-      Text(
-        text = "项目 $projectId 的设置区域",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+fun ProjectSettingsScreen(projectId: String, modifier: Modifier = Modifier, onBackClick: () -> Unit = {}) {
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("项目设置") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentAlignment = Alignment.Center
+        ) {
+            Text(
+                text = "项目 $projectId 的设置区域",
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
-  }
 }

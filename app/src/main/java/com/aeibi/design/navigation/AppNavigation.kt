@@ -16,77 +16,77 @@ import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
 @Composable
 fun AppNavigation() {
-  val backStack = rememberNavBackStack(ProjectPicker)
+    val backStack = rememberNavBackStack(ProjectPicker)
 
-  NavDisplay(
-    backStack = backStack,
-    onBack = { backStack.removeLastOrNull() },
-    entryProvider =
-      entryProvider {
-        entry<ProjectChat> { route ->
-          ProjectWorkspaceScreen(
-            projectId = route.projectId,
-            sessionId = route.sessionId,
-            modifier = Modifier.fillMaxSize(),
-            onProjectPickerClick = { backStack.removeLastOrNull() },
-            onSessionSelected = { sessionId ->
-              backStack.removeLastOrNull()
-              backStack.add(route.copy(sessionId = sessionId))
-            },
-            onNewChatClick = {
-              backStack.removeLastOrNull()
-              backStack.add(route.copy(sessionId = null))
-            },
-            onPreviewClick = { backStack.add(ProjectPreview(route.projectId)) },
-            onBuildClick = { backStack.add(ProjectBuild(route.projectId)) },
-            onVersionsClick = { backStack.add(ProjectVersions(route.projectId)) },
-            onProjectSettingsClick = { backStack.add(ProjectSettings(route.projectId)) },
-            onAppSettingsClick = { backStack.add(ApplicationSettings) },
-          )
+    NavDisplay(
+        backStack = backStack,
+        onBack = { backStack.removeLastOrNull() },
+        entryProvider =
+        entryProvider {
+            entry<ProjectChat> { route ->
+                ProjectWorkspaceScreen(
+                    projectId = route.projectId,
+                    sessionId = route.sessionId,
+                    modifier = Modifier.fillMaxSize(),
+                    onProjectPickerClick = { backStack.removeLastOrNull() },
+                    onSessionSelected = { sessionId ->
+                        backStack.removeLastOrNull()
+                        backStack.add(route.copy(sessionId = sessionId))
+                    },
+                    onNewChatClick = {
+                        backStack.removeLastOrNull()
+                        backStack.add(route.copy(sessionId = null))
+                    },
+                    onPreviewClick = { backStack.add(ProjectPreview(route.projectId)) },
+                    onBuildClick = { backStack.add(ProjectBuild(route.projectId)) },
+                    onVersionsClick = { backStack.add(ProjectVersions(route.projectId)) },
+                    onProjectSettingsClick = { backStack.add(ProjectSettings(route.projectId)) },
+                    onAppSettingsClick = { backStack.add(ApplicationSettings) }
+                )
+            }
+            entry<ProjectPicker> {
+                ProjectsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onSettingsClick = { backStack.add(ApplicationSettings) },
+                    onProjectClick = { projectId ->
+                        backStack.add(ProjectChat(projectId))
+                    }
+                )
+            }
+            entry<ProjectPreview> { route ->
+                ProjectPreviewScreen(
+                    projectId = route.projectId,
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ProjectBuild> { route ->
+                ProjectBuildScreen(
+                    projectId = route.projectId,
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ProjectVersions> { route ->
+                ProjectVersionsScreen(
+                    projectId = route.projectId,
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ProjectSettings> { route ->
+                ProjectSettingsScreen(
+                    projectId = route.projectId,
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ApplicationSettings> {
+                SettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
         }
-        entry<ProjectPicker> {
-          ProjectsScreen(
-            modifier = Modifier.fillMaxSize(),
-            onSettingsClick = { backStack.add(ApplicationSettings) },
-            onProjectClick = { projectId ->
-              backStack.add(ProjectChat(projectId))
-            },
-          )
-        }
-        entry<ProjectPreview> { route ->
-          ProjectPreviewScreen(
-            projectId = route.projectId,
-            modifier = Modifier.fillMaxSize(),
-            onBackClick = { backStack.removeLastOrNull() },
-          )
-        }
-        entry<ProjectBuild> { route ->
-          ProjectBuildScreen(
-            projectId = route.projectId,
-            modifier = Modifier.fillMaxSize(),
-            onBackClick = { backStack.removeLastOrNull() },
-          )
-        }
-        entry<ProjectVersions> { route ->
-          ProjectVersionsScreen(
-            projectId = route.projectId,
-            modifier = Modifier.fillMaxSize(),
-            onBackClick = { backStack.removeLastOrNull() },
-          )
-        }
-        entry<ProjectSettings> { route ->
-          ProjectSettingsScreen(
-            projectId = route.projectId,
-            modifier = Modifier.fillMaxSize(),
-            onBackClick = { backStack.removeLastOrNull() },
-          )
-        }
-        entry<ApplicationSettings> {
-          SettingsScreen(
-            modifier = Modifier.fillMaxSize(),
-            onBackClick = { backStack.removeLastOrNull() },
-          )
-        }
-      },
-  )
+    )
 }

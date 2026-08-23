@@ -18,29 +18,25 @@ import com.aeibi.design.theme.spacing
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun ProjectBuildScreen(
-  projectId: String,
-  modifier: Modifier = Modifier,
-  onBackClick: () -> Unit = {},
-) {
-  val spacing = MaterialTheme.spacing
+fun ProjectBuildScreen(projectId: String, modifier: Modifier = Modifier, onBackClick: () -> Unit = {}) {
+    val spacing = MaterialTheme.spacing
 
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    topBar = {
-      TopAppBar(
-        title = { Text("打包与构建") },
-        navigationIcon = {
-          IconButton(onClick = onBackClick) {
-            Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
-          }
-        },
-      )
-    },
-  ) { innerPadding ->
-    Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(spacing.md)) {
-      Text("项目：$projectId")
-      BuildLog()
+    Scaffold(
+        modifier = modifier.fillMaxSize(),
+        topBar = {
+            TopAppBar(
+                title = { Text("打包与构建") },
+                navigationIcon = {
+                    IconButton(onClick = onBackClick) {
+                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(spacing.md)) {
+            Text("项目：$projectId")
+            BuildLog()
+        }
     }
-  }
 }

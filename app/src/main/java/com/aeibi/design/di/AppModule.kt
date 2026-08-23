@@ -15,18 +15,16 @@ import jakarta.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object AppModule {
 
-  @Provides
-  @Singleton
-  fun provideAppDatabase(
-    @ApplicationContext context: Context,
-  ): AppDatabase = Room.databaseBuilder(
-    context = context,
-    klass = AppDatabase::class.java,
-    name = DATABASE_NAME,
-  ).build()
+    @Provides
+    @Singleton
+    fun provideAppDatabase(@ApplicationContext context: Context): AppDatabase = Room.databaseBuilder(
+        context = context,
+        klass = AppDatabase::class.java,
+        name = DATABASE_NAME
+    ).build()
 
-  @Provides
-  fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
+    @Provides
+    fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
 
-  private const val DATABASE_NAME = "vibe-design.db"
+    private const val DATABASE_NAME = "vibe-design.db"
 }

@@ -10,27 +10,23 @@ import androidx.compose.ui.Modifier
 import com.aeibi.design.theme.spacing
 
 @Composable
-fun ChatEmptyState(
-  projectId: String,
-  sessionId: String?,
-  modifier: Modifier = Modifier,
-) {
-  val spacing = MaterialTheme.spacing
+fun ChatEmptyState(projectId: String, sessionId: String?, modifier: Modifier = Modifier) {
+    val spacing = MaterialTheme.spacing
 
-  Column(
-    modifier = modifier.padding(spacing.lg),
-    horizontalAlignment = Alignment.CenterHorizontally,
-  ) {
-    Text(text = "开始新的对话", style = MaterialTheme.typography.headlineSmall)
-    Text(
-      text =
-        if (sessionId == null) {
-          "项目 $projectId · 尚未创建会话"
-        } else {
-          "项目 $projectId · 会话 $sessionId"
-        },
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-      style = MaterialTheme.typography.bodySmall,
-    )
-  }
+    Column(
+        modifier = modifier.padding(spacing.lg),
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(text = "开始新的对话", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text =
+            if (sessionId == null) {
+                "项目 $projectId · 尚未创建会话"
+            } else {
+                "项目 $projectId · 会话 $sessionId"
+            },
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
 }

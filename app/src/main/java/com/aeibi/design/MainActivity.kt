@@ -12,16 +12,16 @@ import com.aeibi.design.navigation.AppNavigation
 import com.aeibi.design.theme.VibeDesignTheme
 
 class MainActivity : ComponentActivity() {
-  override fun onCreate(savedInstanceState: Bundle?) {
-    super.onCreate(savedInstanceState)
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
 
-    enableEdgeToEdge()
-    setContent {
-      VibeDesignTheme {
-        Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
-          AppNavigation()
+        enableEdgeToEdge()
+        setContent {
+            VibeDesignTheme {
+                Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
+                    AppNavigation()
+                }
+            }
         }
-      }
     }
-  }
 }
