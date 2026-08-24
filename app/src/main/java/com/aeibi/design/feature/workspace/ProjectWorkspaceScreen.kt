@@ -41,14 +41,15 @@ fun ProjectWorkspaceScreen(
         drawerState = drawerState,
         drawerContent = {
             SessionDrawer(
+                projectId = projectId,
                 selectedSessionId = sessionId,
-                onNewChatClick = {
-                    scope.launch { drawerState.close() }
-                    onNewChatClick()
-                },
                 onSessionSelected = { selectedSessionId ->
                     scope.launch { drawerState.close() }
                     onSessionSelected(selectedSessionId)
+                },
+                onCurrentSessionDeleted = {
+                    scope.launch { drawerState.close() }
+                    onNewChatClick()
                 }
             )
         },

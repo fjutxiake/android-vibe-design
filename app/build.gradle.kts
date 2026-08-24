@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.aeibi.design"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.aeibi.design"
         minSdk = 26
@@ -86,6 +86,10 @@ dependencies {
     implementation(libs.androidx.navigation3.ui)
     implementation(libs.androidx.navigation3.runtime)
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
+
+    // ViewModel in Compose
+    implementation(libs.androidx.lifecycle.runtime.compose)
+    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
     // Local database
     implementation(libs.androidx.room3.runtime)

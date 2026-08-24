@@ -16,6 +16,7 @@ lifecycleViewmodelNav3 = "2.10.0"
 room3 = "3.0.1"
 ksp = "2.3.9"
 hilt = "2.60.1"
+hiltLifecycle = "1.4.0"
 ktlint = "14.2.0"
 
 [libraries]
@@ -29,6 +30,8 @@ androidx-compose-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-te
 androidx-compose-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling"}
 androidx-compose-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-manifest"}
 androidx-lifecycle-runtime-ktx = { module = "androidx.lifecycle:lifecycle-runtime-ktx", version.ref = "androidxLifecycle" }
+androidx-lifecycle-runtime-compose = { module = "androidx.lifecycle:lifecycle-runtime-compose", version.ref = "androidxLifecycle" }
+androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "hiltLifecycle" }
 androidx-test-core = { module = "androidx.test:core", version.ref = "androidxTest" }
 androidx-test-ext-junit = { module = "androidx.test.ext:junit", version.ref = "androidxTestExt" }
 androidx-test-espresso-core = { module = "androidx.test.espresso:espresso-core", version.ref = "androidxTestEspresso" }
