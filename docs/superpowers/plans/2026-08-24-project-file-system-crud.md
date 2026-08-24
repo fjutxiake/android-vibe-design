@@ -6,13 +6,13 @@
 
 **Architecture:** Project 走文件系统(目录 = 唯一真相),Session 继续走 Room。新增 `@Serializable Project` + `@Singleton ProjectRepository`(注入项目根目录 `File`,内部 `MutableStateFlow` 投影目录)+ `@HiltViewModel ProjectsViewModel`;Compose UI 只渲染状态、派发动作(状态提升)。Repository 通过注入 `IconCopier` 接口解耦 Android 的 `ContentResolver`,保持 JVM 可测。
 
-**Tech Stack:** Kotlin 2.3.20、Jetpack Compose(BOM 2026.03.01)、Material3、Hilt 2.60.1 + androidx.hilt 1.4.0、kotlinx-serialization-json 1.7.3(已在 classpath)、navigation3 1.0.1、coil3、JUnit4 + kotlinx-coroutines-test。
+**Tech Stack:** Kotlin 2.3.20、Jetpack Compose(BOM 2026.03.01)、Material3、Hilt 2.60.1 + androidx.hilt 1.4.0、kotlinx-serialization-json 1.7.3(需显式声明依赖——serialization 插件只带 core,不带 json runtime)、navigation3 1.0.1、coil3、JUnit4 + kotlinx-coroutines-test。
 
 **Spec:** `docs/issue-6-project-crud-design.md`(本计划从该设计文档展开;执行者需同时阅读该文档)
 
 ## Global Constraints
 
-- Kotlin 2.3.20 / JVM 17 / minSdk 26 / targetSdk 36 / compileSdk 36。
+- Kotlin 2.3.20 / JVM 17 / minSdk 26 / targetSdk 36 / compileSdk 37。
 - **ktlint 14.2.0**:4 空格缩进、尾随逗号;CI(`.github/workflows/check.yml`)会跑 `ktlintCheck`,不过则挂。
 - DI 注解用 `jakarta.inject.Inject` / `jakarta.inject.Singleton`(与现有 `SessionRepository`/`AppModule` 一致),`@HiltViewModel` 用 `dagger.hilt.android.lifecycle.HiltViewModel`。
 - Project **不建 Room 实体**;Session 的 Room 实现不要改动。
@@ -372,8 +372,11 @@ class ProjectRepository(
             val dir = File(projectsDir, id)
             val existing = readProject(dir) ?: error("项目不存在: $id")
             val icon = if (iconUri != null) {
-                existing.icon?.let { File(dir, it).delete() }
-                iconCopier.copy(iconUri, dir)
+                val newIcon = iconCopier.copy(iconUri, dir)
+                if (newIcon != null && newIcon != existing.icon) {
+                    existing.icon?.let { File(dir, it).delete() }
+                }
+                newIcon ?: existing.icon
             } else {
                 existing.icon
             }
@@ -569,16 +572,18 @@ class ProjectsViewModel @Inject constructor(
         }
     }
 
-    fun updateProject(id: String, name: String, description: String, iconUri: String?) {
+    fun updateProject(id: String, name: String, description: String, iconUri: String?, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             runCatching { projectRepository.updateProject(id, name, description, iconUri) }
+            onComplete()
         }
     }
 
-    fun deleteProject(id: String) {
+    fun deleteProject(id: String, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             runCatching { sessionRepository.deleteSessionsForProject(id) }
             runCatching { projectRepository.deleteProject(id) }
+            onComplete()
         }
     }
 
@@ -834,7 +839,7 @@ fun ProjectsScreen(
                 )
             }
             if (projects.isEmpty()) {
-                item { EmptyProjectsState() }
+                item { EmptyProjectsState(modifier = Modifier.fillParentMaxSize()) }
             }
         }
     }
@@ -851,9 +856,9 @@ fun ProjectsScreen(
 }
 
 @Composable
-private fun EmptyProjectsState() {
+private fun EmptyProjectsState(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier.fillMaxSize().testTag("empty_projects"),
+        modifier = modifier.testTag("empty_projects"),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -1056,9 +1061,10 @@ fun ProjectSettingsScreen(
     var description by rememberSaveable { mutableStateOf("") }
 
     LaunchedEffect(project) {
-        if (project != null && name.isBlank()) {
-            name = project.name
-            description = project.description
+        val current = project
+        if (current != null && name.isBlank()) {
+            name = current.name
+            description = current.description
         }
     }
 
@@ -1100,8 +1106,7 @@ fun ProjectSettingsScreen(
             )
             Button(
                 onClick = {
-                    viewModel.updateProject(projectId, name, description, iconUri = null)
-                    onBackClick()
+                    viewModel.updateProject(projectId, name, description, iconUri = null) { onBackClick() }
                 },
                 enabled = name.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
@@ -1263,8 +1268,7 @@ fun ProjectWorkspaceScreen(
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false
-                        viewModel.deleteProject(projectId)
-                        onProjectPickerClick()
+                        viewModel.deleteProject(projectId) { onProjectPickerClick() }
                     },
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
