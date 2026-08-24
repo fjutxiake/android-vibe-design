@@ -1,5 +1,6 @@
 package com.aeibi.design.di
 
+import java.io.File
 import android.content.Context
 import androidx.room3.Room
 import com.aeibi.design.data.database.AppDatabase
@@ -12,7 +13,6 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import jakarta.inject.Singleton
-import java.io.File
 
 @Module
 @InstallIn(SingletonComponent::class)

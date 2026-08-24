@@ -1,11 +1,11 @@
 package com.aeibi.design.data.projects
 
+import java.io.File
 import android.content.Context
 import android.net.Uri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import java.io.File
 
 @Singleton
 class ContentResolverIconCopier @Inject constructor(
