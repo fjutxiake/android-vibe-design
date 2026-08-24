@@ -4,11 +4,8 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 
 @Singleton
-class AiProviderRegistry @Inject constructor(
-    openAiCompatibleProvider: OpenAiCompatibleProvider,
-    deepSeekProvider: DeepSeekProvider
-) {
-    private val providers: List<AiProvider> = listOf(deepSeekProvider, openAiCompatibleProvider)
+class AiProviderRegistry @Inject constructor(openAiProvider: OpenAiProvider, deepSeekProvider: DeepSeekProvider) {
+    private val providers: List<AiProvider> = listOf(deepSeekProvider, openAiProvider)
 
     val definitions: List<ProviderDefinition> = providers.map(AiProvider::definition)
 }

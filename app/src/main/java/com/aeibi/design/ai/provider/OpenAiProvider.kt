@@ -4,12 +4,12 @@ import com.aeibi.design.R
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 
-const val OPENAI_COMPATIBLE_PROVIDER_TYPE = "openai-compatible"
+const val OPENAI_PROVIDER_TYPE = "openai"
 
 @Singleton
-class OpenAiCompatibleProvider @Inject constructor() : AiProvider {
+class OpenAiProvider @Inject constructor() : AiProvider {
     override val definition = ProviderDefinition(
-        type = OPENAI_COMPATIBLE_PROVIDER_TYPE,
+        type = OPENAI_PROVIDER_TYPE,
         displayName = "OpenAI",
         iconRes = R.drawable.provider_openai,
         defaultEndpoint = "https://api.openai.com/v1",

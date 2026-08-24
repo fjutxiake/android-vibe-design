@@ -38,7 +38,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -119,9 +121,11 @@ private fun AiProvidersContent(
                 item {
                     ProviderGroup(
                         providers = uiState.configuredProviders,
-                        providerName = { item ->
-                            uiState.providerDefinitions.firstOrNull { it.type == item.config.providerType }
-                                ?.displayName ?: item.config.providerType
+                        providerIconRes = { item ->
+                            uiState.providerDefinitions
+                                .firstOrNull { it.type == item.config.providerType }
+                                ?.iconRes
+                                ?: R.drawable.provider_default
                         },
                         onEdit = {
                             onClearFeedback()
@@ -200,7 +204,7 @@ private fun AiProvidersEmptyScreenPreview() {
 private fun AiProvidersConfiguredScreenPreview() {
     val previewProviderDefinitions = listOf(
         ProviderDefinition(
-            type = "openai-compatible",
+            type = "openai",
             displayName = "OpenAI",
             iconRes = R.drawable.provider_openai,
             defaultEndpoint = "https://api.openai.com/v1",
@@ -218,7 +222,7 @@ private fun AiProvidersConfiguredScreenPreview() {
         ProviderConfigItem(
             config = ProviderConfig(
                 id = "openai",
-                providerType = "openai-compatible",
+                providerType = "openai",
                 displayName = "OpenAI 个人账号",
                 endpoint = "https://api.openai.com/v1",
                 models = listOf("gpt-5.6-sol", "gpt-5.6-terra")
@@ -249,7 +253,7 @@ private fun AiProvidersConfiguredScreenPreview() {
 @Composable
 private fun ProviderGroup(
     providers: List<ProviderConfigItem>,
-    providerName: (ProviderConfigItem) -> String,
+    providerIconRes: (ProviderConfigItem) -> Int,
     onEdit: (ProviderConfigItem) -> Unit,
     onDelete: (ProviderConfigItem) -> Unit,
     onAdd: () -> Unit
@@ -265,7 +269,7 @@ private fun ProviderGroup(
                 if (index > 0) HorizontalDivider(modifier = Modifier.padding(start = spacing.md))
                 ProviderRow(
                     item = item,
-                    providerName = providerName(item),
+                    providerIconRes = providerIconRes(item),
                     onClick = { onEdit(item) },
                     onDelete = { onDelete(item) }
                 )
@@ -290,9 +294,8 @@ private fun ProviderGroup(
 }
 
 @Composable
-private fun ProviderRow(item: ProviderConfigItem, providerName: String, onClick: () -> Unit, onDelete: () -> Unit) {
-    val modelSummary = item.config.models.firstOrNull().orEmpty().ifBlank { "未设置模型" } +
-        if (item.config.models.size > 1) " +${item.config.models.size - 1}" else ""
+private fun ProviderRow(item: ProviderConfigItem, providerIconRes: Int, onClick: () -> Unit, onDelete: () -> Unit) {
+    val modelSummary = item.config.models.joinToString()
 
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -307,9 +310,17 @@ private fun ProviderRow(item: ProviderConfigItem, providerName: String, onClick:
         },
         supportingContent = {
             Text(
-                text = "$providerName · $modelSummary",
+                text = modelSummary,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        },
+        leadingContent = {
+            Icon(
+                painter = painterResource(providerIconRes),
+                contentDescription = null,
+                modifier = Modifier.size(24.dp),
+                tint = Color.Unspecified
             )
         },
         trailingContent = {

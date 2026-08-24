@@ -4,7 +4,7 @@ import android.util.Base64
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
 import com.aeibi.design.ai.provider.DEEPSEEK_PROVIDER_TYPE
-import com.aeibi.design.ai.provider.OPENAI_COMPATIBLE_PROVIDER_TYPE
+import com.aeibi.design.ai.provider.OPENAI_PROVIDER_TYPE
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.data.ai.AiProviderRepository
 import java.io.File
@@ -51,7 +51,7 @@ class AndroidKeystoreSecureStoreTest {
         val repository = AiProviderRepository(context, secureStore)
         val config = ProviderConfig(
             id = UUID.randomUUID().toString(),
-            providerType = OPENAI_COMPATIBLE_PROVIDER_TYPE,
+            providerType = OPENAI_PROVIDER_TYPE,
             displayName = "Test Provider",
             endpoint = "https://example.com/v1",
             models = listOf("test-model", "test-model-2")
