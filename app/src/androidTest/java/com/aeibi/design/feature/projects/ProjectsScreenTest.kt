@@ -20,7 +20,7 @@ class ProjectsScreenTest {
 
     private val sample = listOf(
         Project("1", "日常发芽", "不焦虑的日常习惯记录", null, 1L, 1L),
-        Project("2", "周末去哪", "根据心情生成短途路线", null, 1L, 2L),
+        Project("2", "周末去哪", "根据心情生成短途路线", null, 1L, 2L)
     )
 
     @Test

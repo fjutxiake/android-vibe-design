@@ -27,7 +27,7 @@ fun ProjectActionsSheet(
     onVersionsClick: () -> Unit,
     onProjectSettingsClick: () -> Unit,
     onAppSettingsClick: () -> Unit,
-    onDeleteClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.navigationBarsPadding()) {
@@ -68,12 +68,12 @@ fun ProjectActionsSheet(
                 leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
                 colors = ListItemDefaults.colors(
                     headlineColor = MaterialTheme.colorScheme.error,
-                    leadingIconColor = MaterialTheme.colorScheme.error,
+                    leadingIconColor = MaterialTheme.colorScheme.error
                 ),
                 modifier = Modifier.clickable {
                     onDismiss()
                     onDeleteClick()
-                },
+                }
             )
         }
     }

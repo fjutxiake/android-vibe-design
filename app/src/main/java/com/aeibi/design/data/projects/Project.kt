@@ -9,5 +9,5 @@ data class Project(
     val description: String,
     val icon: String? = null,
     val createdAt: Long,
-    val updatedAt: Long,
+    val updatedAt: Long
 )

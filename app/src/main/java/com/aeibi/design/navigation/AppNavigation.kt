@@ -30,7 +30,7 @@ fun AppNavigation() {
         onBack = { backStack.removeLastOrNull() },
         entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
-            rememberViewModelStoreNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator()
         ),
         entryProvider =
         entryProvider {
@@ -64,7 +64,7 @@ fun AppNavigation() {
                     onSettingsClick = { backStack.add(ApplicationSettings) },
                     onProjectClick = { projectId -> backStack.add(ProjectChat(projectId)) },
                     onCreateProject = viewModel::createProject,
-                    resolveIconUri = viewModel::iconUri,
+                    resolveIconUri = viewModel::iconUri
                 )
             }
             entry<ProjectPreview> { route ->

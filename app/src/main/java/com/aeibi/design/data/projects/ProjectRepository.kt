@@ -13,7 +13,7 @@ import kotlinx.serialization.json.Json
 class ProjectRepository(
     private val projectsDir: File,
     private val iconCopier: IconCopier,
-    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO,
+    private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
     private val json = Json { ignoreUnknownKeys = true }
@@ -42,7 +42,7 @@ class ProjectRepository(
                 description = description,
                 icon = icon,
                 createdAt = now,
-                updatedAt = now,
+                updatedAt = now
             )
             writeProject(dir, project)
             _projects.value = listProjects()
@@ -66,7 +66,7 @@ class ProjectRepository(
                 name = name,
                 description = description,
                 icon = icon,
-                updatedAt = System.currentTimeMillis(),
+                updatedAt = System.currentTimeMillis()
             )
             writeProject(dir, updated)
             _projects.value = listProjects()

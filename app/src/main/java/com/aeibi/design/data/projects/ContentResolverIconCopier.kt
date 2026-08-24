@@ -9,7 +9,7 @@ import jakarta.inject.Singleton
 
 @Singleton
 class ContentResolverIconCopier @Inject constructor(
-    @ApplicationContext private val context: Context,
+    @ApplicationContext private val context: Context
 ) : IconCopier {
 
     override fun copy(uri: String?, projectDir: File): String? {

@@ -15,7 +15,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ProjectsViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
-    private val sessionRepository: SessionRepository,
+    private val sessionRepository: SessionRepository
 ) : ViewModel() {
 
     val projects: StateFlow<List<Project>> = projectRepository.projects

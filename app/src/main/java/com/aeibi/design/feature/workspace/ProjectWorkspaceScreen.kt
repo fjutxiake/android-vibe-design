@@ -39,7 +39,7 @@ fun ProjectWorkspaceScreen(
     onVersionsClick: () -> Unit = {},
     onProjectSettingsClick: () -> Unit = {},
     onAppSettingsClick: () -> Unit = {},
-    viewModel: ProjectsViewModel = hiltViewModel(),
+    viewModel: ProjectsViewModel = hiltViewModel()
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
@@ -90,7 +90,7 @@ fun ProjectWorkspaceScreen(
             onVersionsClick = onVersionsClick,
             onProjectSettingsClick = onProjectSettingsClick,
             onAppSettingsClick = onAppSettingsClick,
-            onDeleteClick = { showDeleteConfirm = true },
+            onDeleteClick = { showDeleteConfirm = true }
         )
     }
 
@@ -104,14 +104,14 @@ fun ProjectWorkspaceScreen(
                     onClick = {
                         showDeleteConfirm = false
                         viewModel.deleteProject(projectId) { onProjectPickerClick() }
-                    },
+                    }
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)
                 }
             },
             dismissButton = {
                 TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }
-            },
+            }
         )
     }
 }

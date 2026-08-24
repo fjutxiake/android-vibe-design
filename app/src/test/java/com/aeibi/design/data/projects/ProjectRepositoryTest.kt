@@ -43,11 +43,11 @@ class ProjectRepositoryTest {
         val root = tmp.newFolder()
         val older = File(root, "a").apply { mkdirs() }
         File(older, "project.json").writeText(
-            """{"id":"a","name":"旧","description":"","icon":null,"createdAt":1,"updatedAt":100}""",
+            """{"id":"a","name":"旧","description":"","icon":null,"createdAt":1,"updatedAt":100}"""
         )
         val newer = File(root, "b").apply { mkdirs() }
         File(newer, "project.json").writeText(
-            """{"id":"b","name":"新","description":"","icon":null,"createdAt":1,"updatedAt":200}""",
+            """{"id":"b","name":"新","description":"","icon":null,"createdAt":1,"updatedAt":200}"""
         )
         val corrupt = File(root, "c").apply { mkdirs() }
         File(corrupt, "project.json").writeText("{not-json")

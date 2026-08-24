@@ -44,7 +44,7 @@ import com.aeibi.design.theme.systemAppIconShape
 @OptIn(ExperimentalMaterial3Api::class)
 fun NewProjectBottomSheet(
     onDismiss: () -> Unit,
-    onCreate: (name: String, description: String, iconUri: String?) -> Unit,
+    onCreate: (name: String, description: String, iconUri: String?) -> Unit
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }

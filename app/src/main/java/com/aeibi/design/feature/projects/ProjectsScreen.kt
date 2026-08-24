@@ -39,7 +39,7 @@ fun ProjectsScreen(
     onSettingsClick: () -> Unit = {},
     onProjectClick: (String) -> Unit = {},
     onCreateProject: (name: String, description: String, iconUri: String?) -> Unit = { _, _, _ -> },
-    resolveIconUri: (Project) -> String? = { null },
+    resolveIconUri: (Project) -> String? = { null }
 ) {
     val spacing = MaterialTheme.spacing
     var showNewProjectSheet by rememberSaveable { mutableStateOf(false) }
@@ -51,21 +51,21 @@ fun ProjectsScreen(
                 actions = {
                     IconButton(
                         onClick = { showNewProjectSheet = true },
-                        modifier = Modifier.testTag("new_project_button"),
+                        modifier = Modifier.testTag("new_project_button")
                     ) {
                         Icon(imageVector = Icons.Filled.Add, contentDescription = "新建项目")
                     }
                     IconButton(onClick = onSettingsClick) {
                         Icon(imageVector = Icons.Filled.Settings, contentDescription = "设置")
                     }
-                },
+                }
             )
-        },
+        }
     ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize().padding(innerPadding).navigationBarsPadding(),
             contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.lg),
-            verticalArrangement = Arrangement.spacedBy(spacing.md),
+            verticalArrangement = Arrangement.spacedBy(spacing.md)
         ) {
             items(projects, key = { it.id }) { project ->
                 ProjectListItem(
@@ -73,7 +73,7 @@ fun ProjectsScreen(
                     description = project.description,
                     updatedAt = formatRelativeTime(project.updatedAt),
                     iconUri = resolveIconUri(project),
-                    onClick = { onProjectClick(project.id) },
+                    onClick = { onProjectClick(project.id) }
                 )
             }
             if (projects.isEmpty()) {
@@ -88,7 +88,7 @@ fun ProjectsScreen(
             onCreate = { name, description, iconUri ->
                 onCreateProject(name, description, iconUri)
                 showNewProjectSheet = false
-            },
+            }
         )
     }
 }
@@ -97,11 +97,11 @@ fun ProjectsScreen(
 private fun EmptyProjectsState(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier.testTag("empty_projects"),
-        contentAlignment = Alignment.Center,
+        contentAlignment = Alignment.Center
     ) {
         Text(
             text = "还没有项目,点击右上角 + 创建第一个",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }
 }
