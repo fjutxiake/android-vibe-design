@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.aeibi.design"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.aeibi.design"
         minSdk = 26

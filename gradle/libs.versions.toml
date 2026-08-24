@@ -16,7 +16,7 @@ lifecycleViewmodelNav3 = "2.10.0"
 room3 = "3.0.1"
 ksp = "2.3.9"
 hilt = "2.60.1"
-hiltJetpack = "1.3.0"
+androidxHilt = "1.4.0"
 ktlint = "14.2.0"
 dataStore = "1.2.1"
 
@@ -45,7 +45,7 @@ androidx-room3-runtime = { module = "androidx.room3:room3-runtime", version.ref 
 androidx-room3-compiler = { module = "androidx.room3:room3-compiler", version.ref = "room3" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hilt" }
 hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hilt" }
-androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "hiltJetpack" }
+androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "androidxHilt" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
