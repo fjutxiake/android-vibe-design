@@ -9,6 +9,7 @@ import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
+import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.aeibi.design.feature.build.ProjectBuildScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
@@ -16,6 +17,7 @@ import com.aeibi.design.feature.projects.ProjectsScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.SettingsScreen
+import com.aeibi.design.feature.settings.ai.AiProvidersScreen
 import com.aeibi.design.feature.versions.ProjectVersionsScreen
 import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
@@ -26,7 +28,10 @@ fun AppNavigation() {
     NavDisplay(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
-        entryDecorators = listOf(rememberViewModelStoreNavEntryDecorator()),
+        entryDecorators = listOf(
+            rememberSaveableStateHolderNavEntryDecorator(),
+            rememberViewModelStoreNavEntryDecorator(),
+        ),
         entryProvider =
         entryProvider {
             entry<ProjectChat> { route ->
@@ -92,6 +97,13 @@ fun AppNavigation() {
             }
             entry<ApplicationSettings> {
                 SettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onAiProvidersClick = { backStack.add(ApplicationAiProviders) }
+                )
+            }
+            entry<ApplicationAiProviders> {
+                AiProvidersScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() }
                 )
