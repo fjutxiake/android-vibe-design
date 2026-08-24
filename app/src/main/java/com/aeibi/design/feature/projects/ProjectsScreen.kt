@@ -77,7 +77,7 @@ fun ProjectsScreen(
                 )
             }
             if (projects.isEmpty()) {
-                item { EmptyProjectsState() }
+                item { EmptyProjectsState(modifier = Modifier.fillParentMaxSize()) }
             }
         }
     }
@@ -94,9 +94,9 @@ fun ProjectsScreen(
 }
 
 @Composable
-private fun EmptyProjectsState() {
+private fun EmptyProjectsState(modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier.fillMaxSize().testTag("empty_projects"),
+        modifier = modifier.testTag("empty_projects"),
         contentAlignment = Alignment.Center,
     ) {
         Text(
