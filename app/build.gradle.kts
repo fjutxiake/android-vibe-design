@@ -94,10 +94,6 @@ dependencies {
     implementation(libs.androidx.lifecycle.viewmodel.navigation3)
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
-    // ViewModel in Compose
-    implementation(libs.androidx.lifecycle.runtime.compose)
-    implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
-
     // Local database
     implementation(libs.androidx.room3.runtime)
     ksp(libs.androidx.room3.compiler)
