@@ -13,6 +13,7 @@ import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsScreen
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.SettingsScreen
+import com.aeibi.design.feature.settings.ai.AiProvidersScreen
 import com.aeibi.design.feature.versions.ProjectVersionsScreen
 import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
@@ -23,8 +24,7 @@ fun AppNavigation() {
     NavDisplay(
         backStack = backStack,
         onBack = { backStack.removeLastOrNull() },
-        entryDecorators =
-        listOf(
+        entryDecorators = listOf(
             rememberSaveableStateHolderNavEntryDecorator(),
             rememberViewModelStoreNavEntryDecorator()
         ),
@@ -90,6 +90,13 @@ fun AppNavigation() {
             }
             entry<ApplicationSettings> {
                 SettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onAiProvidersClick = { backStack.add(ApplicationAiProviders) }
+                )
+            }
+            entry<ApplicationAiProviders> {
+                AiProvidersScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() }
                 )

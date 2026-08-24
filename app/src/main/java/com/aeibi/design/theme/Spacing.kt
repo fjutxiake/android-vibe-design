@@ -15,7 +15,8 @@ data class Spacing(
     val sm: Dp = 12.dp,
     val md: Dp = 16.dp,
     val lg: Dp = 24.dp,
-    val xl: Dp = 32.dp
+    val xl: Dp = 32.dp,
+    val xxl: Dp = 48.dp
 )
 
 internal val LocalSpacing = staticCompositionLocalOf { Spacing() }
