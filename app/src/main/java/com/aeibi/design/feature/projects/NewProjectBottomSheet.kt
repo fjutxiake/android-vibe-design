@@ -42,7 +42,10 @@ import com.aeibi.design.theme.systemAppIconShape
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
-fun NewProjectBottomSheet(onDismiss: () -> Unit) {
+fun NewProjectBottomSheet(
+    onDismiss: () -> Unit,
+    onCreate: (name: String, description: String, iconUri: String?) -> Unit,
+) {
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
@@ -121,7 +124,9 @@ fun NewProjectBottomSheet(onDismiss: () -> Unit) {
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 TextButton(onClick = onDismiss) { Text("取消") }
-                Button(onClick = onDismiss, enabled = name.isNotBlank()) { Text("创建项目") }
+                Button(onClick = { onCreate(name, description, iconUri) }, enabled = name.isNotBlank()) {
+                    Text("创建项目")
+                }
             }
         }
     }
