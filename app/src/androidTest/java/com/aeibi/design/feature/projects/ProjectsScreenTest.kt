@@ -6,8 +6,10 @@ import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performTextInput
 import com.aeibi.design.data.projects.Project
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Rule
 import org.junit.Test
 
@@ -46,5 +48,24 @@ class ProjectsScreenTest {
         composeTestRule.onNodeWithText("日常发芽").performClick()
 
         assertEquals("1", clicked)
+    }
+
+    @Test
+    fun createSheet_invokesOnCreateProject() {
+        var created: Triple<String, String, String?>? = null
+        composeTestRule.setContent {
+            ProjectsScreen(projects = emptyList(), onCreateProject = { n, d, i ->
+                created = Triple(n, d, i)
+            })
+        }
+
+        composeTestRule.onNodeWithTag("new_project_button").performClick()
+        composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
+        composeTestRule.onNodeWithTag("project_description_input").performTextInput("描述")
+        composeTestRule.onNodeWithText("创建项目").performClick()
+
+        assertEquals("新项目", created?.first)
+        assertEquals("描述", created?.second)
+        assertNull(created?.third)
     }
 }
