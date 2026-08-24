@@ -4,7 +4,7 @@ import androidx.navigation3.runtime.NavKey
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class ProjectChat(val projectId: String, val sessionId: String? = null) : NavKey
+data class ProjectChat(val projectId: String) : NavKey
 
 @Serializable
 data object ProjectPicker : NavKey

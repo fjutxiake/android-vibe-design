@@ -33,17 +33,8 @@ fun AppNavigation() {
             entry<ProjectChat> { route ->
                 ProjectWorkspaceScreen(
                     projectId = route.projectId,
-                    sessionId = route.sessionId,
                     modifier = Modifier.fillMaxSize(),
                     onProjectPickerClick = { backStack.removeLastOrNull() },
-                    onSessionSelected = { sessionId ->
-                        backStack.removeLastOrNull()
-                        backStack.add(route.copy(sessionId = sessionId))
-                    },
-                    onNewChatClick = {
-                        backStack.removeLastOrNull()
-                        backStack.add(route.copy(sessionId = null))
-                    },
                     onPreviewClick = { backStack.add(ProjectPreview(route.projectId)) },
                     onBuildClick = { backStack.add(ProjectBuild(route.projectId)) },
                     onVersionsClick = { backStack.add(ProjectVersions(route.projectId)) },

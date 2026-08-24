@@ -22,11 +22,8 @@ import kotlinx.coroutines.launch
 @OptIn(ExperimentalMaterial3Api::class)
 fun ProjectWorkspaceScreen(
     projectId: String,
-    sessionId: String?,
     modifier: Modifier = Modifier,
     onProjectPickerClick: () -> Unit = {},
-    onNewChatClick: () -> Unit = {},
-    onSessionSelected: (String) -> Unit = {},
     onPreviewClick: () -> Unit = {},
     onBuildClick: () -> Unit = {},
     onVersionsClick: () -> Unit = {},
@@ -35,6 +32,7 @@ fun ProjectWorkspaceScreen(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    var selectedSessionId by rememberSaveable(projectId) { mutableStateOf<String?>(null) }
     var showProjectActions by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
@@ -42,14 +40,14 @@ fun ProjectWorkspaceScreen(
         drawerContent = {
             SessionDrawer(
                 projectId = projectId,
-                selectedSessionId = sessionId,
-                onSessionSelected = { selectedSessionId ->
+                selectedSessionId = selectedSessionId,
+                onSessionSelected = { sessionId ->
+                    selectedSessionId = sessionId
                     scope.launch { drawerState.close() }
-                    onSessionSelected(selectedSessionId)
                 },
                 onCurrentSessionDeleted = {
+                    selectedSessionId = null
                     scope.launch { drawerState.close() }
-                    onNewChatClick()
                 }
             )
         },
@@ -68,7 +66,7 @@ fun ProjectWorkspaceScreen(
         ) { innerPadding ->
             ChatScreen(
                 projectId = projectId,
-                sessionId = sessionId,
+                sessionId = selectedSessionId,
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
         }

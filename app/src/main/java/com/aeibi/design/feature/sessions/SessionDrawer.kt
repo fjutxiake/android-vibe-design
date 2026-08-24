@@ -1,9 +1,11 @@
 package com.aeibi.design.feature.sessions
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material3.AlertDialog
@@ -39,8 +41,8 @@ fun SessionDrawer(
     val viewModel: SessionViewModel = hiltViewModel()
     val sessions by viewModel.sessions.collectAsStateWithLifecycle()
     val scope = rememberCoroutineScope()
+    val listState = rememberLazyListState()
     val spacing = MaterialTheme.spacing
-    var actionTarget by remember { mutableStateOf<SessionEntity?>(null) }
     var renameTarget by remember { mutableStateOf<SessionEntity?>(null) }
     var deleteTarget by remember { mutableStateOf<SessionEntity?>(null) }
 
@@ -48,40 +50,33 @@ fun SessionDrawer(
         viewModel.observe(projectId)
     }
 
-    ModalDrawerSheet(modifier = modifier.fillMaxWidth(0.86f).fillMaxHeight()) {
-        Column(modifier = Modifier.padding(spacing.md)) {
+    ModalDrawerSheet(
+        modifier = modifier
+            .fillMaxWidth(0.86f)
+            .fillMaxHeight()
+    ) {
+        Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
             Button(
                 onClick = {
                     scope.launch {
                         onSessionSelected(viewModel.createSession(projectId))
                     }
                 },
-                modifier = Modifier.fillMaxWidth().padding(vertical = spacing.sm)
+                modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = null)
                 Text("新建会话")
             }
             SessionList(
+                state = listState,
                 sessions = sessions,
                 selectedSessionId = selectedSessionId,
                 onSessionSelected = onSessionSelected,
-                onSessionLongClick = { actionTarget = it }
+                onSessionRename = { renameTarget = it },
+                onSessionDelete = { deleteTarget = it },
+                modifier = Modifier.weight(1f)
             )
         }
-    }
-
-    actionTarget?.let { session ->
-        SessionActionsDialog(
-            onDismiss = { actionTarget = null },
-            onRenameClick = {
-                actionTarget = null
-                renameTarget = session
-            },
-            onDeleteClick = {
-                actionTarget = null
-                deleteTarget = session
-            }
-        )
     }
 
     renameTarget?.let { session ->
@@ -110,25 +105,6 @@ fun SessionDrawer(
             }
         )
     }
-}
-
-@Composable
-private fun SessionActionsDialog(onDismiss: () -> Unit, onRenameClick: () -> Unit, onDeleteClick: () -> Unit) {
-    AlertDialog(
-        onDismissRequest = onDismiss,
-        title = { Text("会话操作") },
-        text = {
-            Column {
-                TextButton(onClick = onRenameClick, modifier = Modifier.fillMaxWidth()) {
-                    Text("重命名")
-                }
-                TextButton(onClick = onDeleteClick, modifier = Modifier.fillMaxWidth()) {
-                    Text("删除")
-                }
-            }
-        },
-        confirmButton = { TextButton(onClick = onDismiss) { Text("取消") } }
-    )
 }
 
 @Composable
