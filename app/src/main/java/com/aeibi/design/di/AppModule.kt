@@ -3,6 +3,8 @@ package com.aeibi.design.di
 import android.content.Context
 import androidx.room3.Room
 import com.aeibi.design.data.database.AppDatabase
+import com.aeibi.design.data.projects.IconCopier
+import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import dagger.Module
 import dagger.Provides
@@ -10,6 +12,7 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
 import jakarta.inject.Singleton
+import java.io.File
 
 @Module
 @InstallIn(SingletonComponent::class)
@@ -25,6 +28,16 @@ object AppModule {
 
     @Provides
     fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
+
+    @Provides
+    @Singleton
+    fun provideProjectsDir(@ApplicationContext context: Context): File =
+        File(context.filesDir, "projects").also { it.mkdirs() }
+
+    @Provides
+    @Singleton
+    fun provideProjectRepository(projectsDir: File, iconCopier: IconCopier): ProjectRepository =
+        ProjectRepository(projectsDir, iconCopier)
 
     private const val DATABASE_NAME = "vibe-design.db"
 }
