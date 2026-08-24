@@ -103,8 +103,7 @@ fun ProjectWorkspaceScreen(
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false
-                        viewModel.deleteProject(projectId)
-                        onProjectPickerClick()
+                        viewModel.deleteProject(projectId) { onProjectPickerClick() }
                     },
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)

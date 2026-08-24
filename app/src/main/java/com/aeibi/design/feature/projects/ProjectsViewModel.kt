@@ -33,16 +33,18 @@ class ProjectsViewModel @Inject constructor(
         }
     }
 
-    fun updateProject(id: String, name: String, description: String, iconUri: String?) {
+    fun updateProject(id: String, name: String, description: String, iconUri: String?, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             runCatching { projectRepository.updateProject(id, name, description, iconUri) }
+            onComplete()
         }
     }
 
-    fun deleteProject(id: String) {
+    fun deleteProject(id: String, onComplete: () -> Unit = {}) {
         viewModelScope.launch {
             runCatching { sessionRepository.deleteSessionsForProject(id) }
             runCatching { projectRepository.deleteProject(id) }
+            onComplete()
         }
     }
 

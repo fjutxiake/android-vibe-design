@@ -88,8 +88,7 @@ fun ProjectSettingsScreen(
             )
             Button(
                 onClick = {
-                    viewModel.updateProject(projectId, name, description, iconUri = null)
-                    onBackClick()
+                    viewModel.updateProject(projectId, name, description, iconUri = null) { onBackClick() }
                 },
                 enabled = name.isNotBlank(),
                 modifier = Modifier.fillMaxWidth(),
