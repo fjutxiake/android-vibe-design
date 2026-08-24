@@ -31,14 +31,14 @@
 - Modify: `app/build.gradle.kts`
 
 **Interfaces:**
-- Produces: 可用的 Hilt 运行时(`@HiltAndroidApp` Application + `@AndroidEntryPoint` Activity)、`androidx.hilt:hilt-navigation-compose:1.4.0` 依赖(`hiltViewModel()` 可用)。后续所有 Task 依赖此接线。
+- Produces: 可用的 Hilt 运行时(`@HiltAndroidApp` Application + `@AndroidEntryPoint` Activity)、`androidx.hilt:hilt-lifecycle-viewmodel-compose:1.4.0` 依赖(`hiltViewModel()` 可用)。后续所有 Task 依赖此接线。
 
-- [ ] **Step 1: 加 `hilt-navigation-compose` 版本号**
+- [ ] **Step 1: 加 `hilt-lifecycle-viewmodel-compose` 版本号**
 
 在 `gradle/libs.versions.toml` 的 `[versions]` 里,`hilt = "2.60.1"` 之后加一行:
 
 ```toml
-hiltNavigationCompose = "1.4.0"
+androidxHilt = "1.4.0"
 ```
 
 - [ ] **Step 2: 加依赖声明**
@@ -46,7 +46,7 @@ hiltNavigationCompose = "1.4.0"
 在 `[libraries]` 里,`hilt-compiler = { ... }` 之后加一行:
 
 ```toml
-androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-compose", version.ref = "hiltNavigationCompose" }
+androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "androidxHilt" }
 ```
 
 - [ ] **Step 3: 引用依赖**
@@ -54,7 +54,7 @@ androidx-hilt-navigation-compose = { module = "androidx.hilt:hilt-navigation-com
 在 `app/build.gradle.kts` 的 `dependencies { }` 里,`ksp(libs.hilt.compiler)` 之后加:
 
 ```kotlin
-implementation(libs.androidx.hilt.navigation.compose)
+implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 ```
 
 - [ ] **Step 4: 新建 Application 类**
@@ -131,7 +131,7 @@ Expected: BUILD SUCCESSFUL(Hilt 处理器生成代码,无报错)。
 
 ```bash
 git add gradle/libs.versions.toml app/build.gradle.kts app/src/main/AndroidManifest.xml app/src/main/java/com/aeibi/design/MainActivity.kt app/src/main/java/com/aeibi/design/VibeDesignApplication.kt
-git commit -m "feat: bootstrap Hilt (Application + @AndroidEntryPoint + hilt-navigation-compose)"
+git commit -m "feat: bootstrap Hilt (Application + @AndroidEntryPoint + hilt-lifecycle-viewmodel-compose)"
 ```
 
 ---
@@ -893,7 +893,18 @@ fun NewProjectBottomSheet(
 
 - [ ] **Step 4: 接线 navigation**
 
-`app/src/main/java/com/aeibi/design/navigation/AppNavigation.kt` 的 `entry<ProjectPicker> { ... }` 改为:
+先给 `app/src/main/java/com/aeibi/design/navigation/AppNavigation.kt` 的 `NavDisplay` 加 `entryDecorators`(Navigation 3 需要显式声明 ViewModelStore 装饰器,否则 `hiltViewModel()` 拿不到 entry 作用域的 ViewModel):
+
+```kotlin
+    NavDisplay(
+        backStack = backStack,
+        onBack = { backStack.removeLastOrNull() },
+        entryDecorators = listOf(rememberViewModelStoreNavEntryDecorator()),
+        entryProvider =
+        entryProvider {
+```
+
+再把 `entry<ProjectPicker> { ... }` 改为:
 
 ```kotlin
             entry<ProjectPicker> {
@@ -915,7 +926,8 @@ fun NewProjectBottomSheet(
 ```kotlin
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import com.aeibi.design.feature.projects.ProjectsViewModel
 ```
 
@@ -1027,7 +1039,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.theme.spacing
 
@@ -1274,7 +1286,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.collectAsState
-import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.aeibi.design.feature.projects.ProjectsViewModel
 ```
 

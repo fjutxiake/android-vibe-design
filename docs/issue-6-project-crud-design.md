@@ -52,7 +52,7 @@
 
 ### 2.3 ViewModel 获取方式(待确认点)
 
-仓库当前没有任何 ViewModel 被 Compose 获取的先例。已引入 `androidx-lifecycle-viewmodel-navigation3`,但**未引入** `androidx.hilt:hilt-navigation-compose`(故 `hiltViewModel()` 不可直接用)。navigation3 下如何按 NavKey/back stack entry 作用域获取 ViewModel,需在实现阶段以当前依赖版本为准确认具体 API,方案层面仅约定 ViewModel 的职责边界(见 §6)。
+仓库当前没有任何 ViewModel 被 Compose 获取的先例。已引入 `androidx-lifecycle-viewmodel-navigation3`。**确认结论:**navigation3 下获取 `@HiltViewModel` 用 `androidx.hilt:hilt-lifecycle-viewmodel-compose`(包 `androidx.hilt.lifecycle.viewmodel.compose` 的 `hiltViewModel()`),**不要**引入 `androidx.hilt:hilt-navigation-compose`(那是 Navigation 2 的,会传递依赖 `androidx.navigation`);同时 `NavDisplay` 需加 `rememberViewModelStoreNavEntryDecorator()` 装饰器,`hiltViewModel()` 才能按 back stack entry 作用域获取 ViewModel。
 
 ---
 
