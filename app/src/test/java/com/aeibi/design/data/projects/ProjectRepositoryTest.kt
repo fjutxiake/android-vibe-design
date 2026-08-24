@@ -21,8 +21,7 @@ class ProjectRepositoryTest {
         if (uri == null) null else File(dir, "icon.png").apply { writeText("fake") }.name
     }
 
-    private fun repository(root: File) =
-        ProjectRepository(root, fakeIconCopier, UnconfinedTestDispatcher())
+    private fun repository(root: File) = ProjectRepository(root, fakeIconCopier, UnconfinedTestDispatcher())
 
     @Test
     fun createProject_writesJsonAndListsProject() = runTest {

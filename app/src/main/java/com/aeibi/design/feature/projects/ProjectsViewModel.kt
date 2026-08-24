@@ -24,8 +24,7 @@ class ProjectsViewModel @Inject constructor(
         viewModelScope.launch { projectRepository.refresh() }
     }
 
-    fun observeProject(id: String): Flow<Project?> =
-        projects.map { list -> list.firstOrNull { it.id == id } }
+    fun observeProject(id: String): Flow<Project?> = projects.map { list -> list.firstOrNull { it.id == id } }
 
     fun createProject(name: String, description: String, iconUri: String?) {
         viewModelScope.launch {

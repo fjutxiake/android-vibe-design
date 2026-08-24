@@ -29,8 +29,7 @@ class ProjectRepository(
         readProject(File(projectsDir, id))
     }
 
-    suspend fun createProject(name: String, description: String, iconUri: String?): Project =
-        withContext(ioDispatcher) {
+    suspend fun createProject(name: String, description: String, iconUri: String?): Project = withContext(ioDispatcher) {
             val now = System.currentTimeMillis()
             val id = UUID.randomUUID().toString()
             val dir = File(projectsDir, id)
@@ -81,8 +80,7 @@ class ProjectRepository(
     fun iconUri(project: Project): String? =
         project.icon?.let { File(projectsDir, project.id).resolve(it).toURI().toString() }
 
-    private fun listProjects(): List<Project> =
-        projectsDir.listFiles()
+    private fun listProjects(): List<Project> = projectsDir.listFiles()
             ?.filter { it.isDirectory }
             ?.mapNotNull { readProject(it) }
             ?.sortedByDescending { it.updatedAt }
