@@ -1,6 +1,7 @@
 package com.aeibi.design.data.projects
 
 import java.io.File
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
@@ -10,6 +11,7 @@ import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
 
+@OptIn(ExperimentalCoroutinesApi::class)
 class ProjectRepositoryTest {
 
     @get:Rule
@@ -92,6 +94,21 @@ class ProjectRepositoryTest {
         assertEquals("icon.png", created.icon)
         assertTrue(File(File(root, created.id), "icon.png").exists())
         assertTrue(repo.iconUri(created)!!.startsWith("file:"))
+    }
+
+    @Test
+    fun updateProject_iconCopyFailure_keepsPreviousIcon() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val created = repo.createProject("带图标", "", "content://fake/1")
+        assertEquals("icon.png", created.icon)
+
+        val noCopyRepo = ProjectRepository(root, IconCopier { _, _ -> null }, UnconfinedTestDispatcher())
+        val updated = noCopyRepo.updateProject(created.id, "新名", "新描述", "content://other/2")
+
+        assertEquals("icon.png", updated.icon)
+        assertEquals("icon.png", noCopyRepo.getProject(created.id)?.icon)
+        assertTrue(File(File(root, created.id), "icon.png").exists())
     }
 
     @Test

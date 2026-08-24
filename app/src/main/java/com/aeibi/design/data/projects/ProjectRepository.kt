@@ -54,8 +54,11 @@ class ProjectRepository(
             val dir = File(projectsDir, id)
             val existing = readProject(dir) ?: error("项目不存在: $id")
             val icon = if (iconUri != null) {
-                existing.icon?.let { File(dir, it).delete() }
-                iconCopier.copy(iconUri, dir)
+                val newIcon = iconCopier.copy(iconUri, dir)
+                if (newIcon != null && newIcon != existing.icon) {
+                    existing.icon?.let { File(dir, it).delete() }
+                }
+                newIcon ?: existing.icon
             } else {
                 existing.icon
             }
