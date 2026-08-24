@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.aeibi.design"
-    compileSdk = 36
+    compileSdk = 37
     defaultConfig {
         applicationId = "com.aeibi.design"
         minSdk = 26
@@ -94,4 +94,5 @@ dependencies {
     // Dependency injection
     implementation(libs.hilt.android)
     ksp(libs.hilt.compiler)
+    implementation(libs.androidx.hilt.navigation.compose)
 }
