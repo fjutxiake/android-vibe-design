@@ -1,5 +1,8 @@
 package com.aeibi.design.data.projects
 
+import android.content.ContentResolver
+import androidx.core.net.toUri
+import androidx.core.util.AtomicFile
 import java.io.File
 import java.io.IOException
 import java.util.UUID
@@ -9,11 +12,13 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.withContext
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 class ProjectRepository(
     private val projectsDir: File,
-    private val iconCopier: IconCopier,
+    private val contentResolver: ContentResolver,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
@@ -36,42 +41,41 @@ class ProjectRepository(
             val id = UUID.randomUUID().toString()
             val dir = File(projectsDir, id)
             check(dir.mkdirs()) { "无法创建项目目录" }
-            val icon = iconCopier.copy(iconUri, dir)
-            val project = Project(
-                id = id,
-                name = name,
-                description = description,
-                icon = icon,
-                createdAt = now,
-                updatedAt = now
-            )
-            writeProject(dir, project)
-            _projects.value = listProjects()
-            project
+            try {
+                if (iconUri != null) {
+                    writeIcon(iconUri, dir)
+                }
+                val metadata = ProjectMetadata(
+                    name = name,
+                    description = description,
+                    createdAt = now,
+                    updatedAt = now
+                )
+                writeMetadata(dir, metadata)
+                _projects.value = listProjects()
+                metadata.toProject(id, dir)
+            } catch (error: Exception) {
+                dir.deleteRecursively()
+                throw error
+            }
         }
 
     suspend fun updateProject(id: String, name: String, description: String, iconUri: String?): Project =
         withContext(ioDispatcher) {
             val dir = File(projectsDir, id)
             val existing = readProject(dir) ?: error("项目不存在: $id")
-            val icon = if (iconUri != null) {
-                val newIcon = iconCopier.copy(iconUri, dir)
-                if (newIcon != null && newIcon != existing.icon) {
-                    existing.icon?.let { File(dir, it).delete() }
-                }
-                newIcon ?: existing.icon
-            } else {
-                existing.icon
+            if (iconUri != null) {
+                writeIcon(iconUri, dir)
             }
-            val updated = existing.copy(
+            val metadata = ProjectMetadata(
                 name = name,
                 description = description,
-                icon = icon,
+                createdAt = existing.createdAt,
                 updatedAt = System.currentTimeMillis()
             )
-            writeProject(dir, updated)
+            writeMetadata(dir, metadata)
             _projects.value = listProjects()
-            updated
+            metadata.toProject(id, dir)
         }
 
     suspend fun deleteProject(id: String) = withContext(ioDispatcher) {
@@ -93,18 +97,55 @@ class ProjectRepository(
         ?.sortedByDescending { it.updatedAt }
         ?: emptyList()
 
-    private fun readProject(dir: File): Project? = runCatching {
-        val file = File(dir, PROJECT_JSON)
-        if (!file.exists()) return@runCatching null
-        json.decodeFromString(Project.serializer(), file.readText())
+    private fun readProject(dir: File): Project? = readMetadata(dir)?.toProject(dir.name, dir)
+
+    private fun readMetadata(dir: File): ProjectMetadata? = runCatching {
+        val file = AtomicFile(File(dir, PROJECT_JSON))
+        json.decodeFromString<ProjectMetadata>(file.readFully().decodeToString())
     }.getOrNull()
 
-    private fun writeProject(dir: File, project: Project) {
-        val text = json.encodeToString(Project.serializer(), project)
-        File(dir, PROJECT_JSON).writeAtomically { it.writeText(text) }
+    private fun writeMetadata(dir: File, metadata: ProjectMetadata) {
+        val file = AtomicFile(File(dir, PROJECT_JSON))
+        val output = file.startWrite()
+        try {
+            output.write(json.encodeToString(metadata).encodeToByteArray())
+            file.finishWrite(output)
+        } catch (error: Exception) {
+            file.failWrite(output)
+            throw error
+        }
     }
+
+    private fun writeIcon(uri: String, dir: File) {
+        val input = contentResolver.openInputStream(uri.toUri())
+            ?: throw IOException("无法读取项目图标")
+        input.use { source ->
+            val file = AtomicFile(File(dir, PROJECT_ICON_FILE))
+            val output = file.startWrite()
+            try {
+                source.copyTo(output)
+                file.finishWrite(output)
+            } catch (error: Exception) {
+                file.failWrite(output)
+                throw error
+            }
+        }
+    }
+
+    private fun ProjectMetadata.toProject(id: String, dir: File) = Project(
+        id = id,
+        name = name,
+        description = description,
+        icon = PROJECT_ICON_FILE.takeIf { File(dir, it).isFile },
+        createdAt = createdAt,
+        updatedAt = updatedAt
+    )
 
     private companion object {
         const val PROJECT_JSON = "project.json"
+        const val PROJECT_ICON_FILE = "icon.png"
     }
 }
+
+@Serializable
+private data class ProjectMetadata(val name: String, val description: String, val createdAt: Long, val updatedAt: Long)

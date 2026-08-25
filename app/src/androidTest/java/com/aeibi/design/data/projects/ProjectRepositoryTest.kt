@@ -1,5 +1,8 @@
 package com.aeibi.design.data.projects
 
+import android.content.Context
+import android.net.Uri
+import androidx.test.core.app.ApplicationProvider
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -7,6 +10,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -19,11 +23,9 @@ class ProjectRepositoryTest {
     @get:Rule
     val tmp = TemporaryFolder()
 
-    private val fakeIconCopier = IconCopier { uri, dir ->
-        if (uri == null) null else File(dir, "icon.png").apply { writeText("fake") }.name
-    }
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
-    private fun repository(root: File) = ProjectRepository(root, fakeIconCopier, UnconfinedTestDispatcher())
+    private fun repository(root: File) = ProjectRepository(root, context.contentResolver, UnconfinedTestDispatcher())
 
     @Test
     fun createProject_writesJsonAndListsProject() = runTest {
@@ -33,7 +35,10 @@ class ProjectRepositoryTest {
         val created = repo.createProject("周末去哪", "短途路线", null)
 
         assertTrue(File(root, created.id).isDirectory)
-        assertTrue(File(File(root, created.id), "project.json").exists())
+        val metadataFile = File(File(root, created.id), "project.json")
+        assertTrue(metadataFile.exists())
+        assertFalse(metadataFile.readText().contains("\"id\""))
+        assertFalse(metadataFile.readText().contains("\"icon\""))
         assertEquals("周末去哪", created.name)
         repo.refresh()
         assertEquals(listOf(created), repo.projects.value)
@@ -44,11 +49,11 @@ class ProjectRepositoryTest {
         val root = tmp.newFolder()
         val older = File(root, "a").apply { mkdirs() }
         File(older, "project.json").writeText(
-            """{"id":"a","name":"旧","description":"","icon":null,"createdAt":1,"updatedAt":100}"""
+            """{"name":"旧","description":"","createdAt":1,"updatedAt":100}"""
         )
         val newer = File(root, "b").apply { mkdirs() }
         File(newer, "project.json").writeText(
-            """{"id":"b","name":"新","description":"","icon":null,"createdAt":1,"updatedAt":200}"""
+            """{"name":"新","description":"","createdAt":1,"updatedAt":200}"""
         )
         val corrupt = File(root, "c").apply { mkdirs() }
         File(corrupt, "project.json").writeText("{not-json")
@@ -121,8 +126,9 @@ class ProjectRepositoryTest {
     fun createProject_withIcon_copiesIconAndStoresFilename() = runTest {
         val root = tmp.newFolder()
         val repo = repository(root)
+        val source = File(root, "source.png").apply { writeText("fake") }
 
-        val created = repo.createProject("带图标", "", "content://fake/1")
+        val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
 
         assertEquals("icon.png", created.icon)
         assertTrue(File(File(root, created.id), "icon.png").exists())
@@ -130,17 +136,35 @@ class ProjectRepositoryTest {
     }
 
     @Test
-    fun updateProject_iconCopyFailure_keepsPreviousIcon() = runTest {
+    fun createProject_whenIconCannotBeRead_removesIncompleteDirectory() = runTest {
         val root = tmp.newFolder()
         val repo = repository(root)
-        val created = repo.createProject("带图标", "", "content://fake/1")
+        val missingIcon = Uri.fromFile(File(root, "missing.png")).toString()
+
+        val error = runCatching {
+            repo.createProject("失败项目", "", missingIcon)
+        }.exceptionOrNull()
+
+        assertTrue(error is IOException)
+        assertTrue(root.listFiles().orEmpty().isEmpty())
+    }
+
+    @Test
+    fun updateProject_iconCopyFailure_reportsFailureAndKeepsPreviousProject() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val source = File(root, "source.png").apply { writeText("fake") }
+        val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
         assertEquals("icon.png", created.icon)
 
-        val noCopyRepo = ProjectRepository(root, IconCopier { _, _ -> null }, UnconfinedTestDispatcher())
-        val updated = noCopyRepo.updateProject(created.id, "新名", "新描述", "content://other/2")
+        val missingIcon = Uri.fromFile(File(root, "missing.png")).toString()
+        val error = runCatching {
+            repo.updateProject(created.id, "新名", "新描述", missingIcon)
+        }.exceptionOrNull()
 
-        assertEquals("icon.png", updated.icon)
-        assertEquals("icon.png", noCopyRepo.getProject(created.id)?.icon)
+        assertTrue(error is IOException)
+        assertEquals("带图标", repo.getProject(created.id)?.name)
+        assertEquals("icon.png", repo.getProject(created.id)?.icon)
         assertTrue(File(File(root, created.id), "icon.png").exists())
     }
 

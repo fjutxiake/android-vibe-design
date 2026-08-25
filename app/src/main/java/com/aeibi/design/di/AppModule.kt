@@ -3,7 +3,6 @@ package com.aeibi.design.di
 import android.content.Context
 import androidx.room3.Room
 import com.aeibi.design.data.database.AppDatabase
-import com.aeibi.design.data.projects.IconCopier
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import dagger.Module
@@ -36,8 +35,8 @@ object AppModule {
 
     @Provides
     @Singleton
-    fun provideProjectRepository(projectsDir: File, iconCopier: IconCopier): ProjectRepository =
-        ProjectRepository(projectsDir, iconCopier)
+    fun provideProjectRepository(projectsDir: File, @ApplicationContext context: Context): ProjectRepository =
+        ProjectRepository(projectsDir, context.contentResolver)
 
     private const val DATABASE_NAME = "vibe-design.db"
 }

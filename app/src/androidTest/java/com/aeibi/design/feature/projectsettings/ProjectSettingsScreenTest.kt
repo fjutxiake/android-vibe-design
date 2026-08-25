@@ -4,7 +4,6 @@ import androidx.activity.ComponentActivity
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import com.aeibi.design.data.projects.IconCopier
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
@@ -60,7 +59,7 @@ class ProjectSettingsScreenTest {
     fun settingsScreen_showsIconPicker() {
         val context = composeTestRule.activity.applicationContext
         val root = context.getDir("projects-test", 0)
-        val repository = ProjectRepository(root, IconCopier { _, _ -> null }, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
         val viewModel = ProjectsViewModel(repository, SessionRepository(FakeSessionDao()))
 
         composeTestRule.setContent {

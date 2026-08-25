@@ -1,6 +1,7 @@
 package com.aeibi.design.feature.projects
 
-import com.aeibi.design.data.projects.IconCopier
+import android.content.Context
+import androidx.test.core.app.ApplicationProvider
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
@@ -30,6 +31,7 @@ class ProjectsViewModelTest {
     val tmp = TemporaryFolder()
 
     private val dispatcher = UnconfinedTestDispatcher()
+    private val context: Context = ApplicationProvider.getApplicationContext()
 
     private class FakeSessionDao(private val onDeleteForProject: () -> Int = { 0 }) : SessionDao {
         override fun observeSessions(projectId: String): Flow<List<SessionEntity>> = flowOf(emptyList())
@@ -58,7 +60,7 @@ class ProjectsViewModelTest {
     }
 
     private fun viewModel(root: File, dao: SessionDao = FakeSessionDao()): ProjectsViewModel {
-        val repository = ProjectRepository(root, IconCopier { _, _ -> null }, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
         return ProjectsViewModel(repository, SessionRepository(dao))
     }
 
@@ -94,7 +96,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenDirectoryCannotBeRemoved_reportsFailure() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, IconCopier { _, _ -> null }, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
         val created = repository.createProject("删不掉", "", null)
         val dir = File(root, created.id)
         val locked = File(dir, "locked.bin").apply { writeText("x") }
@@ -116,7 +118,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenSuccessful_reportsSuccess() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, IconCopier { _, _ -> null }, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
         val created = repository.createProject("待删", "", null)
         var result: Result<Unit>? = null
 
@@ -130,7 +132,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenSessionCleanupFails_stillDeletesProjectAndReportsSuccess() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, IconCopier { _, _ -> null }, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
         val created = repository.createProject("待删", "", null)
         val failingDao = FakeSessionDao { throw IllegalStateException("数据库不可用") }
         var result: Result<Unit>? = null
