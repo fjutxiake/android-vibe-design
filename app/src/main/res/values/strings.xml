@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Vibe Design</string>
+    <string name="app_name" translatable="false">Vibe Design</string>
     <string name="settings_title">设置</string>
     <string name="back">返回</string>
     <string name="ai_section_title">AI</string>
