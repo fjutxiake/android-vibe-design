@@ -1,6 +1,7 @@
 package com.aeibi.design.feature.settings
 
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -11,6 +12,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -25,11 +27,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aeibi.design.R
+import com.aeibi.design.data.i18n.LanguagePreference
 import com.aeibi.design.theme.VibeDesignTheme
 import com.aeibi.design.theme.spacing
 
@@ -46,8 +51,12 @@ fun SettingsScreen(
     SettingsScreenContent(
         modifier = modifier,
         aiProvidersSummary = uiState.aiProvidersSummary,
+        language = uiState.language,
         onBackClick = onBackClick,
-        onAiProvidersClick = onAiProvidersClick
+        onAiProvidersClick = onAiProvidersClick,
+        onLanguageClick = { preference ->
+            viewModel.setLanguage(preference)
+        }
     )
 }
 
@@ -56,8 +65,10 @@ fun SettingsScreen(
 private fun SettingsScreenContent(
     modifier: Modifier = Modifier,
     aiProvidersSummary: String,
+    language: LanguagePreference = LanguagePreference.SYSTEM,
     onBackClick: () -> Unit = {},
-    onAiProvidersClick: () -> Unit = {}
+    onAiProvidersClick: () -> Unit = {},
+    onLanguageClick: (LanguagePreference) -> Unit = {}
 ) {
     val spacing = MaterialTheme.spacing
 
@@ -81,6 +92,32 @@ private fun SettingsScreenContent(
                 .navigationBarsPadding(),
             contentPadding = PaddingValues(horizontal = spacing.md, vertical = spacing.xs)
         ) {
+            item {
+                SettingsSectionTitle(stringResource(R.string.language_section_title))
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    Column {
+                        LanguageRow(
+                            title = stringResource(R.string.language_follow_system),
+                            selected = language == LanguagePreference.SYSTEM,
+                            onClick = { onLanguageClick(LanguagePreference.SYSTEM) }
+                        )
+                        LanguageRow(
+                            title = stringResource(R.string.language_zh),
+                            selected = language == LanguagePreference.ZH,
+                            onClick = { onLanguageClick(LanguagePreference.ZH) }
+                        )
+                        LanguageRow(
+                            title = stringResource(R.string.language_en),
+                            selected = language == LanguagePreference.EN,
+                            onClick = { onLanguageClick(LanguagePreference.EN) }
+                        )
+                    }
+                }
+            }
             item {
                 SettingsSectionTitle("AI")
                 Surface(
@@ -107,6 +144,25 @@ private fun SettingsSectionTitle(title: String) {
         text = title,
         modifier = Modifier.padding(horizontal = spacing.xs, vertical = spacing.xs),
         style = MaterialTheme.typography.labelLarge
+    )
+}
+
+@Composable
+private fun LanguageRow(title: String, selected: Boolean, onClick: () -> Unit) {
+    ListItem(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick),
+        headlineContent = { Text(title, fontWeight = FontWeight.Medium) },
+        trailingContent = {
+            if (selected) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+            }
+        }
     )
 }
 
