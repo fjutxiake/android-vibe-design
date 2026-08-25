@@ -1,12 +1,9 @@
 package com.aeibi.design.data.i18n
 
 import android.content.Context
-import android.content.res.Configuration
-import android.content.res.Resources
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
-import java.util.Locale
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -20,9 +17,10 @@ import kotlinx.coroutines.flow.asStateFlow
  * 同时以 [changes] 暴露响应式状态：ViewModel 在 recreate 后依然存活，
  * 一次性快照读取会让 UI 停留在旧值，写入时必须推送新值。
  *
- * 三层覆盖各司其职：attachBaseContext 管 Activity 自身资源；Compose 根节点的
- * LocalContext 覆盖管主组合树；[applyToAppResources] 管弹层/对话框等独立窗口
- * （它们从应用级 Context 解析字符串，前两层都够不到）。
+ * 四层覆盖各司其职：attachBaseContext 管启动期 Activity 资源；Compose 根节点的
+ * LocalContext 覆盖管主组合树的即时切换；Activity 资源热更新（见 MainActivity 的
+ * LaunchedEffect）管弹层/对话框等继承 Activity Context 的独立窗口；
+ * [applyToAppResources] 管应用级 Context 的消费者。
  */
 @Singleton
 class LanguagePreferenceStore @Inject constructor(@ApplicationContext private val context: Context) {
@@ -42,18 +40,9 @@ class LanguagePreferenceStore @Inject constructor(@ApplicationContext private va
         applyToAppResources(preference)
     }
 
-    /** 弹层/对话框窗口走应用级 Context，需同步更新应用资源的 configuration。 */
+    /** 应用级 Context 的消费者（如 toast）也需同步 configuration。 */
     private fun applyToAppResources(preference: LanguagePreference) {
-        val resources = context.resources
-        val configuration = Configuration(resources.configuration)
-        val locale = when (preference) {
-            LanguagePreference.SYSTEM -> Resources.getSystem().configuration.locales.get(0)
-            LanguagePreference.ZH -> Locale("zh")
-            LanguagePreference.EN -> Locale("en")
-        }
-        configuration.setLocale(locale)
-        configuration.setLayoutDirection(locale)
-        resources.updateConfiguration(configuration, resources.displayMetrics)
+        context.applyLanguagePreference(preference)
     }
 
     companion object {

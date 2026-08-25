@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
@@ -16,6 +17,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aeibi.design.data.i18n.LanguagePreferenceStore
 import com.aeibi.design.data.i18n.LocalizedContextWrapper
+import com.aeibi.design.data.i18n.applyLanguagePreference
 import com.aeibi.design.data.i18n.withLanguagePreference
 import com.aeibi.design.navigation.AppNavigation
 import com.aeibi.design.theme.VibeDesignTheme
@@ -44,6 +46,12 @@ class MainActivity : ComponentActivity() {
             val language by languagePreferenceStore.changes.collectAsStateWithLifecycle()
             val localeContext = remember(language) {
                 LocalizedContextWrapper(this, applicationContext.withLanguagePreference(language))
+            }
+
+            // 弹层/对话框继承 Activity 的 Context，够不到 LocalContext 覆盖，
+            // 偏好变化时热更新 Activity 自身资源，使其即时跟随。
+            LaunchedEffect(language) {
+                this@MainActivity.applyLanguagePreference(language)
             }
 
             CompositionLocalProvider(LocalContext provides localeContext) {
