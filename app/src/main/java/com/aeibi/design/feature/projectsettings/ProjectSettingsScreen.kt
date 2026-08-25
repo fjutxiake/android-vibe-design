@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.aeibi.design.feature.projects.ProjectIconPicker
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.theme.spacing
 import kotlinx.coroutines.launch
@@ -46,6 +47,8 @@ fun ProjectSettingsScreen(
     val project by viewModel.observeProject(projectId).collectAsState(initial = null)
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
+    // 只记刚选的图标;没选过就是 null,保存时表示"图标不变"。
+    var pickedIconUri by rememberSaveable { mutableStateOf<String?>(null) }
     // 用 remember 而不是 rememberSaveable:配置变更后回调持有的是旧的 State,
     // 存下来的 true 永远不会被改回 false,保存按钮就会一直点不动。
     var saving by remember { mutableStateOf(false) }
@@ -82,6 +85,10 @@ fun ProjectSettingsScreen(
                 .verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(MaterialTheme.spacing.md)
         ) {
+            ProjectIconPicker(
+                iconUri = pickedIconUri ?: project?.let { viewModel.iconUri(it) },
+                onIconPicked = { pickedIconUri = it }
+            )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -101,7 +108,7 @@ fun ProjectSettingsScreen(
                 onClick = {
                     saving = true
                     // 保存成功才返回;失败就留在页面上提示,用户填的内容不会被丢掉。
-                    viewModel.updateProject(projectId, name, description, iconUri = null) { result ->
+                    viewModel.updateProject(projectId, name, description, pickedIconUri) { result ->
                         saving = false
                         result
                             .onSuccess { onBackClick() }
