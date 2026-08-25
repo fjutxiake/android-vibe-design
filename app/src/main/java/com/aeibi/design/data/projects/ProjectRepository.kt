@@ -94,7 +94,8 @@ class ProjectRepository(
     }.getOrNull()
 
     private fun writeProject(dir: File, project: Project) {
-        File(dir, PROJECT_JSON).writeText(json.encodeToString(Project.serializer(), project))
+        val text = json.encodeToString(Project.serializer(), project)
+        File(dir, PROJECT_JSON).writeAtomically { it.writeText(text) }
     }
 
     private companion object {
