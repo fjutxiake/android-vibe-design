@@ -1,11 +1,14 @@
 package com.aeibi.design.feature.projects
 
 import androidx.activity.ComponentActivity
+import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
+import androidx.compose.ui.test.performSemanticsAction
+import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
 import com.aeibi.design.data.projects.Project
 import java.io.IOException
@@ -49,6 +52,53 @@ class ProjectsScreenTest {
         composeTestRule.onNodeWithText("日常发芽").performClick()
 
         assertEquals("1", clicked)
+    }
+
+    @Test
+    fun longPressingItem_opensEditSheetAndSavesChanges() {
+        var updated: List<String?>? = null
+        composeTestRule.setContent {
+            ProjectsScreen(
+                projects = sample,
+                onUpdateProject = { id, name, description, iconUri, onResult ->
+                    updated = listOf(id, name, description, iconUri)
+                    onResult(Result.success(Unit))
+                }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText("日常发芽")
+            .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
+        composeTestRule.onNodeWithText("编辑项目").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("edit_project_name_input").performTextClearance()
+        composeTestRule.onNodeWithTag("edit_project_name_input").performTextInput("新名称")
+        composeTestRule.onNodeWithText("保存").performClick()
+
+        assertEquals(listOf("1", "新名称", "不焦虑的日常习惯记录", null), updated)
+    }
+
+    @Test
+    fun deletingFromEditSheet_invokesOnDeleteProject() {
+        var deletedId: String? = null
+        composeTestRule.setContent {
+            ProjectsScreen(
+                projects = sample,
+                onDeleteProject = { id, onResult ->
+                    deletedId = id
+                    onResult(Result.success(Unit))
+                }
+            )
+        }
+
+        composeTestRule
+            .onNodeWithText("日常发芽")
+            .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
+        composeTestRule.onNodeWithTag("delete_project_button").performClick()
+        composeTestRule.onNodeWithText("删除项目").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("confirm_delete_project_button").performClick()
+
+        assertEquals("1", deletedId)
     }
 
     @Test

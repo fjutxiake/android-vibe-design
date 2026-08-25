@@ -55,7 +55,8 @@ fun AppNavigation() {
                     onSettingsClick = { backStack.add(ApplicationSettings) },
                     onProjectClick = { projectId -> backStack.add(ProjectChat(projectId)) },
                     onCreateProject = viewModel::createProject,
-                    resolveIconUri = viewModel::iconUri
+                    onUpdateProject = viewModel::updateProject,
+                    onDeleteProject = viewModel::deleteProject
                 )
             }
             entry<ProjectPreview> { route ->

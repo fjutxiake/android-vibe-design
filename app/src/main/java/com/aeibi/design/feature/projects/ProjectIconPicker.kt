@@ -17,19 +17,22 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
 import coil3.compose.AsyncImage
+import coil3.request.ImageRequest
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.systemAppIconShape
 
-/**
- * 项目图标选择器:点一下打开系统图片选择器,选中后回调新图标的 uri。
- *
- * [iconUri] 为空时显示占位图标,否则显示当前图标(新建项目时是刚选的图,
- * 项目设置里是项目已有的图)。新建和设置两处共用,保证两边长得一样。
- */
 @Composable
-fun ProjectIconPicker(iconUri: String?, onIconPicked: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ProjectIconPicker(
+    iconUri: String?,
+    onIconPicked: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    iconVersion: Long? = null
+) {
+    val context = LocalContext.current
+    val iconCacheKey = iconUri?.let { "project-icon:$it:${iconVersion ?: 0L}" }
     val photoPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
             uri?.let { onIconPicked(it.toString()) }
@@ -58,7 +61,11 @@ fun ProjectIconPicker(iconUri: String?, onIconPicked: (String) -> Unit, modifier
             )
         } else {
             AsyncImage(
-                model = iconUri,
+                model = ImageRequest.Builder(context)
+                    .data(iconUri)
+                    .memoryCacheKey(iconCacheKey)
+                    .diskCacheKey(iconCacheKey)
+                    .build(),
                 contentDescription = "已选择的应用图标",
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop

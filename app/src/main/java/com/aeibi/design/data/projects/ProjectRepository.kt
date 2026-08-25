@@ -88,9 +88,6 @@ class ProjectRepository(
         _projects.value = listProjects()
     }
 
-    fun iconUri(project: Project): String? =
-        project.icon?.let { File(projectsDir, project.id).resolve(it).toURI().toString() }
-
     private fun listProjects(): List<Project> = projectsDir.listFiles()
         ?.filter { it.isDirectory }
         ?.mapNotNull { readProject(it) }
@@ -136,7 +133,9 @@ class ProjectRepository(
         id = id,
         name = name,
         description = description,
-        icon = PROJECT_ICON_FILE.takeIf { File(dir, it).isFile },
+        iconUri = PROJECT_ICON_FILE
+            .takeIf { File(dir, it).isFile }
+            ?.let { File(dir, it).toURI().toString() },
         createdAt = createdAt,
         updatedAt = updatedAt
     )

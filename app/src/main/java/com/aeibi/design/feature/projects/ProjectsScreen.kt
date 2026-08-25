@@ -45,14 +45,22 @@ fun ProjectsScreen(
         iconUri: String?,
         onResult: (Result<Unit>) -> Unit
     ) -> Unit = { _, _, _, _ -> },
-    resolveIconUri: (Project) -> String? = { null }
+    onUpdateProject: (
+        id: String,
+        name: String,
+        description: String,
+        iconUri: String?,
+        onResult: (Result<Unit>) -> Unit
+    ) -> Unit = { _, _, _, _, _ -> },
+    onDeleteProject: (id: String, onResult: (Result<Unit>) -> Unit) -> Unit = { _, _ -> }
 ) {
     val spacing = MaterialTheme.spacing
     var showNewProjectSheet by rememberSaveable { mutableStateOf(false) }
+    var editingProject by remember { mutableStateOf<Project?>(null) }
     var createError by rememberSaveable { mutableStateOf<String?>(null) }
-    // 用 remember 而不是 rememberSaveable:配置变更后回调持有的是旧的 State,
-    // 存下来的 true 永远不会被改回 false,按钮就会一直点不动。
+    var editError by rememberSaveable { mutableStateOf<String?>(null) }
     var creating by remember { mutableStateOf(false) }
+    var editing by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -79,11 +87,12 @@ fun ProjectsScreen(
         ) {
             items(projects, key = { it.id }) { project ->
                 ProjectListItem(
-                    name = project.name,
-                    description = project.description,
-                    updatedAt = formatRelativeTime(project.updatedAt),
-                    iconUri = resolveIconUri(project),
-                    onClick = { onProjectClick(project.id) }
+                    project = project,
+                    onClick = { onProjectClick(project.id) },
+                    onLongClick = {
+                        editError = null
+                        editingProject = project
+                    }
                 )
             }
             if (projects.isEmpty()) {
@@ -111,6 +120,38 @@ fun ProjectsScreen(
             },
             errorMessage = createError,
             submitting = creating
+        )
+    }
+
+    editingProject?.let { project ->
+        EditProjectBottomSheet(
+            project = project,
+            onDismiss = {
+                editingProject = null
+                editError = null
+            },
+            onSave = { name, description, iconUri ->
+                editing = true
+                editError = null
+                onUpdateProject(project.id, name, description, iconUri) { result ->
+                    editing = false
+                    result
+                        .onSuccess { editingProject = null }
+                        .onFailure { editError = "保存项目失败,请重试" }
+                }
+            },
+            onDelete = {
+                editing = true
+                editError = null
+                onDeleteProject(project.id) { result ->
+                    editing = false
+                    result
+                        .onSuccess { editingProject = null }
+                        .onFailure { editError = "删除项目失败,请重试" }
+                }
+            },
+            errorMessage = editError,
+            submitting = editing
         )
     }
 }

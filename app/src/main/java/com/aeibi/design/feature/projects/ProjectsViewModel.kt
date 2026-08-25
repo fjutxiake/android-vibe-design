@@ -51,6 +51,4 @@ class ProjectsViewModel @Inject constructor(
             onResult(runCatching { projectRepository.deleteProject(id) })
         }
     }
-
-    fun iconUri(project: Project): String? = projectRepository.iconUri(project)
 }

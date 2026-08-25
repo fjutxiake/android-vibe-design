@@ -123,16 +123,15 @@ class ProjectRepositoryTest {
     }
 
     @Test
-    fun createProject_withIcon_copiesIconAndStoresFilename() = runTest {
+    fun createProject_withIcon_copiesIconAndExposesFileUri() = runTest {
         val root = tmp.newFolder()
         val repo = repository(root)
         val source = File(root, "source.png").apply { writeText("fake") }
 
         val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
 
-        assertEquals("icon.png", created.icon)
+        assertTrue(created.iconUri!!.startsWith("file:"))
         assertTrue(File(File(root, created.id), "icon.png").exists())
-        assertTrue(repo.iconUri(created)!!.startsWith("file:"))
     }
 
     @Test
@@ -155,7 +154,7 @@ class ProjectRepositoryTest {
         val repo = repository(root)
         val source = File(root, "source.png").apply { writeText("fake") }
         val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
-        assertEquals("icon.png", created.icon)
+        assertTrue(created.iconUri!!.startsWith("file:"))
 
         val missingIcon = Uri.fromFile(File(root, "missing.png")).toString()
         val error = runCatching {
@@ -164,7 +163,7 @@ class ProjectRepositoryTest {
 
         assertTrue(error is IOException)
         assertEquals("带图标", repo.getProject(created.id)?.name)
-        assertEquals("icon.png", repo.getProject(created.id)?.icon)
+        assertTrue(repo.getProject(created.id)?.iconUri!!.startsWith("file:"))
         assertTrue(File(File(root, created.id), "icon.png").exists())
     }
 
