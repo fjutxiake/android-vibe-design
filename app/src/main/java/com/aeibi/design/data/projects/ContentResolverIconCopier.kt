@@ -1,7 +1,7 @@
 package com.aeibi.design.data.projects
 
 import android.content.Context
-import android.net.Uri
+import androidx.core.net.toUri
 import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
@@ -13,7 +13,7 @@ class ContentResolverIconCopier @Inject constructor(@ApplicationContext private 
     override fun copy(uri: String?, projectDir: File): String? {
         if (uri == null) return null
         return runCatching {
-            val resolved = Uri.parse(uri)
+            val resolved = uri.toUri()
             val mime = context.contentResolver.getType(resolved)
             val ext = mime?.substringAfter("/")?.takeIf { it.isNotBlank() } ?: "png"
             copyIconAtomically(projectDir, ext) { context.contentResolver.openInputStream(resolved) }
