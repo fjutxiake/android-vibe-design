@@ -36,9 +36,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
+import com.aeibi.design.R
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.theme.spacing
 
@@ -59,7 +61,7 @@ fun SessionList(
 
     if (sessions.isEmpty()) {
         Text(
-            text = "暂无会话",
+            text = stringResource(R.string.no_sessions),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             textAlign = TextAlign.Center,
             modifier = modifier.fillMaxWidth().padding(vertical = spacing.lg)
@@ -116,7 +118,7 @@ fun SessionList(
                         shape = MaterialTheme.shapes.medium
                     ) {
                         DropdownMenuItem(
-                            text = { Text("重命名") },
+                            text = { Text(stringResource(R.string.session_actions_rename)) },
                             trailingIcon = {
                                 Icon(imageVector = Icons.Filled.Edit, contentDescription = null)
                             },
@@ -130,7 +132,7 @@ fun SessionList(
                             color = MaterialTheme.colorScheme.outlineVariant
                         )
                         DropdownMenuItem(
-                            text = { Text("删除") },
+                            text = { Text(stringResource(R.string.session_actions_delete)) },
                             trailingIcon = {
                                 Icon(
                                     imageVector = Icons.Filled.DeleteOutline,

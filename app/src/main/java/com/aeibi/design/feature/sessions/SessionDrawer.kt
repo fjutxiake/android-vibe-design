@@ -24,8 +24,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.aeibi.design.R
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.theme.spacing
 import kotlinx.coroutines.launch
@@ -65,7 +67,7 @@ fun SessionDrawer(
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Icon(imageVector = Icons.Filled.Add, contentDescription = null)
-                Text("新建会话")
+                Text(stringResource(R.string.new_session))
             }
             SessionList(
                 state = listState,
@@ -113,21 +115,21 @@ private fun RenameSessionDialog(initialTitle: String, onDismiss: () -> Unit, onC
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("重命名会话") },
+        title = { Text(stringResource(R.string.rename_session_title)) },
         text = {
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
-                label = { Text("名称") },
+                label = { Text(stringResource(R.string.name_label)) },
                 singleLine = true
             )
         },
         confirmButton = {
             TextButton(enabled = title.isNotBlank(), onClick = { onConfirm(title.trim()) }) {
-                Text("保存")
+                Text(stringResource(R.string.save))
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
 }
 
@@ -135,9 +137,9 @@ private fun RenameSessionDialog(initialTitle: String, onDismiss: () -> Unit, onC
 private fun DeleteSessionDialog(sessionTitle: String, onDismiss: () -> Unit, onConfirm: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("删除会话") },
-        text = { Text("确定删除「$sessionTitle」吗？删除后不可恢复。") },
-        confirmButton = { TextButton(onClick = onConfirm) { Text("删除") } },
-        dismissButton = { TextButton(onClick = onDismiss) { Text("取消") } }
+        title = { Text(stringResource(R.string.delete_session_title)) },
+        text = { Text(stringResource(R.string.delete_session_confirm, sessionTitle)) },
+        confirmButton = { TextButton(onClick = onConfirm) { Text(stringResource(R.string.session_actions_delete)) } },
+        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } }
     )
 }

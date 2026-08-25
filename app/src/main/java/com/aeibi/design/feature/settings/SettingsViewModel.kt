@@ -11,13 +11,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 
-data class SettingsUiState(val aiProviderCount: Int = 0, val language: LanguagePreference = LanguagePreference.SYSTEM) {
-    val aiProvidersSummary: String
-        get() = when (aiProviderCount) {
-            0 -> "尚未配置"
-            else -> "已配置 $aiProviderCount 个服务"
-        }
-}
+data class SettingsUiState(val aiProviderCount: Int = 0, val language: LanguagePreference = LanguagePreference.SYSTEM)
 
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
@@ -36,7 +30,7 @@ class SettingsViewModel @Inject constructor(
             initialValue = SettingsUiState()
         )
 
-    /** 写入语言偏好；界面重建由调用方触发（recreate）。 */
+    /** 写入语言偏好；UI 经响应式状态与 LocalContext 覆盖即时更新，无需重建 Activity。 */
     fun setLanguage(preference: LanguagePreference) {
         languagePreferenceStore.write(preference)
     }
