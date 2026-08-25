@@ -1,6 +1,7 @@
 package com.aeibi.design.data.projects
 
 import java.io.File
+import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -74,7 +75,12 @@ class ProjectRepository(
         }
 
     suspend fun deleteProject(id: String) = withContext(ioDispatcher) {
-        File(projectsDir, id).deleteRecursively()
+        val dir = File(projectsDir, id)
+        // deleteRecursively() 删不动时只返回 false。目录已经不在就当删成功(重复删除是幂等的),
+        // 但目录还在就说明真的删失败了,必须让调用方知道,不能假装删掉了。
+        if (!dir.deleteRecursively() && dir.exists()) {
+            throw IOException("无法删除项目目录: ${dir.path}")
+        }
         _projects.value = listProjects()
     }
 

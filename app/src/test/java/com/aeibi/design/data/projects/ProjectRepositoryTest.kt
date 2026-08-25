@@ -1,6 +1,8 @@
 package com.aeibi.design.data.projects
 
 import java.io.File
+import java.io.FileInputStream
+import java.io.IOException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.runTest
@@ -80,6 +82,38 @@ class ProjectRepositoryTest {
 
         assertTrue(!File(root, created.id).exists())
         repo.refresh()
+        assertTrue(repo.projects.value.isEmpty())
+    }
+
+    @Test
+    fun deleteProject_whenDirectoryCannotBeRemoved_throws() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val created = repo.createProject("删不掉", "", null)
+        val dir = File(root, created.id)
+        // Windows 上占用中的文件删不掉,Linux 上不可写的父目录删不掉子项,两个一起用可以覆盖两种平台。
+        val locked = File(dir, "locked.bin").apply { writeText("x") }
+        val handle = FileInputStream(locked)
+        dir.setWritable(false)
+
+        try {
+            val error = runCatching { repo.deleteProject(created.id) }.exceptionOrNull()
+
+            assertTrue("应当抛出 IOException,实际为 $error", error is IOException)
+            assertTrue(dir.exists())
+        } finally {
+            handle.close()
+            dir.setWritable(true)
+        }
+    }
+
+    @Test
+    fun deleteProject_whenAlreadyGone_doesNotThrow() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+
+        repo.deleteProject("从来不存在的项目")
+
         assertTrue(repo.projects.value.isEmpty())
     }
 

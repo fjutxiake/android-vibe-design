@@ -8,6 +8,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalNavigationDrawer
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDrawerState
@@ -15,6 +17,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -43,6 +46,7 @@ fun ProjectWorkspaceScreen(
 ) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val snackbarHostState = remember { SnackbarHostState() }
     var showProjectActions by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val project by viewModel.observeProject(projectId).collectAsState(initial = null)
@@ -73,7 +77,8 @@ fun ProjectWorkspaceScreen(
                     onPreviewClick = onPreviewClick,
                     onMoreClick = { showProjectActions = true }
                 )
-            }
+            },
+            snackbarHost = { SnackbarHost(snackbarHostState) }
         ) { innerPadding ->
             ChatScreen(
                 projectId = projectId,
@@ -103,7 +108,14 @@ fun ProjectWorkspaceScreen(
                 TextButton(
                     onClick = {
                         showDeleteConfirm = false
-                        viewModel.deleteProject(projectId) { onProjectPickerClick() }
+                        // 删除真正成功才退回项目列表;失败就留在当前项目并提示,不假装已经删掉。
+                        viewModel.deleteProject(projectId) { result ->
+                            result
+                                .onSuccess { onProjectPickerClick() }
+                                .onFailure {
+                                    scope.launch { snackbarHostState.showSnackbar("删除项目失败,请重试") }
+                                }
+                        }
                     }
                 ) {
                     Text("删除", color = MaterialTheme.colorScheme.error)

@@ -26,24 +26,34 @@ class ProjectsViewModel @Inject constructor(
 
     fun observeProject(id: String): Flow<Project?> = projects.map { list -> list.firstOrNull { it.id == id } }
 
-    fun createProject(name: String, description: String, iconUri: String?) {
+    fun createProject(
+        name: String,
+        description: String,
+        iconUri: String?,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            runCatching { projectRepository.createProject(name, description, iconUri) }
+            onResult(runCatching { projectRepository.createProject(name, description, iconUri) }.map { })
         }
     }
 
-    fun updateProject(id: String, name: String, description: String, iconUri: String?, onComplete: () -> Unit = {}) {
+    fun updateProject(
+        id: String,
+        name: String,
+        description: String,
+        iconUri: String?,
+        onResult: (Result<Unit>) -> Unit = {}
+    ) {
         viewModelScope.launch {
-            runCatching { projectRepository.updateProject(id, name, description, iconUri) }
-            onComplete()
+            onResult(runCatching { projectRepository.updateProject(id, name, description, iconUri) }.map { })
         }
     }
 
-    fun deleteProject(id: String, onComplete: () -> Unit = {}) {
+    fun deleteProject(id: String, onResult: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
+            // 会话清理是尽力而为:清理失败不该拦住项目删除,留下几条孤儿会话是可以接受的。
             runCatching { sessionRepository.deleteSessionsForProject(id) }
-            runCatching { projectRepository.deleteProject(id) }
-            onComplete()
+            onResult(runCatching { projectRepository.deleteProject(id) })
         }
     }
 

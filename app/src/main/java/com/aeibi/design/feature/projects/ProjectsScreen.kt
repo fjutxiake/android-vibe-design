@@ -21,6 +21,7 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -38,11 +39,20 @@ fun ProjectsScreen(
     modifier: Modifier = Modifier,
     onSettingsClick: () -> Unit = {},
     onProjectClick: (String) -> Unit = {},
-    onCreateProject: (name: String, description: String, iconUri: String?) -> Unit = { _, _, _ -> },
+    onCreateProject: (
+        name: String,
+        description: String,
+        iconUri: String?,
+        onResult: (Result<Unit>) -> Unit
+    ) -> Unit = { _, _, _, _ -> },
     resolveIconUri: (Project) -> String? = { null }
 ) {
     val spacing = MaterialTheme.spacing
     var showNewProjectSheet by rememberSaveable { mutableStateOf(false) }
+    var createError by rememberSaveable { mutableStateOf<String?>(null) }
+    // 用 remember 而不是 rememberSaveable:配置变更后回调持有的是旧的 State,
+    // 存下来的 true 永远不会被改回 false,按钮就会一直点不动。
+    var creating by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
@@ -84,11 +94,23 @@ fun ProjectsScreen(
 
     if (showNewProjectSheet) {
         NewProjectBottomSheet(
-            onDismiss = { showNewProjectSheet = false },
-            onCreate = { name, description, iconUri ->
-                onCreateProject(name, description, iconUri)
+            onDismiss = {
                 showNewProjectSheet = false
-            }
+                createError = null
+            },
+            onCreate = { name, description, iconUri ->
+                creating = true
+                createError = null
+                // 创建成功才收起面板;失败就留在原地并给出提示,已填的内容不丢。
+                onCreateProject(name, description, iconUri) { result ->
+                    creating = false
+                    result
+                        .onSuccess { showNewProjectSheet = false }
+                        .onFailure { createError = "创建项目失败,请重试" }
+                }
+            },
+            errorMessage = createError,
+            submitting = creating
         )
     }
 }

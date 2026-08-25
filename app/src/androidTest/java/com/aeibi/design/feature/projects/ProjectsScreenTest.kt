@@ -8,6 +8,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTextInput
 import com.aeibi.design.data.projects.Project
+import java.io.IOException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
 import org.junit.Rule
@@ -54,8 +55,9 @@ class ProjectsScreenTest {
     fun createSheet_invokesOnCreateProject() {
         var created: Triple<String, String, String?>? = null
         composeTestRule.setContent {
-            ProjectsScreen(projects = emptyList(), onCreateProject = { n, d, i ->
+            ProjectsScreen(projects = emptyList(), onCreateProject = { n, d, i, onResult ->
                 created = Triple(n, d, i)
+                onResult(Result.success(Unit))
             })
         }
 
@@ -67,5 +69,37 @@ class ProjectsScreenTest {
         assertEquals("新项目", created?.first)
         assertEquals("描述", created?.second)
         assertNull(created?.third)
+    }
+
+    @Test
+    fun createSheet_whenCreateFails_staysOpenAndShowsError() {
+        composeTestRule.setContent {
+            ProjectsScreen(projects = emptyList(), onCreateProject = { _, _, _, onResult ->
+                onResult(Result.failure(IOException("磁盘写入失败")))
+            })
+        }
+
+        composeTestRule.onNodeWithTag("new_project_button").performClick()
+        composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
+        composeTestRule.onNodeWithText("创建项目").performClick()
+
+        // 失败时面板必须留着,已填的名称不能丢,并且要给出错误提示。
+        composeTestRule.onNodeWithTag("create_project_error").assertIsDisplayed()
+        composeTestRule.onNodeWithTag("project_name_input").assertIsDisplayed()
+    }
+
+    @Test
+    fun createSheet_whenCreateSucceeds_closesSheet() {
+        composeTestRule.setContent {
+            ProjectsScreen(projects = emptyList(), onCreateProject = { _, _, _, onResult ->
+                onResult(Result.success(Unit))
+            })
+        }
+
+        composeTestRule.onNodeWithTag("new_project_button").performClick()
+        composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
+        composeTestRule.onNodeWithText("创建项目").performClick()
+
+        composeTestRule.onNodeWithTag("project_name_input").assertDoesNotExist()
     }
 }

@@ -44,7 +44,9 @@ import com.aeibi.design.theme.systemAppIconShape
 @OptIn(ExperimentalMaterial3Api::class)
 fun NewProjectBottomSheet(
     onDismiss: () -> Unit,
-    onCreate: (name: String, description: String, iconUri: String?) -> Unit
+    onCreate: (name: String, description: String, iconUri: String?) -> Unit,
+    errorMessage: String? = null,
+    submitting: Boolean = false
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
@@ -119,12 +121,23 @@ fun NewProjectBottomSheet(
                 minLines = 3,
                 maxLines = 4
             )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodySmall,
+                    modifier = Modifier.testTag("create_project_error")
+                )
+            }
             Row(
                 modifier = Modifier.fillMaxWidth().padding(top = spacing.sm, bottom = spacing.lg),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
                 TextButton(onClick = onDismiss) { Text("取消") }
-                Button(onClick = { onCreate(name, description, iconUri) }, enabled = name.isNotBlank()) {
+                Button(
+                    onClick = { onCreate(name, description, iconUri) },
+                    enabled = name.isNotBlank() && !submitting
+                ) {
                     Text("创建项目")
                 }
             }
