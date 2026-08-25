@@ -16,11 +16,7 @@ class ContentResolverIconCopier @Inject constructor(@ApplicationContext private 
             val resolved = Uri.parse(uri)
             val mime = context.contentResolver.getType(resolved)
             val ext = mime?.substringAfter("/")?.takeIf { it.isNotBlank() } ?: "png"
-            val target = File(projectDir, "icon.$ext")
-            context.contentResolver.openInputStream(resolved)?.use { input ->
-                target.outputStream().use { output -> input.copyTo(output) }
-            } ?: return null
-            target.name
+            copyIconAtomically(projectDir, ext) { context.contentResolver.openInputStream(resolved) }
         }.getOrNull()
     }
 }
