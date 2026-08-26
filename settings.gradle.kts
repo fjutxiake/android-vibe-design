@@ -32,3 +32,5 @@ plugins {
 
 rootProject.name = "Vibe Design"
 include(":app")
+include(":apkengine")
+include(":shell")
