@@ -48,8 +48,6 @@ fun ProjectListItem(project: Project, onClick: () -> Unit = {}, onLongClick: () 
             context.packageManager.defaultActivityIcon
         }
 
-    val iconCacheKey = project.iconUri?.let { "project-icon:$it:${project.updatedAt}" }
-
     Row(
         modifier =
         Modifier.fillMaxWidth()
@@ -67,8 +65,6 @@ fun ProjectListItem(project: Project, onClick: () -> Unit = {}, onLongClick: () 
                 .data(project.iconUri)
                 .fallback(defaultIcon)
                 .error(defaultIcon)
-                .memoryCacheKey(iconCacheKey)
-                .diskCacheKey(iconCacheKey)
                 .build(),
             contentDescription = "${project.name} App Icon",
             modifier = Modifier.size(dimensions.projectListIcon).clip(appIconShape),

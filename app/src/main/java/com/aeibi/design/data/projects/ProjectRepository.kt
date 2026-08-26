@@ -42,14 +42,13 @@ class ProjectRepository(
             val dir = File(projectsDir, id)
             check(dir.mkdirs()) { "无法创建项目目录" }
             try {
-                if (iconUri != null) {
-                    writeIcon(iconUri, dir)
-                }
+                val iconFileName = iconUri?.let { writeIcon(it, dir) }
                 val metadata = ProjectMetadata(
                     name = name,
                     description = description,
                     createdAt = now,
-                    updatedAt = now
+                    updatedAt = now,
+                    iconFileName = iconFileName
                 )
                 writeMetadata(dir, metadata)
                 _projects.value = listProjects()
@@ -63,15 +62,14 @@ class ProjectRepository(
     suspend fun updateProject(id: String, name: String, description: String, iconUri: String?): Project =
         withContext(ioDispatcher) {
             val dir = File(projectsDir, id)
-            val existing = readProject(dir) ?: error("项目不存在: $id")
-            if (iconUri != null) {
-                writeIcon(iconUri, dir)
-            }
+            val existing = readMetadata(dir) ?: error("项目不存在: $id")
+            val iconFileName = iconUri?.let { writeIcon(it, dir) } ?: existing.resolveIconFileName(dir)
             val metadata = ProjectMetadata(
                 name = name,
                 description = description,
                 createdAt = existing.createdAt,
-                updatedAt = System.currentTimeMillis()
+                updatedAt = System.currentTimeMillis(),
+                iconFileName = iconFileName
             )
             writeMetadata(dir, metadata)
             _projects.value = listProjects()
@@ -113,38 +111,51 @@ class ProjectRepository(
         }
     }
 
-    private fun writeIcon(uri: String, dir: File) {
+    private fun writeIcon(uri: String, dir: File): String {
+        val fileName = "icon-${UUID.randomUUID()}.png"
+        val iconFile = File(dir, fileName)
+        val file = AtomicFile(iconFile)
         val input = contentResolver.openInputStream(uri.toUri())
             ?: throw IOException("无法读取项目图标")
         input.use { source ->
-            val file = AtomicFile(File(dir, PROJECT_ICON_FILE))
             val output = file.startWrite()
             try {
                 source.copyTo(output)
                 file.finishWrite(output)
+                if (!iconFile.isFile) throw IOException("无法保存项目图标: ${iconFile.path}")
             } catch (error: Exception) {
                 file.failWrite(output)
                 throw error
             }
         }
+        return fileName
     }
 
-    private fun ProjectMetadata.toProject(id: String, dir: File) = Project(
-        id = id,
-        name = name,
-        description = description,
-        iconUri = PROJECT_ICON_FILE
-            .takeIf { File(dir, it).isFile }
-            ?.let { File(dir, it).toURI().toString() },
-        createdAt = createdAt,
-        updatedAt = updatedAt
-    )
+    private fun ProjectMetadata.toProject(id: String, dir: File): Project {
+        val iconFile = resolveIconFileName(dir)?.let { File(dir, it) }
+        return Project(
+            id = id,
+            name = name,
+            description = description,
+            iconUri = iconFile?.toURI()?.toString(),
+            createdAt = createdAt,
+            updatedAt = updatedAt
+        )
+    }
+
+    private fun ProjectMetadata.resolveIconFileName(dir: File): String? = iconFileName
+        ?.takeIf { File(it).name == it && File(dir, it).isFile }
 
     private companion object {
         const val PROJECT_JSON = "project.json"
-        const val PROJECT_ICON_FILE = "icon.png"
     }
 }
 
 @Serializable
-private data class ProjectMetadata(val name: String, val description: String, val createdAt: Long, val updatedAt: Long)
+private data class ProjectMetadata(
+    val name: String,
+    val description: String,
+    val createdAt: Long,
+    val updatedAt: Long,
+    val iconFileName: String? = null
+)

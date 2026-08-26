@@ -131,7 +131,51 @@ class ProjectRepositoryTest {
         val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
 
         assertTrue(created.iconUri!!.startsWith("file:"))
-        assertTrue(File(File(root, created.id), "icon.png").exists())
+        val iconFile = File(Uri.parse(created.iconUri).path!!)
+        assertTrue(
+            iconFile.name.matches(
+                Regex("icon-[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}\\.png")
+            )
+        )
+        assertTrue(iconFile.isFile)
+        assertTrue(
+            File(File(root, created.id), "project.json")
+                .readText()
+                .contains("\"iconFileName\":\"${iconFile.name}\"")
+        )
+    }
+
+    @Test
+    fun updateProject_withoutNewIcon_keepsIconUri() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val source = File(root, "source.png").apply { writeText("first") }
+        val created = repo.createProject("带图标", "", Uri.fromFile(source).toString())
+
+        val updated = repo.updateProject(created.id, "新名", "新描述", null)
+
+        assertEquals(created.iconUri, updated.iconUri)
+    }
+
+    @Test
+    fun updateProject_withNewIcon_changesUriAndKeepsPreviousIcon() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val firstSource = File(root, "first.png").apply { writeText("first") }
+        val secondSource = File(root, "second.png").apply { writeText("second") }
+        val created = repo.createProject("带图标", "", Uri.fromFile(firstSource).toString())
+        val previousIcon = File(Uri.parse(created.iconUri).path!!)
+
+        val updated = repo.updateProject(
+            created.id,
+            "带图标",
+            "",
+            Uri.fromFile(secondSource).toString()
+        )
+
+        assertTrue(created.iconUri != updated.iconUri)
+        assertTrue(previousIcon.isFile)
+        assertTrue(File(Uri.parse(updated.iconUri).path!!).isFile)
     }
 
     @Test
@@ -164,7 +208,7 @@ class ProjectRepositoryTest {
         assertTrue(error is IOException)
         assertEquals("带图标", repo.getProject(created.id)?.name)
         assertTrue(repo.getProject(created.id)?.iconUri!!.startsWith("file:"))
-        assertTrue(File(File(root, created.id), "icon.png").exists())
+        assertTrue(File(Uri.parse(created.iconUri).path!!).isFile)
     }
 
     @Test

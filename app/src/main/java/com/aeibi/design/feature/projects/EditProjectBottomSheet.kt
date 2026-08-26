@@ -58,8 +58,7 @@ fun EditProjectBottomSheet(
             )
             ProjectIconPicker(
                 iconUri = pickedIconUri ?: project.iconUri,
-                onIconPicked = { pickedIconUri = it },
-                iconVersion = project.updatedAt
+                onIconPicked = { pickedIconUri = it }
             )
             OutlinedTextField(
                 value = name,

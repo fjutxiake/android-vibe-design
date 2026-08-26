@@ -1,5 +1,7 @@
 package com.aeibi.design.feature.projects
 
+import android.app.Activity
+import android.graphics.Bitmap
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,23 +21,36 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.systemAppIconShape
+import com.yalantis.ucrop.UCrop
+import java.io.File
+import java.util.UUID
 
 @Composable
-fun ProjectIconPicker(
-    iconUri: String?,
-    onIconPicked: (String) -> Unit,
-    modifier: Modifier = Modifier,
-    iconVersion: Long? = null
-) {
+fun ProjectIconPicker(iconUri: String?, onIconPicked: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val iconCacheKey = iconUri?.let { "project-icon:$it:${iconVersion ?: 0L}" }
+    val cropImage =
+        rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            if (result.resultCode == Activity.RESULT_OK) {
+                UCrop.getOutput(result.data ?: return@rememberLauncherForActivityResult)
+                    ?.let { onIconPicked(it.toString()) }
+            }
+        }
     val photoPicker =
         rememberLauncherForActivityResult(ActivityResultContracts.PickVisualMedia()) { uri ->
-            uri?.let { onIconPicked(it.toString()) }
+            uri?.let { source ->
+                val destination =
+                    File(context.cacheDir, "project-icon-${UUID.randomUUID()}.png").toUri()
+                UCrop.of(source, destination)
+                    .withAspectRatio(1f, 1f)
+                    .withMaxResultSize(512, 512)
+                    .withOptions(UCrop.Options().apply { setCompressionFormat(Bitmap.CompressFormat.PNG) })
+                    .start(context, cropImage)
+            }
         }
 
     Box(
@@ -63,8 +78,6 @@ fun ProjectIconPicker(
             AsyncImage(
                 model = ImageRequest.Builder(context)
                     .data(iconUri)
-                    .memoryCacheKey(iconCacheKey)
-                    .diskCacheKey(iconCacheKey)
                     .build(),
                 contentDescription = "已选择的应用图标",
                 modifier = Modifier.fillMaxSize(),
