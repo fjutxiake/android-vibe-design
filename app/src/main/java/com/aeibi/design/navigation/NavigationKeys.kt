@@ -29,3 +29,7 @@ data object ApplicationAiProviders : NavKey
 
 @Serializable
 data object ApplicationLanguageSettings : NavKey
+
+/** 临时调试入口：APK 编辑器（验证 APK 手术链路，后续移除）。 */
+@Serializable
+data object TestApkEditor : NavKey

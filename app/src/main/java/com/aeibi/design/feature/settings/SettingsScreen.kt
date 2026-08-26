@@ -11,6 +11,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Hub
 import androidx.compose.material.icons.filled.Translate
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -44,6 +45,7 @@ fun SettingsScreen(
     onBackClick: () -> Unit = {},
     onAiProvidersClick: () -> Unit = {},
     onLanguageClick: () -> Unit = {},
+    onTestApkEditorClick: () -> Unit = {},
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -53,7 +55,8 @@ fun SettingsScreen(
         aiProviderCount = uiState.aiProviderCount,
         onBackClick = onBackClick,
         onAiProvidersClick = onAiProvidersClick,
-        onLanguageClick = onLanguageClick
+        onLanguageClick = onLanguageClick,
+        onTestApkEditorClick = onTestApkEditorClick
     )
 }
 
@@ -64,7 +67,8 @@ private fun SettingsScreenContent(
     aiProviderCount: Int = 0,
     onBackClick: () -> Unit = {},
     onAiProvidersClick: () -> Unit = {},
-    onLanguageClick: () -> Unit = {}
+    onLanguageClick: () -> Unit = {},
+    onTestApkEditorClick: () -> Unit = {}
 ) {
     val spacing = MaterialTheme.spacing
     val aiProvidersSummary = if (aiProviderCount == 0) {
@@ -120,6 +124,21 @@ private fun SettingsScreenContent(
                         summary = aiProvidersSummary,
                         onClick = onAiProvidersClick,
                         leadingIcon = Icons.Default.Hub
+                    )
+                }
+            }
+            item {
+                SettingsSectionTitle("开发")
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = MaterialTheme.shapes.large,
+                    color = MaterialTheme.colorScheme.surfaceContainerLow
+                ) {
+                    SettingsNavigationRow(
+                        title = "APK 编辑器（测试）",
+                        summary = "调试 APK 手术链路，正式版移除",
+                        onClick = onTestApkEditorClick,
+                        leadingIcon = Icons.Default.Build
                     )
                 }
             }

@@ -11,6 +11,7 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
+import com.aeibi.design.feature.apktest.TestApkEditorScreen
 import com.aeibi.design.feature.build.ProjectBuildScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsScreen
@@ -93,7 +94,8 @@ fun AppNavigation() {
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() },
                     onAiProvidersClick = { backStack.add(ApplicationAiProviders) },
-                    onLanguageClick = { backStack.add(ApplicationLanguageSettings) }
+                    onLanguageClick = { backStack.add(ApplicationLanguageSettings) },
+                    onTestApkEditorClick = { backStack.add(TestApkEditor) }
                 )
             }
             entry<ApplicationAiProviders> {
@@ -104,6 +106,12 @@ fun AppNavigation() {
             }
             entry<ApplicationLanguageSettings> {
                 LanguageSettingsScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<TestApkEditor> {
+                TestApkEditorScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() }
                 )
