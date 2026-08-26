@@ -31,13 +31,25 @@ import java.io.File
 import java.util.UUID
 
 @Composable
-fun ProjectIconPicker(iconUri: String?, onIconPicked: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ProjectIconPicker(
+    iconUri: String?,
+    onIconPicked: (String) -> Unit,
+    onCropError: () -> Unit,
+    modifier: Modifier = Modifier
+) {
     val context = LocalContext.current
     val cropImage =
         rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-            if (result.resultCode == Activity.RESULT_OK) {
-                UCrop.getOutput(result.data ?: return@rememberLauncherForActivityResult)
-                    ?.let { onIconPicked(it.toString()) }
+            when (result.resultCode) {
+                Activity.RESULT_OK -> {
+                    val output = result.data?.let { UCrop.getOutput(it) }
+                    if (output != null) {
+                        onIconPicked(output.toString())
+                    } else {
+                        onCropError()
+                    }
+                }
+                UCrop.RESULT_ERROR -> onCropError()
             }
         }
     val photoPicker =

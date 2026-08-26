@@ -34,6 +34,7 @@ fun NewProjectBottomSheet(
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
+    var iconError by rememberSaveable { mutableStateOf<String?>(null) }
     val spacing = MaterialTheme.spacing
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -51,7 +52,14 @@ fun NewProjectBottomSheet(
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
-            ProjectIconPicker(iconUri = iconUri, onIconPicked = { iconUri = it })
+            ProjectIconPicker(
+                iconUri = iconUri,
+                onIconPicked = {
+                    iconUri = it
+                    iconError = null
+                },
+                onCropError = { iconError = "图标裁剪失败，请重新选择" }
+            )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
@@ -69,9 +77,10 @@ fun NewProjectBottomSheet(
                 minLines = 3,
                 maxLines = 4
             )
-            if (errorMessage != null) {
+            val visibleError = errorMessage ?: iconError
+            if (visibleError != null) {
                 Text(
-                    text = errorMessage,
+                    text = visibleError,
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.testTag("create_project_error")
