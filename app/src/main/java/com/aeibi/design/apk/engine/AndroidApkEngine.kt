@@ -32,11 +32,34 @@ class AndroidApkEngine(context: Context) :
         }
     }
 
-    override fun build(decodedDir: Path, outApk: Path) {
+    override fun build(decodedDir: Path, outApk: Path): BuildSummary {
         val encoder = ApkModuleXmlEncoder()
         encoder.scanDirectory(decodedDir.toFile())
         encoder.getApkModule().use { module ->
             module.writeApk(outApk.toFile(), null)
         }
+        return summarize(outApk)
+    }
+
+    /** 读取产物 ZIP 生成自检摘要。 */
+    private fun summarize(outApk: Path): BuildSummary {
+        val entries = mutableListOf<String>()
+        java.util.zip.ZipFile(outApk.toFile()).use { zip ->
+            zip.entries().asSequence().forEach { entries += it.name }
+        }
+        val dexCount = entries.count { it.endsWith(".dex") }
+        val frontendEntries = entries.filter { it.startsWith(FRONTEND_PREFIX) }
+        return BuildSummary(
+            apkSizeBytes = outApk.toFile().length(),
+            entryCount = entries.size,
+            hasDex = dexCount > 0,
+            dexCount = dexCount,
+            hasFrontendAssets = frontendEntries.isNotEmpty(),
+            frontendFileCount = frontendEntries.size
+        )
+    }
+
+    private companion object {
+        const val FRONTEND_PREFIX = "assets/frontend_app/"
     }
 }

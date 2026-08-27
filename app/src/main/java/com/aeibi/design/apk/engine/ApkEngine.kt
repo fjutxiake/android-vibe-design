@@ -15,10 +15,29 @@ interface ApkDecoder {
     fun decode(sourceApk: Path, destDir: Path)
 }
 
-/** 重打包：把明文目录构建回 APK。 */
+/** 重打包：把明文目录构建回 APK，返回产物自检信息。 */
 interface ApkBuilderEngine {
-    fun build(decodedDir: Path, outApk: Path)
+    fun build(decodedDir: Path, outApk: Path): BuildSummary
 }
+
+/**
+ * 构建产物摘要（自检信息）——上层可据此做机械验证：
+ * 产物是否包含 dex、前端注入是否生效、体积是否合理。
+ */
+data class BuildSummary(
+    /** 产物大小（字节）。 */
+    val apkSizeBytes: Long,
+    /** ZIP 条目总数。 */
+    val entryCount: Int,
+    /** 是否包含 dex。 */
+    val hasDex: Boolean,
+    /** dex 文件数。 */
+    val dexCount: Int,
+    /** 是否包含前端注入目录（assets/frontend_app/）。 */
+    val hasFrontendAssets: Boolean,
+    /** 前端文件数（assets/frontend_app/ 下）。 */
+    val frontendFileCount: Int
+)
 
 /** 对齐：zipalign。 */
 interface Zipaligner {

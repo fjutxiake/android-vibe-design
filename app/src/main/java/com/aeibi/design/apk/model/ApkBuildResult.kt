@@ -1,5 +1,6 @@
 package com.aeibi.design.apk.model
 
+import com.aeibi.design.apk.engine.BuildSummary
 import com.aeibi.design.apk.verify.VerificationReport
 import java.nio.file.Path
 
@@ -14,6 +15,8 @@ data class ApkBuildResult(
     val outputApk: Path,
     /** 实际执行的操作名称列表（未触发的操作不在此列）。 */
     val operationsExecuted: List<String>,
+    /** 构建产物自检摘要（dex/前端/体积——机械验证的数据源）。 */
+    val buildSummary: BuildSummary,
     /** 构建后验证报告（未提供验证器时为通过空报告）。 */
     val verification: VerificationReport,
     /** 构建耗时（毫秒）。 */
