@@ -2,7 +2,10 @@ package com.aeibi.design.navigation
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -11,6 +14,7 @@ import androidx.navigation3.ui.NavDisplay
 import com.aeibi.design.feature.build.ProjectBuildScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsScreen
+import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.SettingsScreen
 import com.aeibi.design.feature.settings.ai.AiProvidersScreen
@@ -43,12 +47,16 @@ fun AppNavigation() {
                 )
             }
             entry<ProjectPicker> {
+                val viewModel = hiltViewModel<ProjectsViewModel>()
+                val projects by viewModel.projects.collectAsState()
                 ProjectsScreen(
+                    projects = projects,
                     modifier = Modifier.fillMaxSize(),
                     onSettingsClick = { backStack.add(ApplicationSettings) },
-                    onProjectClick = { projectId ->
-                        backStack.add(ProjectChat(projectId))
-                    }
+                    onProjectClick = { projectId -> backStack.add(ProjectChat(projectId)) },
+                    onCreateProject = viewModel::createProject,
+                    onUpdateProject = viewModel::updateProject,
+                    onDeleteProject = viewModel::deleteProject
                 )
             }
             entry<ProjectPreview> { route ->

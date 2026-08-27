@@ -5,12 +5,15 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
+import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,7 +26,8 @@ fun ProjectActionsSheet(
     onBuildClick: () -> Unit,
     onVersionsClick: () -> Unit,
     onProjectSettingsClick: () -> Unit,
-    onAppSettingsClick: () -> Unit
+    onAppSettingsClick: () -> Unit,
+    onDeleteClick: () -> Unit
 ) {
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.navigationBarsPadding()) {
@@ -57,6 +61,18 @@ fun ProjectActionsSheet(
                 modifier = Modifier.clickable {
                     onDismiss()
                     onAppSettingsClick()
+                }
+            )
+            ListItem(
+                headlineContent = { Text("删除项目") },
+                leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
+                colors = ListItemDefaults.colors(
+                    headlineColor = MaterialTheme.colorScheme.error,
+                    leadingIconColor = MaterialTheme.colorScheme.error
+                ),
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onDeleteClick()
                 }
             )
         }

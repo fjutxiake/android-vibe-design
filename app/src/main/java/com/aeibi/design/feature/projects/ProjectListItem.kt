@@ -3,7 +3,7 @@ package com.aeibi.design.feature.projects
 import android.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
@@ -28,18 +28,13 @@ import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
 import coil3.request.error
 import coil3.request.fallback
+import com.aeibi.design.data.projects.Project
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 import com.aeibi.design.theme.systemAppIconShape
 
 @Composable
-fun ProjectListItem(
-    name: String,
-    description: String,
-    updatedAt: String,
-    iconUri: String? = null,
-    onClick: () -> Unit = {}
-) {
+fun ProjectListItem(project: Project, onClick: () -> Unit = {}, onLongClick: () -> Unit = {}) {
     val context = LocalContext.current
     val spacing = MaterialTheme.spacing
     val dimensions = MaterialTheme.dimensions
@@ -58,7 +53,7 @@ fun ProjectListItem(
         Modifier.fillMaxWidth()
             .height(IntrinsicSize.Min)
             .clip(shape)
-            .clickable(onClick = onClick)
+            .combinedClickable(onClick = onClick, onLongClick = onLongClick)
             .background(MaterialTheme.colorScheme.surface)
             .border(dimensions.borderThin, MaterialTheme.colorScheme.outlineVariant, shape)
             .padding(spacing.md),
@@ -67,18 +62,18 @@ fun ProjectListItem(
         AsyncImage(
             model =
             ImageRequest.Builder(context)
-                .data(iconUri)
+                .data(project.iconUri)
                 .fallback(defaultIcon)
                 .error(defaultIcon)
                 .build(),
-            contentDescription = "$name App Icon",
+            contentDescription = "${project.name} App Icon",
             modifier = Modifier.size(dimensions.projectListIcon).clip(appIconShape),
-            contentScale = ContentScale.Fit
+            contentScale = ContentScale.Crop
         )
 
         Column(modifier = Modifier.weight(1f)) {
             Text(
-                text = name,
+                text = project.name,
                 color = MaterialTheme.colorScheme.onSurface,
                 style = MaterialTheme.typography.titleMedium,
                 fontWeight = FontWeight.SemiBold,
@@ -86,7 +81,7 @@ fun ProjectListItem(
                 overflow = TextOverflow.Ellipsis
             )
             Text(
-                text = description,
+                text = project.description,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.bodySmall,
                 maxLines = 2,
@@ -94,7 +89,7 @@ fun ProjectListItem(
             )
             Spacer(modifier = Modifier.weight(1f))
             Text(
-                text = updatedAt,
+                text = formatRelativeTime(project.updatedAt),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
                 style = MaterialTheme.typography.labelSmall
             )
