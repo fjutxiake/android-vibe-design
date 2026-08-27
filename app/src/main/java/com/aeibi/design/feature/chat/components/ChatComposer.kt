@@ -15,6 +15,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
 @Composable
@@ -26,16 +28,22 @@ fun ChatComposer(modifier: Modifier = Modifier) {
         verticalAlignment = Alignment.CenterVertically
     ) {
         IconButton(onClick = {}) {
-            Icon(imageVector = Icons.Filled.Add, contentDescription = "添加工具")
+            Icon(
+                imageVector = Icons.Filled.Add,
+                contentDescription = stringResource(R.string.chat_cd_add_tool)
+            )
         }
         OutlinedTextField(
             value = "",
             onValueChange = {},
             modifier = Modifier.weight(1f),
-            placeholder = { Text("向 AI 描述你想构建的内容") }
+            placeholder = { Text(stringResource(R.string.chat_input_hint)) }
         )
         IconButton(onClick = {}) {
-            Icon(imageVector = Icons.AutoMirrored.Filled.Send, contentDescription = "发送")
+            Icon(
+                imageVector = Icons.AutoMirrored.Filled.Send,
+                contentDescription = stringResource(R.string.chat_cd_send)
+            )
         }
     }
 }

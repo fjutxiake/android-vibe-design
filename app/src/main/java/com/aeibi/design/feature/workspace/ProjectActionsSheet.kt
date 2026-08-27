@@ -18,6 +18,8 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -32,7 +34,7 @@ fun ProjectActionsSheet(
     ModalBottomSheet(onDismissRequest = onDismiss) {
         Column(modifier = Modifier.navigationBarsPadding()) {
             ListItem(
-                headlineContent = { Text("打包与构建") },
+                headlineContent = { Text(stringResource(R.string.workspace_action_build)) },
                 leadingContent = { Icon(Icons.Filled.Build, contentDescription = null) },
                 modifier = Modifier.clickable {
                     onDismiss()
@@ -40,7 +42,7 @@ fun ProjectActionsSheet(
                 }
             )
             ListItem(
-                headlineContent = { Text("版本管理") },
+                headlineContent = { Text(stringResource(R.string.workspace_action_versions)) },
                 leadingContent = { Icon(Icons.Filled.History, contentDescription = null) },
                 modifier = Modifier.clickable {
                     onDismiss()
@@ -48,7 +50,7 @@ fun ProjectActionsSheet(
                 }
             )
             ListItem(
-                headlineContent = { Text("项目设置") },
+                headlineContent = { Text(stringResource(R.string.workspace_action_project_settings)) },
                 leadingContent = { Icon(Icons.Filled.Tune, contentDescription = null) },
                 modifier = Modifier.clickable {
                     onDismiss()
@@ -56,7 +58,7 @@ fun ProjectActionsSheet(
                 }
             )
             ListItem(
-                headlineContent = { Text("应用设置") },
+                headlineContent = { Text(stringResource(R.string.workspace_action_app_settings)) },
                 leadingContent = { Icon(Icons.Filled.Settings, contentDescription = null) },
                 modifier = Modifier.clickable {
                     onDismiss()
@@ -64,7 +66,7 @@ fun ProjectActionsSheet(
                 }
             )
             ListItem(
-                headlineContent = { Text("删除项目") },
+                headlineContent = { Text(stringResource(R.string.delete_project_title)) },
                 leadingContent = { Icon(Icons.Filled.Delete, contentDescription = null) },
                 colors = ListItemDefaults.colors(
                     headlineColor = MaterialTheme.colorScheme.error,

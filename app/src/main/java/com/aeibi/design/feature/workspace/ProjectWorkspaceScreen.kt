@@ -22,7 +22,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import com.aeibi.design.R
 import com.aeibi.design.feature.chat.ChatScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.sessions.SessionDrawer
@@ -48,6 +50,8 @@ fun ProjectWorkspaceScreen(
     var showProjectActions by rememberSaveable { mutableStateOf(false) }
     var showDeleteConfirm by rememberSaveable { mutableStateOf(false) }
     val project by viewModel.observeProject(projectId).collectAsState(initial = null)
+    // lambda 中无法调用 stringResource,先在组合作用域取好文本再闭包引用。
+    val deleteFailedText = stringResource(R.string.projects_delete_failed)
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -70,7 +74,7 @@ fun ProjectWorkspaceScreen(
         Scaffold(
             topBar = {
                 ProjectTopBar(
-                    projectName = project?.name ?: "未命名项目",
+                    projectName = project?.name ?: stringResource(R.string.workspace_unnamed_project),
                     onBackClick = onProjectPickerClick,
                     onSessionsClick = { scope.launch { drawerState.open() } },
                     onPreviewClick = onPreviewClick,
@@ -101,8 +105,8 @@ fun ProjectWorkspaceScreen(
     if (showDeleteConfirm) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirm = false },
-            title = { Text("删除项目") },
-            text = { Text("将删除该项目及其全部会话,此操作无法撤销。") },
+            title = { Text(stringResource(R.string.delete_project_title)) },
+            text = { Text(stringResource(R.string.delete_project_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -112,16 +116,21 @@ fun ProjectWorkspaceScreen(
                             result
                                 .onSuccess { onProjectPickerClick() }
                                 .onFailure {
-                                    scope.launch { snackbarHostState.showSnackbar("删除项目失败,请重试") }
+                                    scope.launch { snackbarHostState.showSnackbar(deleteFailedText) }
                                 }
                         }
                     }
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirm = false }) { Text("取消") }
+                TextButton(onClick = { showDeleteConfirm = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }

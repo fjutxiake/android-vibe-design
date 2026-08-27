@@ -47,4 +47,21 @@
     <string name="time_hours_ago">%1$d hr ago</string>
     <string name="time_days_ago">%1$d d ago</string>
     <string name="time_absolute_date_pattern">MMM d</string>
+    <!-- Workspace -->
+    <string name="workspace_unnamed_project">Unnamed project</string>
+    <string name="workspace_cd_back_home">Back to projects</string>
+    <string name="workspace_cd_sessions">Switch session</string>
+    <string name="workspace_cd_preview">Open preview</string>
+    <string name="workspace_cd_actions">Project actions</string>
+    <string name="workspace_action_build">Build &amp; package</string>
+    <string name="workspace_action_versions">Versions</string>
+    <string name="workspace_action_project_settings">Project settings</string>
+    <string name="workspace_action_app_settings">App settings</string>
+    <!-- Chat -->
+    <string name="chat_cd_add_tool">Add tool</string>
+    <string name="chat_input_hint">Describe what you want to build</string>
+    <string name="chat_cd_send">Send</string>
+    <string name="chat_empty_title">Start a new conversation</string>
+    <string name="chat_empty_no_session">Project %1$s · No session yet</string>
+    <string name="chat_empty_session">Project %1$s · Session %2$s</string>
 </resources>

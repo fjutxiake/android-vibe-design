@@ -11,6 +11,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -25,18 +27,30 @@ fun ProjectTopBar(
         title = { Text(projectName) },
         navigationIcon = {
             IconButton(onClick = onBackClick) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回首页")
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = stringResource(R.string.workspace_cd_back_home)
+                )
             }
         },
         actions = {
             IconButton(onClick = onSessionsClick) {
-                Icon(imageVector = Icons.Filled.Menu, contentDescription = "切换会话")
+                Icon(
+                    imageVector = Icons.Filled.Menu,
+                    contentDescription = stringResource(R.string.workspace_cd_sessions)
+                )
             }
             IconButton(onClick = onPreviewClick) {
-                Icon(imageVector = Icons.Filled.OpenInBrowser, contentDescription = "在线预览")
+                Icon(
+                    imageVector = Icons.Filled.OpenInBrowser,
+                    contentDescription = stringResource(R.string.workspace_cd_preview)
+                )
             }
             IconButton(onClick = onMoreClick) {
-                Icon(imageVector = Icons.Filled.MoreVert, contentDescription = "项目操作")
+                Icon(
+                    imageVector = Icons.Filled.MoreVert,
+                    contentDescription = stringResource(R.string.workspace_cd_actions)
+                )
             }
         }
     )

@@ -7,6 +7,8 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
 @Composable
@@ -17,13 +19,16 @@ fun ChatEmptyState(projectId: String, sessionId: String?, modifier: Modifier = M
         modifier = modifier.padding(spacing.lg),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text(text = "开始新的对话", style = MaterialTheme.typography.headlineSmall)
+        Text(
+            text = stringResource(R.string.chat_empty_title),
+            style = MaterialTheme.typography.headlineSmall
+        )
         Text(
             text =
             if (sessionId == null) {
-                "项目 $projectId · 尚未创建会话"
+                stringResource(R.string.chat_empty_no_session, projectId)
             } else {
-                "项目 $projectId · 会话 $sessionId"
+                stringResource(R.string.chat_empty_session, projectId, sessionId)
             },
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             style = MaterialTheme.typography.bodySmall

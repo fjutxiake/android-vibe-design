@@ -47,4 +47,21 @@
     <string name="time_hours_ago">%1$d 小时前</string>
     <string name="time_days_ago">%1$d 天前</string>
     <string name="time_absolute_date_pattern">M月d日</string>
+    <!-- Workspace -->
+    <string name="workspace_unnamed_project">未命名项目</string>
+    <string name="workspace_cd_back_home">返回首页</string>
+    <string name="workspace_cd_sessions">切换会话</string>
+    <string name="workspace_cd_preview">在线预览</string>
+    <string name="workspace_cd_actions">项目操作</string>
+    <string name="workspace_action_build">打包与构建</string>
+    <string name="workspace_action_versions">版本管理</string>
+    <string name="workspace_action_project_settings">项目设置</string>
+    <string name="workspace_action_app_settings">应用设置</string>
+    <!-- Chat -->
+    <string name="chat_cd_add_tool">添加工具</string>
+    <string name="chat_input_hint">向 AI 描述你想构建的内容</string>
+    <string name="chat_cd_send">发送</string>
+    <string name="chat_empty_title">开始新的对话</string>
+    <string name="chat_empty_no_session">项目 %1$s · 尚未创建会话</string>
+    <string name="chat_empty_session">项目 %1$s · 会话 %2$s</string>
 </resources>
