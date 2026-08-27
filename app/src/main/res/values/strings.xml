@@ -22,4 +22,29 @@
     <string name="save">保存</string>
     <string name="delete_session_title">删除会话</string>
     <string name="delete_session_confirm">确定删除「%1$s」吗？删除后不可恢复。</string>
+    <!-- Projects -->
+    <string name="projects_cd_new_project">新建项目</string>
+    <string name="projects_cd_settings">设置</string>
+    <string name="projects_new_title">新建项目</string>
+    <string name="projects_name_placeholder">例如：周末去哪</string>
+    <string name="description_label">描述</string>
+    <string name="projects_description_placeholder">用一句话说明这个 App</string>
+    <string name="projects_create_button">创建项目</string>
+    <string name="projects_edit_title">编辑项目</string>
+    <string name="projects_cd_pick_icon">选择应用图标</string>
+    <string name="projects_cd_selected_icon">已选择的应用图标</string>
+    <string name="projects_icon_crop_failed">图标裁剪失败，请重新选择</string>
+    <string name="projects_create_failed">创建项目失败,请重试</string>
+    <string name="projects_update_failed">保存项目失败,请重试</string>
+    <string name="projects_delete_failed">删除项目失败,请重试</string>
+    <string name="projects_empty">还没有项目,点击右上角 + 创建第一个</string>
+    <string name="delete_project_title">删除项目</string>
+    <string name="delete_project_message">将删除该项目及其全部会话,此操作无法撤销。</string>
+    <string name="delete">删除</string>
+    <!-- Relative time -->
+    <string name="time_just_now">刚刚</string>
+    <string name="time_minutes_ago">%1$d 分钟前</string>
+    <string name="time_hours_ago">%1$d 小时前</string>
+    <string name="time_days_ago">%1$d 天前</string>
+    <string name="time_absolute_date_pattern">M月d日</string>
 </resources>

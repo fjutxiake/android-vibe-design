@@ -27,7 +27,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.tooling.preview.Preview
+import com.aeibi.design.R
 import com.aeibi.design.data.projects.Project
 import com.aeibi.design.theme.VibeDesignTheme
 import com.aeibi.design.theme.spacing
@@ -57,24 +59,30 @@ fun ProjectsScreen(
     val spacing = MaterialTheme.spacing
     var showNewProjectSheet by rememberSaveable { mutableStateOf(false) }
     var editingProject by remember { mutableStateOf<Project?>(null) }
-    var createError by rememberSaveable { mutableStateOf<String?>(null) }
-    var editError by rememberSaveable { mutableStateOf<String?>(null) }
+    var createError by rememberSaveable { mutableStateOf<Int?>(null) }
+    var editError by rememberSaveable { mutableStateOf<Int?>(null) }
     var creating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("Vibe Design") },
+                title = { Text(stringResource(R.string.app_name)) },
                 actions = {
                     IconButton(
                         onClick = { showNewProjectSheet = true },
                         modifier = Modifier.testTag("new_project_button")
                     ) {
-                        Icon(imageVector = Icons.Filled.Add, contentDescription = "新建项目")
+                        Icon(
+                            imageVector = Icons.Filled.Add,
+                            contentDescription = stringResource(R.string.projects_cd_new_project)
+                        )
                     }
                     IconButton(onClick = onSettingsClick) {
-                        Icon(imageVector = Icons.Filled.Settings, contentDescription = "设置")
+                        Icon(
+                            imageVector = Icons.Filled.Settings,
+                            contentDescription = stringResource(R.string.projects_cd_settings)
+                        )
                     }
                 }
             )
@@ -115,7 +123,7 @@ fun ProjectsScreen(
                     creating = false
                     result
                         .onSuccess { showNewProjectSheet = false }
-                        .onFailure { createError = "创建项目失败,请重试" }
+                        .onFailure { createError = R.string.projects_create_failed }
                 }
             },
             errorMessage = createError,
@@ -137,7 +145,7 @@ fun ProjectsScreen(
                     editing = false
                     result
                         .onSuccess { editingProject = null }
-                        .onFailure { editError = "保存项目失败,请重试" }
+                        .onFailure { editError = R.string.projects_update_failed }
                 }
             },
             onDelete = {
@@ -147,7 +155,7 @@ fun ProjectsScreen(
                     editing = false
                     result
                         .onSuccess { editingProject = null }
-                        .onFailure { editError = "删除项目失败,请重试" }
+                        .onFailure { editError = R.string.projects_delete_failed }
                 }
             },
             errorMessage = editError,
@@ -163,7 +171,7 @@ private fun EmptyProjectsState(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center
     ) {
         Text(
-            text = "还没有项目,点击右上角 + 创建第一个",
+            text = stringResource(R.string.projects_empty),
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
     }

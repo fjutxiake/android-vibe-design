@@ -22,4 +22,29 @@
     <string name="save">Save</string>
     <string name="delete_session_title">Delete session</string>
     <string name="delete_session_confirm">Delete "%1$s"? This cannot be undone.</string>
+    <!-- Projects -->
+    <string name="projects_cd_new_project">New project</string>
+    <string name="projects_cd_settings">Settings</string>
+    <string name="projects_new_title">New project</string>
+    <string name="projects_name_placeholder">e.g. Weekend getaway</string>
+    <string name="description_label">Description</string>
+    <string name="projects_description_placeholder">Describe this app in one sentence</string>
+    <string name="projects_create_button">Create project</string>
+    <string name="projects_edit_title">Edit project</string>
+    <string name="projects_cd_pick_icon">Choose app icon</string>
+    <string name="projects_cd_selected_icon">Selected app icon</string>
+    <string name="projects_icon_crop_failed">Icon cropping failed. Please choose another image</string>
+    <string name="projects_create_failed">Failed to create the project. Please try again</string>
+    <string name="projects_update_failed">Failed to save the project. Please try again</string>
+    <string name="projects_delete_failed">Failed to delete the project. Please try again</string>
+    <string name="projects_empty">No projects yet. Tap + in the top-right to create your first one</string>
+    <string name="delete_project_title">Delete project</string>
+    <string name="delete_project_message">This will delete the project and all of its sessions. This cannot be undone.</string>
+    <string name="delete">Delete</string>
+    <!-- Relative time -->
+    <string name="time_just_now">Just now</string>
+    <string name="time_minutes_ago">%1$d min ago</string>
+    <string name="time_hours_ago">%1$d hr ago</string>
+    <string name="time_days_ago">%1$d d ago</string>
+    <string name="time_absolute_date_pattern">MMM d</string>
 </resources>

@@ -1,5 +1,6 @@
 package com.aeibi.design.feature.projects
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,7 +21,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
 @Composable
@@ -28,13 +31,13 @@ import com.aeibi.design.theme.spacing
 fun NewProjectBottomSheet(
     onDismiss: () -> Unit,
     onCreate: (name: String, description: String, iconUri: String?) -> Unit,
-    errorMessage: String? = null,
+    @StringRes errorMessage: Int? = null,
     submitting: Boolean = false
 ) {
     var name by rememberSaveable { mutableStateOf("") }
     var description by rememberSaveable { mutableStateOf("") }
     var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
-    var iconError by rememberSaveable { mutableStateOf<String?>(null) }
+    var iconError by rememberSaveable { mutableStateOf<Int?>(null) }
     val spacing = MaterialTheme.spacing
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
@@ -48,7 +51,7 @@ fun NewProjectBottomSheet(
             verticalArrangement = Arrangement.spacedBy(spacing.md)
         ) {
             Text(
-                text = "新建项目",
+                text = stringResource(R.string.projects_new_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -58,29 +61,29 @@ fun NewProjectBottomSheet(
                     iconUri = it
                     iconError = null
                 },
-                onCropError = { iconError = "图标裁剪失败，请重新选择" }
+                onCropError = { iconError = R.string.projects_icon_crop_failed }
             )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth().testTag("project_name_input"),
-                label = { Text("名称") },
-                placeholder = { Text("例如：周末去哪") },
+                label = { Text(stringResource(R.string.name_label)) },
+                placeholder = { Text(stringResource(R.string.projects_name_placeholder)) },
                 singleLine = true
             )
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
                 modifier = Modifier.fillMaxWidth().testTag("project_description_input"),
-                label = { Text("描述") },
-                placeholder = { Text("用一句话说明这个 App") },
+                label = { Text(stringResource(R.string.description_label)) },
+                placeholder = { Text(stringResource(R.string.projects_description_placeholder)) },
                 minLines = 3,
                 maxLines = 4
             )
             val visibleError = errorMessage ?: iconError
             if (visibleError != null) {
                 Text(
-                    text = visibleError,
+                    text = stringResource(visibleError),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.testTag("create_project_error")
@@ -90,12 +93,12 @@ fun NewProjectBottomSheet(
                 modifier = Modifier.fillMaxWidth().padding(top = spacing.sm, bottom = spacing.lg),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(onClick = onDismiss) { Text("取消") }
+                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
                 Button(
                     onClick = { onCreate(name, description, iconUri) },
                     enabled = name.isNotBlank() && !submitting
                 ) {
-                    Text("创建项目")
+                    Text(stringResource(R.string.projects_create_button))
                 }
             }
         }

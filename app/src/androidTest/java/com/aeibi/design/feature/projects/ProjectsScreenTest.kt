@@ -10,6 +10,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import com.aeibi.design.R
 import com.aeibi.design.data.projects.Project
 import java.io.IOException
 import org.junit.Assert.assertEquals
@@ -70,10 +71,14 @@ class ProjectsScreenTest {
         composeTestRule
             .onNodeWithText("日常发芽")
             .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
-        composeTestRule.onNodeWithText("编辑项目").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.projects_edit_title))
+            .assertIsDisplayed()
         composeTestRule.onNodeWithTag("edit_project_name_input").performTextClearance()
         composeTestRule.onNodeWithTag("edit_project_name_input").performTextInput("新名称")
-        composeTestRule.onNodeWithText("保存").performClick()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.save))
+            .performClick()
 
         assertEquals(listOf("1", "新名称", "不焦虑的日常习惯记录", null), updated)
     }
@@ -95,7 +100,9 @@ class ProjectsScreenTest {
             .onNodeWithText("日常发芽")
             .performSemanticsAction(SemanticsActions.OnLongClick) { it() }
         composeTestRule.onNodeWithTag("delete_project_button").performClick()
-        composeTestRule.onNodeWithText("删除项目").assertIsDisplayed()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.delete_project_title))
+            .assertIsDisplayed()
         composeTestRule.onNodeWithTag("confirm_delete_project_button").performClick()
 
         assertEquals("1", deletedId)
@@ -114,7 +121,9 @@ class ProjectsScreenTest {
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
         composeTestRule.onNodeWithTag("project_description_input").performTextInput("描述")
-        composeTestRule.onNodeWithText("创建项目").performClick()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
+            .performClick()
 
         assertEquals("新项目", created?.first)
         assertEquals("描述", created?.second)
@@ -131,7 +140,9 @@ class ProjectsScreenTest {
 
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
-        composeTestRule.onNodeWithText("创建项目").performClick()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
+            .performClick()
 
         // 失败时面板必须留着,已填的名称不能丢,并且要给出错误提示。
         composeTestRule.onNodeWithTag("create_project_error").assertIsDisplayed()
@@ -148,7 +159,9 @@ class ProjectsScreenTest {
 
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
-        composeTestRule.onNodeWithText("创建项目").performClick()
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
+            .performClick()
 
         composeTestRule.onNodeWithTag("project_name_input").assertDoesNotExist()
     }

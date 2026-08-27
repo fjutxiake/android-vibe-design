@@ -1,5 +1,6 @@
 package com.aeibi.design.feature.projects
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -21,7 +22,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import com.aeibi.design.R
 import com.aeibi.design.data.projects.Project
 import com.aeibi.design.theme.spacing
 
@@ -32,13 +35,13 @@ fun EditProjectBottomSheet(
     onDismiss: () -> Unit,
     onSave: (name: String, description: String, iconUri: String?) -> Unit,
     onDelete: () -> Unit,
-    errorMessage: String? = null,
+    @StringRes errorMessage: Int? = null,
     submitting: Boolean = false
 ) {
     var name by rememberSaveable(project.id) { mutableStateOf(project.name) }
     var description by rememberSaveable(project.id) { mutableStateOf(project.description) }
     var pickedIconUri by rememberSaveable(project.id) { mutableStateOf<String?>(null) }
-    var iconError by rememberSaveable(project.id) { mutableStateOf<String?>(null) }
+    var iconError by rememberSaveable(project.id) { mutableStateOf<Int?>(null) }
     var showDeleteConfirmation by rememberSaveable(project.id) { mutableStateOf(false) }
     val spacing = MaterialTheme.spacing
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
@@ -53,7 +56,7 @@ fun EditProjectBottomSheet(
             verticalArrangement = Arrangement.spacedBy(spacing.md)
         ) {
             Text(
-                text = "编辑项目",
+                text = stringResource(R.string.projects_edit_title),
                 style = MaterialTheme.typography.headlineSmall,
                 fontWeight = FontWeight.SemiBold
             )
@@ -63,27 +66,27 @@ fun EditProjectBottomSheet(
                     pickedIconUri = it
                     iconError = null
                 },
-                onCropError = { iconError = "图标裁剪失败，请重新选择" }
+                onCropError = { iconError = R.string.projects_icon_crop_failed }
             )
             OutlinedTextField(
                 value = name,
                 onValueChange = { name = it },
                 modifier = Modifier.fillMaxWidth().testTag("edit_project_name_input"),
-                label = { Text("名称") },
+                label = { Text(stringResource(R.string.name_label)) },
                 singleLine = true
             )
             OutlinedTextField(
                 value = description,
                 onValueChange = { description = it },
                 modifier = Modifier.fillMaxWidth().testTag("edit_project_description_input"),
-                label = { Text("描述") },
+                label = { Text(stringResource(R.string.description_label)) },
                 minLines = 3,
                 maxLines = 4
             )
             val visibleError = errorMessage ?: iconError
             if (visibleError != null) {
                 Text(
-                    text = visibleError,
+                    text = stringResource(visibleError),
                     color = MaterialTheme.colorScheme.error,
                     style = MaterialTheme.typography.bodySmall,
                     modifier = Modifier.testTag("edit_project_error")
@@ -98,15 +101,20 @@ fun EditProjectBottomSheet(
                     enabled = !submitting,
                     modifier = Modifier.testTag("delete_project_button")
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(spacing.sm)) {
-                    TextButton(onClick = onDismiss, enabled = !submitting) { Text("取消") }
+                    TextButton(onClick = onDismiss, enabled = !submitting) {
+                        Text(stringResource(R.string.cancel))
+                    }
                     Button(
                         onClick = { onSave(name, description, pickedIconUri) },
                         enabled = name.isNotBlank() && !submitting
                     ) {
-                        Text("保存")
+                        Text(stringResource(R.string.save))
                     }
                 }
             }
@@ -116,8 +124,8 @@ fun EditProjectBottomSheet(
     if (showDeleteConfirmation) {
         AlertDialog(
             onDismissRequest = { showDeleteConfirmation = false },
-            title = { Text("删除项目") },
-            text = { Text("将删除该项目及其全部会话,此操作无法撤销。") },
+            title = { Text(stringResource(R.string.delete_project_title)) },
+            text = { Text(stringResource(R.string.delete_project_message)) },
             confirmButton = {
                 TextButton(
                     onClick = {
@@ -126,11 +134,16 @@ fun EditProjectBottomSheet(
                     },
                     modifier = Modifier.testTag("confirm_delete_project_button")
                 ) {
-                    Text("删除", color = MaterialTheme.colorScheme.error)
+                    Text(
+                        stringResource(R.string.delete),
+                        color = MaterialTheme.colorScheme.error
+                    )
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDeleteConfirmation = false }) { Text("取消") }
+                TextButton(onClick = { showDeleteConfirmation = false }) {
+                    Text(stringResource(R.string.cancel))
+                }
             }
         )
     }

@@ -21,9 +21,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.stringResource
 import androidx.core.net.toUri
 import coil3.compose.AsyncImage
 import coil3.request.ImageRequest
+import com.aeibi.design.R
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.systemAppIconShape
 import com.yalantis.ucrop.UCrop
@@ -82,7 +84,7 @@ fun ProjectIconPicker(
         if (iconUri == null) {
             Icon(
                 imageVector = Icons.Filled.AddPhotoAlternate,
-                contentDescription = "选择应用图标",
+                contentDescription = stringResource(R.string.projects_cd_pick_icon),
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(MaterialTheme.dimensions.iconLarge)
             )
@@ -91,7 +93,7 @@ fun ProjectIconPicker(
                 model = ImageRequest.Builder(context)
                     .data(iconUri)
                     .build(),
-                contentDescription = "已选择的应用图标",
+                contentDescription = stringResource(R.string.projects_cd_selected_icon),
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
             )

@@ -8,14 +8,20 @@ class ProjectTimeFormatTest {
     private val now = 1_000_000_000_000L
 
     @Test
-    fun justNow() = assertEquals("刚刚", formatRelativeTime(now - 30_000L, now))
+    fun justNow() = assertEquals(RelativeTime.JustNow, relativeTimeOf(now - 30_000L, now))
 
     @Test
-    fun minutesAgo() = assertEquals("5 分钟前", formatRelativeTime(now - 5 * 60_000L, now))
+    fun minutesAgo() = assertEquals(RelativeTime.MinutesAgo(5), relativeTimeOf(now - 5 * 60_000L, now))
 
     @Test
-    fun hoursAgo() = assertEquals("3 小时前", formatRelativeTime(now - 3 * 3_600_000L, now))
+    fun hoursAgo() = assertEquals(RelativeTime.HoursAgo(3), relativeTimeOf(now - 3 * 3_600_000L, now))
 
     @Test
-    fun daysAgo() = assertEquals("2 天前", formatRelativeTime(now - 2 * 86_400_000L, now))
+    fun daysAgo() = assertEquals(RelativeTime.DaysAgo(2), relativeTimeOf(now - 2 * 86_400_000L, now))
+
+    @Test
+    fun olderThanAWeek_fallsBackToAbsoluteDate() = assertEquals(
+        RelativeTime.AbsoluteDate(now - 8 * 86_400_000L),
+        relativeTimeOf(now - 8 * 86_400_000L, now)
+    )
 }
