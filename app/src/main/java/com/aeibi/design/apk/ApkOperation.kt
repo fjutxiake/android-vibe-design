@@ -2,6 +2,7 @@ package com.aeibi.design.apk
 
 import com.aeibi.design.apk.engine.ApkLayout
 import com.aeibi.design.apk.model.ApkBuildRequest
+import com.aeibi.design.apk.tool.ApkFileToolRegistry
 import java.nio.file.Path
 
 /**
@@ -34,12 +35,14 @@ interface ApkOperation {
  *
  * @param decodedDir 解码后的 APK 明文目录（引擎 [com.aeibi.design.apk.engine.ApkDecoder] 的产物）
  * @param layout     解码产物布局（引擎提供，操作层经此访问 manifest/资源/root 文件）
+ * @param tools      文件操作工具注册表（Operation 经工具完成文件增删改查，保持解耦）
  * @param request    本次构建请求
  * @param log        构建日志回调（进度/结果，供 UI 与"诚实报告"使用）
  */
 class ApkOperationContext(
     val decodedDir: Path,
     val layout: ApkLayout,
+    val tools: ApkFileToolRegistry,
     val request: ApkBuildRequest,
     val log: (String) -> Unit
 )

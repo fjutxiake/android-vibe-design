@@ -20,6 +20,12 @@ import com.aeibi.design.apk.operation.AssetInjectionOperation
 import com.aeibi.design.apk.operation.ConfigJsonOperation
 import com.aeibi.design.apk.operation.IconOperation
 import com.aeibi.design.apk.operation.PackageNameOperation
+import com.aeibi.design.apk.tool.ApkFileTool
+import com.aeibi.design.apk.tool.DeleteFileTool
+import com.aeibi.design.apk.tool.EditFileTool
+import com.aeibi.design.apk.tool.ListFilesTool
+import com.aeibi.design.apk.tool.ReadFileTool
+import com.aeibi.design.apk.tool.WriteFileTool
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -96,6 +102,28 @@ object ApkEngineModule {
     @IntoSet
     fun provideAbiCleanupOperation(): ApkOperation = AbiCleanupOperation()
 
+    // ---- 文件操作工具（原子能力，未来 Agent tool-use 的调用对象）----
+
+    @Provides
+    @IntoSet
+    fun provideReadFileTool(): ApkFileTool = ReadFileTool()
+
+    @Provides
+    @IntoSet
+    fun provideWriteFileTool(): ApkFileTool = WriteFileTool()
+
+    @Provides
+    @IntoSet
+    fun provideEditFileTool(): ApkFileTool = EditFileTool()
+
+    @Provides
+    @IntoSet
+    fun provideDeleteFileTool(): ApkFileTool = DeleteFileTool()
+
+    @Provides
+    @IntoSet
+    fun provideListFilesTool(): ApkFileTool = ListFilesTool()
+
     // ---- 管线装配 ----
 
     @Provides
@@ -106,7 +134,8 @@ object ApkEngineModule {
         zipaligner: Zipaligner,
         signer: ApkSigner,
         signingKeyProvider: SigningKeyProvider,
-        operations: Set<@JvmSuppressWildcards ApkOperation>
+        operations: Set<@JvmSuppressWildcards ApkOperation>,
+        tools: Set<@JvmSuppressWildcards ApkFileTool>
     ): ApkPipeline = ApkPipeline(
         decoder = decoder,
         builder = builder,
@@ -115,6 +144,7 @@ object ApkEngineModule {
         layout = ApkEditorLayout(),
         signingKeyProvider = signingKeyProvider,
         operations = operations.sortedBy(ApkOperation::order),
+        tools = tools,
         logger = BuildLogger { _, _ -> }
     )
 

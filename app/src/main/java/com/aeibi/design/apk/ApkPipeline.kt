@@ -9,6 +9,8 @@ import com.aeibi.design.apk.engine.SigningKeyProvider
 import com.aeibi.design.apk.engine.Zipaligner
 import com.aeibi.design.apk.model.ApkBuildRequest
 import com.aeibi.design.apk.model.ApkBuildResult
+import com.aeibi.design.apk.tool.ApkFileTool
+import com.aeibi.design.apk.tool.ApkFileToolRegistry
 import com.aeibi.design.apk.verify.ApkVerifier
 import com.aeibi.design.apk.verify.VerificationReport
 import java.nio.file.Files
@@ -35,6 +37,7 @@ class ApkPipeline(
     private val signingKeyProvider: SigningKeyProvider = NoSigningKeyProvider,
     private val operations: List<ApkOperation> = emptyList(),
     private val binaryOperations: List<ApkBinaryOperation> = emptyList(),
+    private val tools: Set<ApkFileTool> = emptySet(),
     private val verifier: ApkVerifier? = null,
     private val logger: BuildLogger = PrintBuildLogger,
     private val workDir: Path = ApkIo.createTempDir("apk-build")
@@ -53,10 +56,12 @@ class ApkPipeline(
             logger.log(BuildStage.DECODE, "解码模板: ${request.templateApk.fileName}")
             decoder.decode(request.templateApk, decodedDir)
 
+            val toolRegistry = ApkFileToolRegistry(tools)
             operations.forEach { operation ->
                 val context = ApkOperationContext(
                     decodedDir = decodedDir,
                     layout = layout,
+                    tools = toolRegistry,
                     request = request,
                     log = { logger.log(BuildStage.OPERATION, "$operation.name: $it") }
                 )
@@ -67,7 +72,7 @@ class ApkPipeline(
 
             var apkFile = workDir.resolve("rebuilt.apk")
             logger.log(BuildStage.BUILD, "重打包")
-            builder.build(decodedDir, apkFile)
+            val buildSummary = builder.build(decodedDir, apkFile)
 
             binaryOperations.forEachIndexed { index, operation ->
                 val out = workDir.resolve("binary-$index.apk")
@@ -104,8 +109,9 @@ class ApkPipeline(
             return ApkBuildResult(
                 outputApk = request.outputApk,
                 operationsExecuted = executed,
-                durationMs = System.currentTimeMillis() - startedAt,
-                verification = verification
+                buildSummary = buildSummary,
+                verification = verification,
+                durationMs = System.currentTimeMillis() - startedAt
             )
         } finally {
             workDir.toFile().deleteRecursively()

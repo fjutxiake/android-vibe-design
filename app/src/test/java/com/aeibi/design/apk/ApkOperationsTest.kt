@@ -8,6 +8,12 @@ import com.aeibi.design.apk.operation.AssetInjectionOperation
 import com.aeibi.design.apk.operation.ConfigJsonOperation
 import com.aeibi.design.apk.operation.IconOperation
 import com.aeibi.design.apk.operation.PackageNameOperation
+import com.aeibi.design.apk.tool.ApkFileToolRegistry
+import com.aeibi.design.apk.tool.DeleteFileTool
+import com.aeibi.design.apk.tool.EditFileTool
+import com.aeibi.design.apk.tool.ListFilesTool
+import com.aeibi.design.apk.tool.ReadFileTool
+import com.aeibi.design.apk.tool.WriteFileTool
 import java.nio.file.Files
 import java.nio.file.Path
 import org.junit.Assert.assertEquals
@@ -81,9 +87,20 @@ class ApkOperationsTest {
         ApkOperationContext(
             decodedDir = template,
             layout = ApkEditorLayout(),
+            tools = testTools(),
             request = request,
             log = log
         )
+
+    private fun testTools(): ApkFileToolRegistry = ApkFileToolRegistry(
+        listOf(
+            ReadFileTool(),
+            WriteFileTool(),
+            EditFileTool(),
+            DeleteFileTool(),
+            ListFilesTool()
+        )
+    )
 
     @Test
     fun `修改包名-改package和权限声明但不动组件类名`() {
@@ -107,7 +124,9 @@ class ApkOperationsTest {
         )
         // 组件类名必须保留（dex 类未变）
         assertTrue("组件类名被误改:\n$content", content.contains("com.aeibi.design.App"))
-        assertEquals(listOf("包名: com.aeibi.design → com.vibetest.demo（权限/authority 跟随，组件类名保持模板）"), logs)
+        // 工具日志（edit_file × N）+ 主日志
+        assertTrue(logs.any { it.startsWith("edit_file") })
+        assertTrue(logs.any { it.startsWith("包名: com.aeibi.design → com.vibetest.demo") })
     }
 
     @Test

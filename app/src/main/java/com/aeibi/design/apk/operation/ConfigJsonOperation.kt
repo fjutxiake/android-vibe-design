@@ -1,14 +1,12 @@
 package com.aeibi.design.apk.operation
 
-import com.aeibi.design.apk.ApkIo
 import com.aeibi.design.apk.ApkOperation
 import com.aeibi.design.apk.ApkOperationContext
-import java.nio.file.Files
+import com.aeibi.design.apk.tool.ToolArgs
+import com.aeibi.design.apk.tool.ToolContext
 
 /**
- * 写入 assets/app_config.json（壳的运行时配置）。
- *
- * 解码产物中 root 文件位于 <decoded>/root/，assets 缺失时按需创建。
+ * 写入 assets/app_config.json（壳的运行时配置）——工具编排示范：write_file。
  */
 class ConfigJsonOperation : ApkOperation {
 
@@ -20,12 +18,19 @@ class ConfigJsonOperation : ApkOperation {
         val config = context.request.config ?: return
         require(config.isNotEmpty()) { "config 不能为空" }
 
-        val assetsDir = context.layout.rootDir(context.decodedDir).resolve(ASSETS_DIR)
-        Files.createDirectories(assetsDir)
-
         val json = config.entries
             .joinToString(",\n  ") { (key, value) -> """  "$key": "${escape(value)}"""" }
-        ApkIo.writeString(assetsDir.resolve(CONFIG_FILE), "{\n$json\n}")
+        val path = context.decodedDir
+            .relativize(context.layout.rootDir(context.decodedDir).resolve(ASSETS_DIR).resolve(CONFIG_FILE))
+            .toString()
+
+        val result = context.tools.execute(
+            "write_file",
+            ToolContext(decodedDir = context.decodedDir, log = context.log),
+            ToolArgs(path = path, content = "{\n$json\n}")
+        ) ?: error("工具 write_file 未注册")
+        if (!result.success) error("写入失败: ${result.message}")
+
         context.log("配置: 写入 ${CONFIG_FILE}（${config.size} 项）")
     }
 

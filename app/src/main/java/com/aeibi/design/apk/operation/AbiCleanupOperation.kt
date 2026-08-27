@@ -1,14 +1,12 @@
 package com.aeibi.design.apk.operation
 
-import com.aeibi.design.apk.ApkIo
 import com.aeibi.design.apk.ApkOperation
 import com.aeibi.design.apk.ApkOperationContext
-import java.nio.file.Files
+import com.aeibi.design.apk.tool.ToolArgs
+import com.aeibi.design.apk.tool.ToolContext
 
 /**
- * 删除不需要的 ABI 原生库目录（如保留 arm64-v8a 时删除其余）。
- *
- * 作用于解码产物的 root/lib/ 目录。
+ * 删除不需要的 ABI 原生库目录——工具编排示范：list_files + delete_file。
  */
 class AbiCleanupOperation : ApkOperation {
 
@@ -20,15 +18,23 @@ class AbiCleanupOperation : ApkOperation {
         val whitelist = context.request.abiWhitelist ?: return
         require(whitelist.isNotEmpty()) { "abiWhitelist 不能为空" }
 
-        val libDir = context.layout.rootDir(context.decodedDir).resolve(LIB_DIR)
-        if (!Files.isDirectory(libDir)) return
+        val libDir = context.decodedDir
+            .relativize(context.layout.rootDir(context.decodedDir).resolve(LIB_DIR))
+            .toString()
+        val toolContext = ToolContext(decodedDir = context.decodedDir, log = context.log)
+
+        // list_files：列出 lib/ 下 ABI 目录
+        val list = context.tools.execute("list_files", toolContext, ToolArgs(path = libDir))
+            ?: error("工具 list_files 未注册")
+        if (!list.success) return
+        val entries = list.data?.get("entries") as? List<*> ?: return
 
         var removed = 0
-        ApkIo.list(libDir).forEach { abiDir ->
-            if (Files.isDirectory(abiDir) && abiDir.fileName.toString() !in whitelist) {
-                abiDir.toFile().deleteRecursively()
-                removed++
-            }
+        entries.map { it.toString() }.filter { it !in whitelist }.forEach { abi ->
+            // delete_file：删除非白名单 ABI 目录
+            val result = context.tools.execute("delete_file", toolContext, ToolArgs(path = "$libDir/$abi"))
+                ?: error("工具 delete_file 未注册")
+            if (result.success) removed++
         }
         context.log("ABI: 保留 ${whitelist.joinToString()}，删除 $removed 个目录")
     }

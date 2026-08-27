@@ -4,6 +4,7 @@ import com.aeibi.design.apk.engine.ApkBuilderEngine
 import com.aeibi.design.apk.engine.ApkDecoder
 import com.aeibi.design.apk.engine.ApkLayout
 import com.aeibi.design.apk.engine.ApkSigner
+import com.aeibi.design.apk.engine.BuildSummary
 import com.aeibi.design.apk.engine.FileSigningKeyProvider
 import com.aeibi.design.apk.engine.SigningKey
 import com.aeibi.design.apk.engine.Zipaligner
@@ -31,9 +32,17 @@ class ApkPipelineTest {
             Files.writeString(destDir.resolve("AndroidManifest.xml"), "<manifest/>")
         }
 
-        override fun build(decodedDir: Path, outApk: Path) {
+        override fun build(decodedDir: Path, outApk: Path): BuildSummary {
             calls += "build"
             Files.writeString(outApk, "built")
+            return BuildSummary(
+                apkSizeBytes = 5,
+                entryCount = 1,
+                hasDex = true,
+                dexCount = 1,
+                hasFrontendAssets = false,
+                frontendFileCount = 0
+            )
         }
 
         override fun align(input: Path, output: Path, alignment: Int) {
