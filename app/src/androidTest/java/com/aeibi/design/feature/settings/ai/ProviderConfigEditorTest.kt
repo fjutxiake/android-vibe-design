@@ -5,6 +5,7 @@ import androidx.compose.ui.test.assertIsEnabled
 import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithText
+import com.aeibi.design.R
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.theme.VibeDesignTheme
 import java.util.UUID
@@ -38,10 +39,11 @@ class ProviderConfigEditorTest {
             }
         }
 
-        composeTestRule.onNodeWithText("保存").assertIsNotEnabled()
+        val saveText = composeTestRule.activity.getString(R.string.save)
+        composeTestRule.onNodeWithText(saveText).assertIsNotEnabled()
 
         composeTestRule.runOnIdle { apiKey.complete("existing-key") }
 
-        composeTestRule.onNodeWithText("保存").assertIsEnabled()
+        composeTestRule.onNodeWithText(saveText).assertIsEnabled()
     }
 }

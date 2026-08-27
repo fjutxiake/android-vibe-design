@@ -1,11 +1,10 @@
 package com.aeibi.design.feature.sessions
 
 import android.content.Context
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.R
-import com.aeibi.design.data.i18n.LanguagePreferenceStore
-import com.aeibi.design.data.i18n.withLanguagePreference
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -21,8 +20,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     private val repository: SessionRepository,
-    @ApplicationContext private val context: Context,
-    private val languagePreferenceStore: LanguagePreferenceStore
+    @ApplicationContext private val context: Context
 ) : ViewModel() {
 
     private val _sessions = MutableStateFlow<List<SessionEntity>>(emptyList())
@@ -57,7 +55,5 @@ class SessionViewModel @Inject constructor(
         repository.deleteSession(sessionId)
     }
 
-    /** 应用级 Context 不受应用内 locale 包装，需按当前偏好手动包装后再取字符串。 */
-    private fun defaultTitle(): String =
-        context.withLanguagePreference(languagePreferenceStore.read()).getString(R.string.session_default_title)
+    private fun defaultTitle(): String = ContextCompat.getString(context, R.string.session_default_title)
 }

@@ -25,8 +25,12 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
@@ -34,7 +38,7 @@ import androidx.compose.ui.unit.dp
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aeibi.design.R
-import com.aeibi.design.data.i18n.LanguagePreference
+import com.aeibi.design.i18n.AppLanguage
 import com.aeibi.design.theme.VibeDesignTheme
 import com.aeibi.design.theme.spacing
 
@@ -47,15 +51,18 @@ fun SettingsScreen(
     viewModel: SettingsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val configuration = LocalConfiguration.current
+    var language by remember(configuration) { mutableStateOf(AppLanguage.current()) }
 
     SettingsScreenContent(
         modifier = modifier,
         aiProviderCount = uiState.aiProviderCount,
-        language = uiState.language,
+        language = language,
         onBackClick = onBackClick,
         onAiProvidersClick = onAiProvidersClick,
-        onLanguageClick = { preference ->
-            viewModel.setLanguage(preference)
+        onLanguageClick = { selectedLanguage ->
+            language = selectedLanguage
+            selectedLanguage.setAsCurrent()
         }
     )
 }
@@ -65,10 +72,10 @@ fun SettingsScreen(
 private fun SettingsScreenContent(
     modifier: Modifier = Modifier,
     aiProviderCount: Int = 0,
-    language: LanguagePreference = LanguagePreference.SYSTEM,
+    language: AppLanguage = AppLanguage.SYSTEM,
     onBackClick: () -> Unit = {},
     onAiProvidersClick: () -> Unit = {},
-    onLanguageClick: (LanguagePreference) -> Unit = {}
+    onLanguageClick: (AppLanguage) -> Unit = {}
 ) {
     val spacing = MaterialTheme.spacing
     val aiProvidersSummary = if (aiProviderCount == 0) {
@@ -107,18 +114,18 @@ private fun SettingsScreenContent(
                     Column {
                         LanguageRow(
                             title = stringResource(R.string.language_follow_system),
-                            selected = language == LanguagePreference.SYSTEM,
-                            onClick = { onLanguageClick(LanguagePreference.SYSTEM) }
+                            selected = language == AppLanguage.SYSTEM,
+                            onClick = { onLanguageClick(AppLanguage.SYSTEM) }
                         )
                         LanguageRow(
                             title = stringResource(R.string.language_zh),
-                            selected = language == LanguagePreference.ZH,
-                            onClick = { onLanguageClick(LanguagePreference.ZH) }
+                            selected = language == AppLanguage.SIMPLIFIED_CHINESE,
+                            onClick = { onLanguageClick(AppLanguage.SIMPLIFIED_CHINESE) }
                         )
                         LanguageRow(
                             title = stringResource(R.string.language_en),
-                            selected = language == LanguagePreference.EN,
-                            onClick = { onLanguageClick(LanguagePreference.EN) }
+                            selected = language == AppLanguage.ENGLISH,
+                            onClick = { onLanguageClick(AppLanguage.ENGLISH) }
                         )
                     }
                 }

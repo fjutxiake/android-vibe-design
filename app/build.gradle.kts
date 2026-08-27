@@ -19,6 +19,11 @@ android {
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
+    androidResources {
+        generateLocaleConfig = true
+        localeFilters += listOf("zh", "en")
+    }
+
     buildTypes {
         release {
             isMinifyEnabled = false
