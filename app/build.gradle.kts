@@ -76,6 +76,9 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    // Local static file server
+    implementation(libs.ktor.server.core)
+    implementation(libs.ktor.server.cio)
     // Tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
     // Instrumented tests
