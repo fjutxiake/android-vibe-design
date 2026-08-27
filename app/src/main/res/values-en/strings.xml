@@ -64,4 +64,40 @@
     <string name="chat_empty_title">Start a new conversation</string>
     <string name="chat_empty_no_session">Project %1$s · No session yet</string>
     <string name="chat_empty_session">Project %1$s · Session %2$s</string>
+    <!-- Placeholder screens -->
+    <string name="build_title">Build &amp; package</string>
+    <string name="build_project_label">Project: %1$s</string>
+    <string name="build_log_empty">No build records yet</string>
+    <string name="preview_title">Live preview</string>
+    <string name="preview_cd_fullscreen">Fullscreen preview</string>
+    <string name="preview_placeholder">Live preview area for project %1$s</string>
+    <string name="versions_title">Versions</string>
+    <string name="versions_placeholder">Version history for project %1$s</string>
+    <string name="project_settings_title">Project settings</string>
+    <string name="project_settings_placeholder">Settings for project %1$s</string>
+    <!-- AI providers settings -->
+    <string name="ai_add_service">Add service</string>
+    <string name="ai_no_providers">No AI service configured yet</string>
+    <string name="ai_remove_provider_title">Remove %1$s?</string>
+    <string name="ai_remove_provider_message">The saved API Key will also be removed.</string>
+    <string name="ai_remove">Remove</string>
+    <string name="ai_cd_remove_provider">Remove %1$s</string>
+    <string name="ai_cd_select_provider">Select %1$s</string>
+    <string name="ai_config_saved">Configuration saved</string>
+    <string name="ai_save_failed">Failed to save</string>
+    <string name="ai_config_removed">Configuration removed</string>
+    <string name="ai_delete_failed">Failed to remove</string>
+    <string name="ai_read_key_failed">Cannot read the saved API Key</string>
+    <string name="ai_err_name_empty">Configuration name cannot be empty</string>
+    <string name="ai_err_endpoint_empty">API endpoint cannot be empty</string>
+    <string name="ai_err_models_empty">At least one model is required</string>
+    <string name="ai_cd_hide_key">Hide API Key</string>
+    <string name="ai_cd_show_key">Show API Key</string>
+    <string name="ai_custom_settings">Custom settings</string>
+    <string name="ai_endpoint_label">API endpoint</string>
+    <string name="ai_models_label">Models</string>
+    <string name="ai_model_name_label">Model name</string>
+    <string name="ai_model_number_label">Model %1$d</string>
+    <string name="ai_cd_remove_model">Remove model</string>
+    <string name="ai_add_model">Add model</string>
 </resources>

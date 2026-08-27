@@ -15,6 +15,8 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 
 @Composable
 @OptIn(ExperimentalMaterial3Api::class)
@@ -23,10 +25,13 @@ fun ProjectVersionsScreen(projectId: String, modifier: Modifier = Modifier, onBa
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("版本管理") },
+                title = { Text(stringResource(R.string.versions_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
@@ -37,7 +42,7 @@ fun ProjectVersionsScreen(projectId: String, modifier: Modifier = Modifier, onBa
             contentAlignment = Alignment.Center
         ) {
             Text(
-                text = "项目 $projectId 的版本记录区域",
+                text = stringResource(R.string.versions_placeholder, projectId),
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
         }

@@ -6,6 +6,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
 @Composable
@@ -13,7 +15,7 @@ fun BuildLog(modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.spacing
 
     Text(
-        text = "暂无构建记录",
+        text = stringResource(R.string.build_log_empty),
         modifier = modifier.fillMaxWidth().padding(vertical = spacing.lg),
         color = MaterialTheme.colorScheme.onSurfaceVariant
     )

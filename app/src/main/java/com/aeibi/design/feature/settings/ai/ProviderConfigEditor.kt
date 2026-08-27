@@ -42,11 +42,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.unit.dp
+import com.aeibi.design.R
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.theme.spacing
 
@@ -119,21 +121,23 @@ fun ProviderConfigEditor(
                 value = displayName,
                 onValueChange = { displayName = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("名称") },
+                label = { Text(stringResource(R.string.name_label)) },
                 singleLine = true
             )
             OutlinedTextField(
                 value = apiKey,
                 onValueChange = { apiKey = it },
                 modifier = Modifier.fillMaxWidth(),
-                label = { Text("API Key") },
+                label = { Text(stringResource(R.string.ai_api_key_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password),
                 visualTransformation = if (apiKeyVisible) VisualTransformation.None else PasswordVisualTransformation(),
                 trailingIcon = {
                     IconButton(onClick = { apiKeyVisible = !apiKeyVisible }) {
                         Icon(
                             imageVector = if (apiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
-                            contentDescription = if (apiKeyVisible) "隐藏 API Key" else "显示 API Key"
+                            contentDescription = stringResource(
+                                if (apiKeyVisible) R.string.ai_cd_hide_key else R.string.ai_cd_show_key
+                            )
                         )
                     }
                 },
@@ -147,7 +151,7 @@ fun ProviderConfigEditor(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(spacing.xs))
-                Text("自定义设置")
+                Text(stringResource(R.string.ai_custom_settings))
             }
 
             if (showCustomSettings) {
@@ -155,12 +159,12 @@ fun ProviderConfigEditor(
                     value = endpoint,
                     onValueChange = { endpoint = it },
                     modifier = Modifier.fillMaxWidth(),
-                    label = { Text("API 地址") },
+                    label = { Text(stringResource(R.string.ai_endpoint_label)) },
                     singleLine = true
                 )
 
                 Text(
-                    "模型",
+                    stringResource(R.string.ai_models_label),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -170,7 +174,15 @@ fun ProviderConfigEditor(
                             value = model,
                             onValueChange = { value -> models = models.toMutableList().also { it[index] = value } },
                             modifier = Modifier.weight(1f),
-                            label = { Text(if (models.size == 1) "模型名称" else "模型 ${index + 1}") },
+                            label = {
+                                Text(
+                                    if (models.size == 1) {
+                                        stringResource(R.string.ai_model_name_label)
+                                    } else {
+                                        stringResource(R.string.ai_model_number_label, index + 1)
+                                    }
+                                )
+                            },
                             singleLine = true
                         )
                         IconButton(onClick = {
@@ -180,14 +192,17 @@ fun ProviderConfigEditor(
                                 models.filterIndexed { modelIndex, _ -> modelIndex != index }
                             }
                         }) {
-                            Icon(Icons.Default.DeleteOutline, contentDescription = "移除模型")
+                            Icon(
+                                Icons.Default.DeleteOutline,
+                                contentDescription = stringResource(R.string.ai_cd_remove_model)
+                            )
                         }
                     }
                 }
                 TextButton(onClick = { models = models + "" }) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(spacing.xs))
-                    Text("添加模型")
+                    Text(stringResource(R.string.ai_add_model))
                 }
             }
 
@@ -203,7 +218,7 @@ fun ProviderConfigEditor(
                         color = MaterialTheme.colorScheme.onPrimary
                     )
                 } else {
-                    Text("保存")
+                    Text(stringResource(R.string.save))
                 }
             }
         }

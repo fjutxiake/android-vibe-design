@@ -22,8 +22,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import com.aeibi.design.R
 import com.aeibi.design.ai.provider.ProviderDefinition
 import com.aeibi.design.theme.spacing
 import kotlinx.coroutines.launch
@@ -51,7 +53,7 @@ fun ProviderPickerBottomSheet(
             verticalArrangement = Arrangement.spacedBy(spacing.xs)
         ) {
             Text(
-                text = "添加服务",
+                text = stringResource(R.string.ai_add_service),
                 modifier = Modifier.padding(horizontal = spacing.xs),
                 fontWeight = FontWeight.SemiBold
             )
@@ -78,7 +80,10 @@ fun ProviderPickerBottomSheet(
                     trailingContent = {
                         Icon(
                             Icons.AutoMirrored.Filled.ArrowForward,
-                            contentDescription = "选择 ${provider.displayName}"
+                            contentDescription = stringResource(
+                                R.string.ai_cd_select_provider,
+                                provider.displayName
+                            )
                         )
                     }
                 )

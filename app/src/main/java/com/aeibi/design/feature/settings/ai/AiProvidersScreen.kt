@@ -41,6 +41,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
@@ -92,8 +93,8 @@ private fun AiProvidersContent(
     var showProviderPicker by remember { mutableStateOf(false) }
 
     LaunchedEffect(uiState.feedback) {
-        uiState.feedback?.let { message ->
-            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        uiState.feedback?.let { resId ->
+            Toast.makeText(context, resId, Toast.LENGTH_SHORT).show()
             onClearFeedback()
         }
     }
@@ -102,10 +103,13 @@ private fun AiProvidersContent(
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("AI 服务") },
+                title = { Text(stringResource(R.string.ai_services_row)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
@@ -178,15 +182,24 @@ private fun AiProvidersContent(
     pendingDelete?.let { config ->
         AlertDialog(
             onDismissRequest = { pendingDelete = null },
-            title = { Text("移除 ${config.displayName}？") },
-            text = { Text("保存的 API Key 也会被移除。") },
+            title = { Text(stringResource(R.string.ai_remove_provider_title, config.displayName)) },
+            text = { Text(stringResource(R.string.ai_remove_provider_message)) },
             confirmButton = {
                 TextButton(onClick = {
                     onDeleteProvider(config.id)
                     pendingDelete = null
-                }) { Text("移除", color = MaterialTheme.colorScheme.error) }
+                }) {
+                    Text(
+                        stringResource(R.string.ai_remove),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
             },
-            dismissButton = { TextButton(onClick = { pendingDelete = null }) { Text("取消") } }
+            dismissButton = {
+                TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
         )
     }
 }
@@ -287,7 +300,12 @@ private fun ProviderGroup(
                         Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.padding(spacing.xs))
                     }
                 },
-                headlineContent = { Text("添加服务", color = MaterialTheme.colorScheme.primary) }
+                headlineContent = {
+                    Text(
+                        stringResource(R.string.ai_add_service),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
             )
         }
     }
@@ -327,7 +345,10 @@ private fun ProviderRow(item: ProviderConfigItem, providerIconRes: Int, onClick:
             IconButton(onClick = onDelete) {
                 Icon(
                     Icons.Default.DeleteOutline,
-                    contentDescription = "移除 ${item.config.displayName}",
+                    contentDescription = stringResource(
+                        R.string.ai_cd_remove_provider,
+                        item.config.displayName
+                    ),
                     tint = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
@@ -349,7 +370,10 @@ private fun EmptyProviderState(onAdd: () -> Unit) {
             modifier = Modifier.size(32.dp),
             tint = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Text("尚未添加 AI 服务", color = MaterialTheme.colorScheme.onSurfaceVariant)
-        TextButton(onClick = onAdd) { Text("添加服务") }
+        Text(
+            stringResource(R.string.ai_no_providers),
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        TextButton(onClick = onAdd) { Text(stringResource(R.string.ai_add_service)) }
     }
 }

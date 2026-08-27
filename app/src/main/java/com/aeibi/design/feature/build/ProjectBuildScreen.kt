@@ -14,6 +14,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
 @Composable
@@ -25,17 +27,20 @@ fun ProjectBuildScreen(projectId: String, modifier: Modifier = Modifier, onBackC
         modifier = modifier.fillMaxSize(),
         topBar = {
             TopAppBar(
-                title = { Text("打包与构建") },
+                title = { Text(stringResource(R.string.build_title)) },
                 navigationIcon = {
                     IconButton(onClick = onBackClick) {
-                        Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "返回")
+                        Icon(
+                            Icons.AutoMirrored.Filled.ArrowBack,
+                            contentDescription = stringResource(R.string.back)
+                        )
                     }
                 }
             )
         }
     ) { innerPadding ->
         Column(modifier = Modifier.fillMaxSize().padding(innerPadding).padding(spacing.md)) {
-            Text("项目：$projectId")
+            Text(stringResource(R.string.build_project_label, projectId))
             BuildLog()
         }
     }
