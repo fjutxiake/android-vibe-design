@@ -26,3 +26,6 @@ data object ApplicationSettings : NavKey
 
 @Serializable
 data object ApplicationAiProviders : NavKey
+
+@Serializable
+data object ApplicationLanguageSettings : NavKey

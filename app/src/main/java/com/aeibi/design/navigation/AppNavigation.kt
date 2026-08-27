@@ -18,6 +18,7 @@ import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.SettingsScreen
 import com.aeibi.design.feature.settings.ai.AiProvidersScreen
+import com.aeibi.design.feature.settings.language.LanguageSettingsScreen
 import com.aeibi.design.feature.versions.ProjectVersionsScreen
 import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
@@ -91,11 +92,18 @@ fun AppNavigation() {
                 SettingsScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() },
-                    onAiProvidersClick = { backStack.add(ApplicationAiProviders) }
+                    onAiProvidersClick = { backStack.add(ApplicationAiProviders) },
+                    onLanguageClick = { backStack.add(ApplicationLanguageSettings) }
                 )
             }
             entry<ApplicationAiProviders> {
                 AiProvidersScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ApplicationLanguageSettings> {
+                LanguageSettingsScreen(
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() }
                 )
