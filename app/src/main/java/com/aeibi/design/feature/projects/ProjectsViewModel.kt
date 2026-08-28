@@ -2,6 +2,7 @@ package com.aeibi.design.feature.projects
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.projects.Project
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionRepository
@@ -15,7 +16,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ProjectsViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val messageRepository: MessageRepository
 ) : ViewModel() {
 
     val projects: StateFlow<List<Project>> = projectRepository.projects
@@ -52,7 +54,9 @@ class ProjectsViewModel @Inject constructor(
 
     fun deleteProject(id: String, onResult: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
-            // 会话清理是尽力而为:清理失败不该拦住项目删除,留下几条孤儿会话是可以接受的。
+            // 会话与消息清理是尽力而为:清理失败不该拦住项目删除,留下孤儿数据是可以接受的。
+            // 消息清理必须先于会话删除执行,否则消息按会话归属的级联查询会落空。
+            runCatching { messageRepository.deleteMessagesForProject(id) }
             runCatching { sessionRepository.deleteSessionsForProject(id) }
             onResult(runCatching { projectRepository.deleteProject(id) })
         }
