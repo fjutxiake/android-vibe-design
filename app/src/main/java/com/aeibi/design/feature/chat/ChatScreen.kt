@@ -30,6 +30,9 @@ fun ChatScreen(
             messages = messages,
             modifier = Modifier.weight(1f)
         )
-        ChatComposer()
+        ChatComposer(
+            enabled = sessionId != null,
+            onSendMessage = viewModel::sendMessage
+        )
     }
 }

@@ -65,6 +65,8 @@
     <string name="chat_empty_title">开始新的对话</string>
     <string name="chat_empty_no_session">项目 %1$s · 尚未创建会话</string>
     <string name="chat_empty_session">项目 %1$s · 会话 %2$s</string>
+    <string name="chat_status_interrupted">已中断</string>
+    <string name="chat_status_failed">生成失败</string>
     <!-- Placeholder screens -->
     <string name="build_title">打包与构建</string>
     <string name="build_project_label">项目：%1$s</string>

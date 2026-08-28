@@ -65,6 +65,8 @@
     <string name="chat_empty_title">Start a new conversation</string>
     <string name="chat_empty_no_session">Project %1$s · No session yet</string>
     <string name="chat_empty_session">Project %1$s · Session %2$s</string>
+    <string name="chat_status_interrupted">Interrupted</string>
+    <string name="chat_status_failed">Failed</string>
     <!-- Placeholder screens -->
     <string name="build_title">Build &amp; package</string>
     <string name="build_project_label">Project: %1$s</string>
