@@ -5,6 +5,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.R
+import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -20,6 +21,7 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class SessionViewModel @Inject constructor(
     private val repository: SessionRepository,
+    private val messageRepository: MessageRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -52,6 +54,8 @@ class SessionViewModel @Inject constructor(
     }
 
     suspend fun deleteSession(sessionId: String) {
+        // 先清理会话消息再删会话本身，清理失败不阻塞删除（与项目删除的尽力而为风格一致）。
+        runCatching { messageRepository.deleteMessagesForSession(sessionId) }
         repository.deleteSession(sessionId)
     }
 
