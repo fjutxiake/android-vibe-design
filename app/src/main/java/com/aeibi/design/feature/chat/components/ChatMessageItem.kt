@@ -1,6 +1,7 @@
 package com.aeibi.design.feature.chat.components
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,8 +11,11 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
+import com.aeibi.design.R
 import com.aeibi.design.data.messages.MessageEntity
 import com.aeibi.design.data.messages.MessageRole
+import com.aeibi.design.data.messages.MessageStatus
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 
@@ -34,11 +38,29 @@ fun ChatMessageItem(message: MessageEntity, modifier: Modifier = Modifier) {
             },
             modifier = Modifier.widthIn(max = dimensions.chatBubbleMaxWidth)
         ) {
-            Text(
-                text = message.content,
-                modifier = Modifier.padding(spacing.sm),
-                style = MaterialTheme.typography.bodyMedium
-            )
+            Column(modifier = Modifier.padding(spacing.sm)) {
+                Text(
+                    text = message.content,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                // 中断或失败的回复不能伪装成已成功完成的消息。
+                if (message.role == MessageRole.ASSISTANT && message.status != MessageStatus.COMPLETED) {
+                    val failed = message.status == MessageStatus.FAILED
+                    Text(
+                        text = if (failed) {
+                            stringResource(R.string.chat_status_failed)
+                        } else {
+                            stringResource(R.string.chat_status_interrupted)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = if (failed) {
+                            MaterialTheme.colorScheme.error
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+            }
         }
     }
 }
