@@ -12,4 +12,4 @@
 
 ## 参与贡献
 
-欢迎参与项目贡献！在提交 Issue 或 Pull Request 前，请先阅读[贡献指南](docs/CONTRIBUTING_zh.md)。
+欢迎参与项目贡献！在提交 Issue 或 Pull Request 前，请先阅读[贡献指南](docs/CONTRIBUTING_zh.md)。如果仪器测试在 HyperOS（小米）设备上挂起，请参阅 [Running Instrumented Tests on HyperOS Devices](docs/CONTRIBUTING_zh.md#running-instrumented-tests-on-hyperos-devices)。

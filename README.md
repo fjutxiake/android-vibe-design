@@ -12,4 +12,4 @@
 
 ## Contributing
 
-Contributions are welcome! Before submitting an issue or pull request, please read the [contribution guidelines](docs/CONTRIBUTING.md).
+Contributions are welcome! Before submitting an issue or pull request, please read the [contribution guidelines](docs/CONTRIBUTING.md). If instrumented tests hang on a HyperOS (Xiaomi) device, see [Running Instrumented Tests on HyperOS Devices](docs/CONTRIBUTING.md#running-instrumented-tests-on-hyperos-devices).

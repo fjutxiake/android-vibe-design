@@ -34,6 +34,29 @@ cd android-vibe-design
 
 Open the project in Android Studio and wait for Gradle to finish syncing dependencies.
 
+### Running Instrumented Tests on HyperOS Devices
+
+Compose UI tests start their test activity from a background process. HyperOS (Xiaomi)
+blocks background activity starts via an app-op (`MIUIOP 10021`), which aborts the
+test activity launch: the test emits `started:` but never `finished:`, and the Gradle
+run hangs indefinitely. Every APK install also resets the op back to `ignore`.
+
+If instrumented tests hang on a HyperOS device, re-allow the op **after each APK
+install**, then re-run the tests:
+
+```bash
+adb shell cmd appops set com.aeibi.design 10021 allow
+```
+
+Tip: `connectedDebugAndroidTest` reinstalls the APKs on every run, so the sequence
+"install → allow → run" must be repeated each time. Alternatively, allow the op and
+drive the tests with `am instrument` directly, which does not reinstall:
+
+```bash
+adb shell am instrument -w -e class com.aeibi.design.feature.projects.ProjectsScreenTest \
+  com.aeibi.design.test/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## Branch Guidelines
 
 Create a new branch from `master` before making changes.

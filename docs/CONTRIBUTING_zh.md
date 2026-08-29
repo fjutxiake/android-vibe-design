@@ -34,6 +34,29 @@ cd android-vibe-design
 
 使用 Android Studio 打开项目，并等待 Gradle 完成依赖同步。
 
+### Running Instrumented Tests on HyperOS Devices
+
+Compose UI 测试需要从后台进程启动测试 Activity。HyperOS（小米）会通过 app-op
+（`MIUIOP 10021`）拦截后台 Activity 启动，导致测试 Activity 无法启动：测试只输出
+`started:` 而永远没有 `finished:`，Gradle 运行无限挂起。并且每次安装 APK 都会
+把该 op 重置回 `ignore`。
+
+如果仪器测试在 HyperOS 设备上挂起，请在**每次安装 APK 之后**重新放开该 op，
+再运行测试：
+
+```bash
+adb shell cmd appops set com.aeibi.design 10021 allow
+```
+
+提示：`connectedDebugAndroidTest` 每次运行都会重装 APK，因此“安装 → 放开 →
+运行”的顺序每轮都要重复。也可以放开 op 后直接用 `am instrument` 驱动测试，
+它不会触发重装：
+
+```bash
+adb shell am instrument -w -e class com.aeibi.design.feature.projects.ProjectsScreenTest \
+  com.aeibi.design.test/androidx.test.runner.AndroidJUnitRunner
+```
+
 ## Branch Guidelines
 
 请基于 `master` 分支创建新的开发分支。
