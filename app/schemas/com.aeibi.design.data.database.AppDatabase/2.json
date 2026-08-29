@@ -2,7 +2,7 @@
   "formatVersion": 1,
   "database": {
     "version": 2,
-    "identityHash": "9be6f446e26426c61415afcae1030c79",
+    "identityHash": "e4acbfa62177497a874b153d31e9060f",
     "entities": [
       {
         "tableName": "sessions",
@@ -60,7 +60,7 @@
       },
       {
         "tableName": "messages",
-        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `session_id` TEXT NOT NULL, `role` TEXT NOT NULL, `status` TEXT NOT NULL, `content` TEXT NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `session_id` TEXT NOT NULL, `seq` INTEGER NOT NULL, `type` TEXT NOT NULL, `payload` TEXT NOT NULL, `created_at` INTEGER NOT NULL, PRIMARY KEY(`id`), FOREIGN KEY(`session_id`) REFERENCES `sessions`(`id`) ON UPDATE NO ACTION ON DELETE CASCADE )",
         "fields": [
           {
             "fieldPath": "id",
@@ -75,20 +75,20 @@
             "notNull": true
           },
           {
-            "fieldPath": "role",
-            "columnName": "role",
+            "fieldPath": "seq",
+            "columnName": "seq",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
             "affinity": "TEXT",
             "notNull": true
           },
           {
-            "fieldPath": "status",
-            "columnName": "status",
-            "affinity": "TEXT",
-            "notNull": true
-          },
-          {
-            "fieldPath": "content",
-            "columnName": "content",
+            "fieldPath": "payload",
+            "columnName": "payload",
             "affinity": "TEXT",
             "notNull": true
           },
@@ -107,21 +107,34 @@
         },
         "indices": [
           {
-            "name": "index_messages_session_id_created_at",
-            "unique": false,
+            "name": "index_messages_session_id_seq",
+            "unique": true,
             "columnNames": [
               "session_id",
-              "created_at"
+              "seq"
             ],
             "orders": [],
-            "createSql": "CREATE INDEX IF NOT EXISTS `index_messages_session_id_created_at` ON `${TABLE_NAME}` (`session_id`, `created_at`)"
+            "createSql": "CREATE UNIQUE INDEX IF NOT EXISTS `index_messages_session_id_seq` ON `${TABLE_NAME}` (`session_id`, `seq`)"
+          }
+        ],
+        "foreignKeys": [
+          {
+            "table": "sessions",
+            "onDelete": "CASCADE",
+            "onUpdate": "NO ACTION",
+            "columns": [
+              "session_id"
+            ],
+            "referencedColumns": [
+              "id"
+            ]
           }
         ]
       }
     ],
     "setupQueries": [
       "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
-      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, '9be6f446e26426c61415afcae1030c79')"
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e4acbfa62177497a874b153d31e9060f')"
     ]
   }
 }

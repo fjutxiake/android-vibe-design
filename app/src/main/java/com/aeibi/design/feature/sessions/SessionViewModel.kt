@@ -54,9 +54,8 @@ class SessionViewModel @Inject constructor(
     }
 
     suspend fun deleteSession(sessionId: String) {
-        // 先清理会话消息再删会话本身，清理失败不阻塞删除（与项目删除的尽力而为风格一致）。
-        runCatching { messageRepository.deleteMessagesForSession(sessionId) }
-        repository.deleteSession(sessionId)
+        // 会话与消息在同一个 DB 事务里删除(FK 级联兜底),不存在"删了会话留下孤儿消息"的窗口。
+        repository.deleteSessionWithMessages(sessionId, messageRepository)
     }
 
     private fun defaultTitle(): String = ContextCompat.getString(context, R.string.session_default_title)

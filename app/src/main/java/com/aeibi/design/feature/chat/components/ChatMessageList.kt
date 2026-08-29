@@ -12,14 +12,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import com.aeibi.design.data.messages.MessageEntity
+import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.theme.spacing
 
 @Composable
 fun ChatMessageList(
     projectId: String,
     sessionId: String?,
-    messages: List<MessageEntity>,
+    messages: List<MessageEntry>,
     modifier: Modifier = Modifier
 ) {
     if (messages.isEmpty()) {

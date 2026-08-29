@@ -2,9 +2,6 @@ package com.aeibi.design.feature.projects
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.aeibi.design.data.messages.MessageDao
-import com.aeibi.design.data.messages.MessageEntity
-import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
@@ -50,18 +47,11 @@ class ProjectsViewModelTest {
         override suspend fun deleteSession(sessionId: String): Int = 0
 
         override suspend fun deleteSessionsForProject(projectId: String): Int = onDeleteForProject()
-    }
 
-    private class FakeMessageDao(private val onDeleteForProject: () -> Int = { 0 }) : MessageDao {
-        override fun observeMessages(sessionId: String): Flow<List<MessageEntity>> = flowOf(emptyList())
-
-        override suspend fun getMessages(sessionId: String): List<MessageEntity> = emptyList()
-
-        override suspend fun upsertMessage(message: MessageEntity) = Unit
-
-        override suspend fun deleteMessagesForSession(sessionId: String): Int = 0
-
-        override suspend fun deleteMessagesForProject(projectId: String): Int = onDeleteForProject()
+        override suspend fun deleteSessionWithMessages(
+            sessionId: String,
+            messageDao: com.aeibi.design.data.messages.MessageDao
+        ): Int = 0
     }
 
     @Before
@@ -74,13 +64,9 @@ class ProjectsViewModelTest {
         Dispatchers.resetMain()
     }
 
-    private fun viewModel(
-        root: File,
-        dao: SessionDao = FakeSessionDao(),
-        messageDao: MessageDao = FakeMessageDao()
-    ): ProjectsViewModel {
+    private fun viewModel(root: File, dao: SessionDao = FakeSessionDao()): ProjectsViewModel {
         val repository = ProjectRepository(root, context.contentResolver, dispatcher)
-        return ProjectsViewModel(repository, SessionRepository(dao), MessageRepository(messageDao))
+        return ProjectsViewModel(repository, SessionRepository(dao))
     }
 
     @Test
@@ -124,8 +110,7 @@ class ProjectsViewModelTest {
         var result: Result<Unit>? = null
 
         try {
-            ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), MessageRepository(FakeMessageDao()))
-                .deleteProject(created.id) { result = it }
+            viewModel(root).deleteProject(created.id) { result = it }
 
             assertTrue("应当上报失败,实际为 $result", result?.isFailure == true)
         } finally {
@@ -141,8 +126,7 @@ class ProjectsViewModelTest {
         val created = repository.createProject("待删", "", null)
         var result: Result<Unit>? = null
 
-        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), MessageRepository(FakeMessageDao()))
-            .deleteProject(created.id) { result = it }
+        viewModel(root).deleteProject(created.id) { result = it }
 
         assertTrue("应当上报成功,实际为 $result", result?.isSuccess == true)
         assertTrue(!File(root, created.id).exists())
@@ -156,27 +140,11 @@ class ProjectsViewModelTest {
         val failingDao = FakeSessionDao { throw IllegalStateException("数据库不可用") }
         var result: Result<Unit>? = null
 
-        ProjectsViewModel(repository, SessionRepository(failingDao), MessageRepository(FakeMessageDao()))
+        // 复用外部 repository 实例,断言其 projects 缓存随删除同步刷新。
+        ProjectsViewModel(repository, SessionRepository(failingDao))
             .deleteProject(created.id) { result = it }
 
-        // 会话清理是尽力而为:清理失败不应阻止项目删除,留下孤儿会话是可接受的。
-        assertTrue("应当上报成功,实际为 $result", result?.isSuccess == true)
-        assertTrue(!File(root, created.id).exists())
-        assertEquals(emptyList<Any>(), repository.projects.value)
-    }
-
-    @Test
-    fun deleteProject_whenMessageCleanupFails_stillDeletesProjectAndReportsSuccess() = runTest {
-        val root = tmp.newFolder()
-        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
-        val created = repository.createProject("待删", "", null)
-        val failingMessageDao = FakeMessageDao { throw IllegalStateException("数据库不可用") }
-        var result: Result<Unit>? = null
-
-        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), MessageRepository(failingMessageDao))
-            .deleteProject(created.id) { result = it }
-
-        // 消息清理同样是尽力而为:失败不应阻止项目删除。
+        // 会话(连带消息)清理是尽力而为:失败不应阻止项目目录删除。
         assertTrue("应当上报成功,实际为 $result", result?.isSuccess == true)
         assertTrue(!File(root, created.id).exists())
         assertEquals(emptyList<Any>(), repository.projects.value)
