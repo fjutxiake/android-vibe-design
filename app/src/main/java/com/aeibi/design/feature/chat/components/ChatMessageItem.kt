@@ -13,14 +13,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.aeibi.design.R
-import com.aeibi.design.data.messages.MessageEntity
+import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageRole
 import com.aeibi.design.data.messages.MessageStatus
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 
 @Composable
-fun ChatMessageItem(message: MessageEntity, modifier: Modifier = Modifier) {
+fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.spacing
     val dimensions = MaterialTheme.dimensions
     val isUser = message.role == MessageRole.USER

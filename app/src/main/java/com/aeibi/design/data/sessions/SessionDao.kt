@@ -2,6 +2,7 @@ package com.aeibi.design.data.sessions
 
 import androidx.room3.Dao
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -40,4 +41,17 @@ interface SessionDao {
 
     @Query("DELETE FROM sessions WHERE project_id = :projectId")
     suspend fun deleteSessionsForProject(projectId: String): Int
+
+    /**
+     * 删除会话及其消息(单事务):messages 的 FK 级联(ON DELETE CASCADE)
+     * 在 sessions 行删除时同步清掉消息,两步天然原子。
+     */
+    @Transaction
+    suspend fun deleteSessionWithMessages(
+        sessionId: String,
+        messageDao: com.aeibi.design.data.messages.MessageDao
+    ): Int {
+        messageDao.deleteMessagesForSession(sessionId)
+        return deleteSession(sessionId)
+    }
 }
