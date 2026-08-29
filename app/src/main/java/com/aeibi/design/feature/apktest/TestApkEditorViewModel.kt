@@ -1,5 +1,6 @@
 package com.aeibi.design.feature.apktest
 
+import android.annotation.SuppressLint
 import android.content.ContentValues
 import android.content.Context
 import android.net.Uri
@@ -43,6 +44,7 @@ data class TestApkEditorUiState(
  * 临时调试 ViewModel：手动触发 APK 手术链路（引擎/操作由 Hilt 声明式装配）。
  * 正式版移除本类。
  */
+@SuppressLint("NewApi") // 临时调试 UI：MediaStore.Downloads 需 API 29，正式版移除
 @HiltViewModel
 class TestApkEditorViewModel @Inject constructor(
     @ApplicationContext private val appContext: Context,

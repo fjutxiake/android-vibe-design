@@ -1,5 +1,6 @@
 package com.vibeshell
 
+import android.annotation.SuppressLint
 import android.app.Activity
 import android.os.Bundle
 import android.webkit.WebChromeClient
@@ -28,6 +29,8 @@ class MainActivity : Activity() {
         setContentView(webView)
     }
 
+    // 壳保持最小依赖，暂用已弃用 API；迁移 OnBackPressedDispatcher 需引入 androidx.activity
+    @SuppressLint("GestureBackNavigation")
     override fun onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack()
