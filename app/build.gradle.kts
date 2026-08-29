@@ -44,6 +44,7 @@ android {
     packaging {
         resources {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
+            excludes += "/frameworks/**"
         }
     }
 }
@@ -116,7 +117,7 @@ dependencies {
     implementation(libs.androidx.hilt.lifecycle.viewmodel.compose)
 
     // APK 构建引擎（纯 Java，可打进 Android）
-    implementation(project(":apkengine"))
+    implementation(libs.arsc.lib)
     implementation(libs.apksig)
     implementation(libs.bouncycastle)
     implementation(libs.androidx.documentfile)

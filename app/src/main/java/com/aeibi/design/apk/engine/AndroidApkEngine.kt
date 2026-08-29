@@ -1,7 +1,6 @@
 package com.aeibi.design.apk.engine
 
 import android.content.Context
-import com.aeibi.apkengine.AssetsFrameworkManager
 import com.reandroid.apk.AndroidFrameworks
 import com.reandroid.apk.ApkModule
 import com.reandroid.apk.ApkModuleXmlDecoder
