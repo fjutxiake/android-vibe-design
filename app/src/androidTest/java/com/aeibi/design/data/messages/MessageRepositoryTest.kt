@@ -6,12 +6,10 @@ import androidx.test.core.app.ApplicationProvider
 import com.aeibi.design.data.database.AppDatabase
 import com.aeibi.design.data.sessions.SessionEntity
 import java.util.UUID
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import org.junit.After
