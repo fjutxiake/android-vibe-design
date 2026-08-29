@@ -14,7 +14,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.filled.FolderOpen
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -47,14 +46,6 @@ fun TestApkEditorScreen(modifier: Modifier = Modifier, onBackClick: () -> Unit =
     val viewModel: TestApkEditorViewModel = hiltViewModel()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    val templatePicker =
-        rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
-            if (uri != null) {
-                viewModel.selectTemplate(uri)
-            } else {
-                viewModel.onTemplatePickCancelled()
-            }
-        }
     val logPath by viewModel.logPath.collectAsStateWithLifecycle()
 
     val frontendPicker =
@@ -86,18 +77,12 @@ fun TestApkEditorScreen(modifier: Modifier = Modifier, onBackClick: () -> Unit =
             verticalArrangement = Arrangement.spacedBy(spacing.md)
         ) {
             item {
-                OutlinedButton(
-                    onClick = { templatePicker.launch(arrayOf("*/*")) },
-                    modifier = Modifier.fillMaxWidth(),
-                    enabled = !uiState.isBuilding
-                ) {
-                    Icon(Icons.Default.FolderOpen, contentDescription = null)
-                    Text(uiState.templateName ?: "选择模板 APK（任意 APK）")
-                }
-            }
-            item {
                 Text(
-                    text = "模板状态: ${uiState.templatePath ?: "未选择（选择后此处置为路径）"}",
+                    text = when {
+                        uiState.templatePath != null -> "内置 Shell 模板已就绪"
+                        uiState.error != null -> "内置 Shell 模板不可用"
+                        else -> "内置 Shell 模板准备中…"
+                    },
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -1,3 +1,11 @@
+import org.gradle.api.DefaultTask
+import org.gradle.api.file.DirectoryProperty
+import org.gradle.api.tasks.InputDirectory
+import org.gradle.api.tasks.OutputDirectory
+import org.gradle.api.tasks.PathSensitive
+import org.gradle.api.tasks.PathSensitivity
+import org.gradle.api.tasks.TaskAction
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
@@ -5,6 +13,30 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.room3)
     alias(libs.plugins.hilt)
+}
+
+abstract class BundleShellTemplateTask : DefaultTask() {
+    @get:InputDirectory
+    @get:PathSensitive(PathSensitivity.RELATIVE)
+    abstract val shellOutputDirectory: DirectoryProperty
+
+    @get:OutputDirectory
+    abstract val outputDirectory: DirectoryProperty
+
+    @TaskAction
+    fun bundle() {
+        val apks = shellOutputDirectory.get().asFile
+            .listFiles()
+            .orEmpty()
+            .filter { it.isFile && it.extension == "apk" }
+        require(apks.size == 1) { "Expected exactly one shell APK, found ${apks.size}: ${apks.joinToString()}" }
+
+        val outputDir = outputDirectory.get().asFile.apply {
+            deleteRecursively()
+            mkdirs()
+        }
+        apks.single().copyTo(outputDir.resolve("shell/shell.apk"), overwrite = true)
+    }
 }
 
 android {
@@ -46,6 +78,28 @@ android {
             excludes += "/META-INF/{AL2.0,LGPL2.1}"
             excludes += "/frameworks/**"
         }
+    }
+}
+
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        val variantName = variant.name
+        val capitalizedVariantName = variantName.replaceFirstChar { it.titlecase() }
+        val shellOutputDirectory =
+            project(":shell").layout.buildDirectory.dir("outputs/apk/$variantName")
+        val bundleShellTemplate =
+            tasks.register<BundleShellTemplateTask>("bundle${capitalizedVariantName}ShellTemplate") {
+                dependsOn(":shell:assemble$capitalizedVariantName")
+                this.shellOutputDirectory.set(shellOutputDirectory)
+                outputDirectory.set(
+                    layout.buildDirectory.dir("generated/shellAsset/$variantName/assets")
+                )
+            }
+
+        variant.sources.assets?.addGeneratedSourceDirectory(
+            bundleShellTemplate,
+            BundleShellTemplateTask::outputDirectory
+        )
     }
 }
 

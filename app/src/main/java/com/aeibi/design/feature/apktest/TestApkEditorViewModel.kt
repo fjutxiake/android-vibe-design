@@ -26,7 +26,6 @@ import kotlinx.coroutines.withContext
 
 /** 临时调试用状态。 */
 data class TestApkEditorUiState(
-    val templateName: String? = null,
     val templatePath: String? = null,
     val packageName: String = "com.vibetest.demo",
     val appLabel: String = "玩具测试",
@@ -55,15 +54,21 @@ class TestApkEditorViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(TestApkEditorUiState())
     val uiState: StateFlow<TestApkEditorUiState> = _uiState.asStateFlow()
 
-    private val prefs = appContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-
     init {
-        // 恢复上次选择的模板（持久化）
-        val savedPath = prefs.getString(KEY_TEMPLATE_PATH, null)
-        val savedName = prefs.getString(KEY_TEMPLATE_NAME, null)
-        if (savedPath != null && File(savedPath).exists()) {
-            _uiState.update {
-                it.copy(templateName = savedName, templatePath = savedPath)
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                runCatching {
+                    val work = File(appContext.filesDir, "apk-test").apply { mkdirs() }
+                    val target = File(work, "shell-template.apk")
+                    appContext.assets.open(SHELL_TEMPLATE_ASSET).use { input ->
+                        target.outputStream().use { output -> input.copyTo(output) }
+                    }
+                    _uiState.update { it.copy(templatePath = target.absolutePath) }
+                }.onFailure { error ->
+                    _uiState.update {
+                        it.copy(error = "内置 Shell 模板加载失败: ${error.message}")
+                    }
+                }
             }
         }
     }
@@ -74,42 +79,6 @@ class TestApkEditorViewModel @Inject constructor(
 
     /** 已创建的日志文件 uri（进程内复用，避免产生多个日志文件）。 */
     private var logUri: Uri? = null
-
-    fun selectTemplate(uri: Uri) {
-        logToFile("selectTemplate 被调用: uri=$uri")
-        viewModelScope.launch {
-            _uiState.update { it.copy(error = null) }
-            withContext(Dispatchers.IO) {
-                runCatching {
-                    val work = File(appContext.filesDir, "apk-test").apply { mkdirs() }
-                    val target = File(work, "template-${UUID.randomUUID()}.apk")
-                    val input = appContext.contentResolver.openInputStream(uri)
-                        ?: throw IllegalStateException("无法打开所选文件（uri=$uri）")
-                    input.use { inputStream ->
-                        target.outputStream().use { output -> inputStream.copyTo(output) }
-                    }
-                    val name = uri.lastPathSegment ?: "template.apk"
-                    logToFile("模板拷贝成功: $name -> ${target.absolutePath}（${target.length()} 字节）")
-                    // 持久化模板选择（App 重启后恢复）
-                    prefs.edit()
-                        .putString(KEY_TEMPLATE_PATH, target.absolutePath)
-                        .putString(KEY_TEMPLATE_NAME, name)
-                        .apply()
-                    _uiState.update {
-                        it.copy(templateName = name, templatePath = target.absolutePath)
-                    }
-                }.onFailure { error ->
-                    logToFile("模板选择失败: ${error.stackTraceToString()}")
-                    _uiState.update { it.copy(error = "模板选择失败: ${error.message}") }
-                }
-            }
-        }
-    }
-
-    /** 选择器被取消（uri == null）。 */
-    fun onTemplatePickCancelled() {
-        _uiState.update { it.copy(error = "未选择模板（选择器被取消）") }
-    }
 
     /** 选择前端代码目录（整目录导入，注入 assets/frontend_app/）。 */
     fun selectFrontend(uri: Uri) {
@@ -371,9 +340,7 @@ class TestApkEditorViewModel @Inject constructor(
 
     private companion object {
         const val LOG_FILE_NAME = "vibe-design-log.txt"
-        const val PREFS_NAME = "apk_test"
-        const val KEY_TEMPLATE_PATH = "template_path"
-        const val KEY_TEMPLATE_NAME = "template_name"
+        const val SHELL_TEMPLATE_ASSET = "shell/shell.apk"
         const val MAX_STRUCTURE_LINES = 300
     }
 }
