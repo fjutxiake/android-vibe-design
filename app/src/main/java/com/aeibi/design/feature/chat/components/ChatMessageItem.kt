@@ -20,6 +20,17 @@ import com.aeibi.design.feature.chat.ChatViewModel
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 
+/** 错误码 → 本地化文案;未归类的值按诊断原文展示。 */
+@Composable
+private fun localizedErrorText(error: String): String = when (error) {
+    ChatViewModel.ERROR_NO_PROVIDER -> stringResource(R.string.chat_error_no_provider)
+    ChatViewModel.ERROR_NETWORK -> stringResource(R.string.chat_error_network)
+    ChatViewModel.ERROR_AUTH -> stringResource(R.string.chat_error_auth)
+    ChatViewModel.ERROR_HTTP -> stringResource(R.string.chat_error_http)
+    ChatViewModel.ERROR_PROTOCOL -> stringResource(R.string.chat_error_protocol)
+    else -> error
+}
+
 /**
  * 单条消息气泡。生成中的 ASSISTANT 条目以 [streamingText] 展示内存中的
  * 实时聚合文本(库里此刻仍是空内容),流结束后由落库的完整内容接管。
@@ -73,14 +84,10 @@ fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier, stream
                                 style = MaterialTheme.typography.labelSmall,
                                 color = MaterialTheme.colorScheme.error
                             )
-                            // 失败原因:no_provider 错误码映射本地化文案,其余为诊断原文。
+                            // 失败原因:已知错误码映射本地化文案,未知值为诊断原文。
                             message.error?.let { error ->
                                 Text(
-                                    text = if (error == ChatViewModel.ERROR_NO_PROVIDER) {
-                                        stringResource(R.string.chat_error_no_provider)
-                                    } else {
-                                        error
-                                    },
+                                    text = localizedErrorText(error),
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

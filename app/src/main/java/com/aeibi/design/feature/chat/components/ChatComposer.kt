@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Send
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Stop
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -23,8 +24,18 @@ import androidx.compose.ui.res.stringResource
 import com.aeibi.design.R
 import com.aeibi.design.theme.spacing
 
+/**
+ * 输入区。生成中([isGenerating])输入禁用、发送按钮切换为停止按钮:
+ * 停止后已生成的半截文本按 INTERRUPTED 保留在会话里。
+ */
 @Composable
-fun ChatComposer(enabled: Boolean, onSendMessage: (String) -> Unit, modifier: Modifier = Modifier) {
+fun ChatComposer(
+    enabled: Boolean,
+    onSendMessage: (String) -> Unit,
+    modifier: Modifier = Modifier,
+    isGenerating: Boolean = false,
+    onStopGenerating: () -> Unit = {}
+) {
     val spacing = MaterialTheme.spacing
     var input by rememberSaveable { mutableStateOf("") }
 
@@ -42,20 +53,29 @@ fun ChatComposer(enabled: Boolean, onSendMessage: (String) -> Unit, modifier: Mo
             value = input,
             onValueChange = { input = it },
             modifier = Modifier.weight(1f),
-            enabled = enabled,
+            enabled = enabled && !isGenerating,
             placeholder = { Text(stringResource(R.string.chat_input_hint)) }
         )
-        IconButton(
-            enabled = enabled && input.isNotBlank(),
-            onClick = {
-                onSendMessage(input.trim())
-                input = ""
+        if (isGenerating) {
+            IconButton(onClick = onStopGenerating) {
+                Icon(
+                    imageVector = Icons.Filled.Stop,
+                    contentDescription = stringResource(R.string.chat_cd_stop)
+                )
             }
-        ) {
-            Icon(
-                imageVector = Icons.AutoMirrored.Filled.Send,
-                contentDescription = stringResource(R.string.chat_cd_send)
-            )
+        } else {
+            IconButton(
+                enabled = enabled && input.isNotBlank(),
+                onClick = {
+                    onSendMessage(input.trim())
+                    input = ""
+                }
+            ) {
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.Send,
+                    contentDescription = stringResource(R.string.chat_cd_send)
+                )
+            }
         }
     }
 }

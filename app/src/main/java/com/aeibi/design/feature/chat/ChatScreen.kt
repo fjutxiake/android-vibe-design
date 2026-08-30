@@ -23,6 +23,7 @@ fun ChatScreen(
     }
     val messages by viewModel.messages.collectAsStateWithLifecycle()
     val streamingTexts by viewModel.streamingTexts.collectAsStateWithLifecycle()
+    val isGenerating by viewModel.isGenerating.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         ChatMessageList(
@@ -34,7 +35,9 @@ fun ChatScreen(
         )
         ChatComposer(
             enabled = sessionId != null,
-            onSendMessage = viewModel::sendMessage
+            onSendMessage = viewModel::sendMessage,
+            isGenerating = isGenerating,
+            onStopGenerating = viewModel::stopGenerating
         )
     }
 }

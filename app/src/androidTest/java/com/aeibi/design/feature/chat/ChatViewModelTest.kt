@@ -3,6 +3,7 @@ package com.aeibi.design.feature.chat
 import android.content.Context
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
+import com.aeibi.design.ai.chat.AiChatProtocolException
 import com.aeibi.design.ai.chat.AiChatService
 import com.aeibi.design.ai.chat.ChatChunk
 import com.aeibi.design.ai.chat.ChatRequest
@@ -22,6 +23,9 @@ import com.aeibi.design.data.messages.MessageStatus
 import com.aeibi.design.data.securestore.SecureStore
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionRepository
+import io.ktor.http.HttpStatusCode
+import java.io.IOException
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
@@ -129,6 +133,7 @@ class ChatViewModelTest {
         viewModel.bind("s1")
 
         viewModel.sendMessage("做一个天气卡片")
+        awaitGenerationDone(viewModel)
 
         val entries = database.messageDao().getMessages("s1")
         assertEquals(2, entries.size)
@@ -178,6 +183,7 @@ class ChatViewModelTest {
         viewModel.bind("s1")
 
         viewModel.sendMessage("没有绑定 provider 的输入")
+        awaitGenerationDone(viewModel)
 
         // resolve 失败不发起网络,直接 FAILED 落库。
         assertEquals(0, fakeService.streamCalls)
@@ -197,6 +203,7 @@ class ChatViewModelTest {
         viewModel.bind("s1")
 
         viewModel.sendMessage("触发服务异常")
+        awaitGenerationDone(viewModel)
 
         val entries = database.messageDao().getMessages("s1")
         assertEquals(2, entries.size)
@@ -218,6 +225,7 @@ class ChatViewModelTest {
         backgroundScope.launch(dispatcher) { viewModel.streamingTexts.collect { seenTexts.add(it) } }
 
         viewModel.sendMessage("触发流式")
+        awaitGenerationDone(viewModel)
 
         // 增量只在内存聚合,不逐块落库:仍只有一条 assistant 条目。
         val entries = database.messageDao().getMessages("s1")
@@ -229,6 +237,74 @@ class ChatViewModelTest {
         assertTrue("收敛后实时文本应清空", viewModel.streamingTexts.value.isEmpty())
         val liveStates = seenTexts.mapNotNull { it[entries[1].id] }
         assertEquals(listOf("半", "半截"), liveStates)
+    }
+
+    @Test
+    fun stopGenerating_keepsPartialReplyInterrupted() = runTest {
+        seedProvider()
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "test-model")
+        fakeService.streamChunks = listOf("半", "截")
+        fakeService.streamGate = CompletableDeferred()
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("中途停止")
+        // 等第一个增量已进入实时文本(此后流必然停在门上),再停止。
+        awaitCondition { viewModel.streamingTexts.value.values.any { it.isNotEmpty() } }
+
+        viewModel.stopGenerating()
+        awaitGenerationDone(viewModel)
+
+        val entries = database.messageDao().getMessages("s1")
+        assertEquals(2, entries.size)
+        val reply = MessagePayloadCodec.decode(entries[1].payload)
+        assertEquals(MessageStatus.INTERRUPTED, reply.status)
+        assertEquals("半截文本应保留", "半", reply.content)
+        assertTrue("停止后实时文本应清空", viewModel.streamingTexts.value.isEmpty())
+    }
+
+    @Test
+    fun sendMessage_rejectedWhileGenerating() = runTest {
+        seedProvider()
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "test-model")
+        fakeService.streamGate = CompletableDeferred()
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("第一条")
+        awaitCondition { viewModel.streamingTexts.value.values.any { it.isNotEmpty() } }
+
+        viewModel.sendMessage("生成中的第二条")
+
+        // 生成中拒绝新发送:没有第二条用户消息落库。
+        val userCount = database.messageDao().getMessages("s1")
+            .count { MessagePayloadCodec.decode(it.payload).role == MessageRole.USER }
+        assertEquals(1, userCount)
+
+        // 收尾:开门让流走完,避免取消后台协程的噪音。
+        fakeService.streamGate?.complete(Unit)
+        awaitGenerationDone(viewModel)
+    }
+
+    @Test
+    fun classifyError_mapsKnownCategoriesToStableCodes() {
+        val viewModel = viewModel()
+
+        assertEquals(ChatViewModel.ERROR_NETWORK, viewModel.classifyError(IOException("timeout")))
+        assertEquals(
+            ChatViewModel.ERROR_AUTH,
+            viewModel.classifyError(AiChatProtocolException("x", HttpStatusCode.Unauthorized))
+        )
+        assertEquals(
+            ChatViewModel.ERROR_AUTH,
+            viewModel.classifyError(AiChatProtocolException("x", HttpStatusCode.Forbidden))
+        )
+        assertEquals(
+            ChatViewModel.ERROR_HTTP,
+            viewModel.classifyError(AiChatProtocolException("x", HttpStatusCode.NotFound))
+        )
+        assertEquals(ChatViewModel.ERROR_PROTOCOL, viewModel.classifyError(AiChatProtocolException("x")))
+        assertEquals("boom", viewModel.classifyError(IllegalStateException("boom")))
     }
 
     @Test
@@ -283,6 +359,24 @@ class ChatViewModelTest {
         }
     }
 
+    /**
+     * sendMessage 把工作发射进 viewModelScope 后立即返回,后续链路跑在
+     * Room/DataStore 的真实调度器上。断言库状态前先等生成结束(isGenerating
+     * 在所有写库完成后的 finally 里才落 false),避免依赖竞态时序。
+     */
+    private fun awaitGenerationDone(viewModel: ChatViewModel) {
+        awaitCondition { !viewModel.isGenerating.value }
+    }
+
+    /** 轮询等待跨真实调度器才能观察到的条件成立(带超时护栏)。 */
+    private fun awaitCondition(condition: () -> Boolean) {
+        val deadline = System.currentTimeMillis() + 5_000
+        while (!condition()) {
+            assertTrue("等待条件超时", System.currentTimeMillis() < deadline)
+            Thread.sleep(20)
+        }
+    }
+
     /** 可编程的假聊天服务:记录请求,按剧本发射流式增量或抛预设异常。 */
     private class FakeAiChatService : AiChatService {
         var error: Exception? = null
@@ -290,6 +384,9 @@ class ChatViewModelTest {
         var lastRequest: ChatRequest? = null
         var lastProvider: ResolvedProvider? = null
         var streamChunks: List<String> = CANNED_REPLY_CHUNKS
+
+        /** 非空时每个增量发射后挂起等待,模拟慢速流/中途停止的窗口。 */
+        var streamGate: CompletableDeferred<Unit>? = null
 
         override suspend fun chat(request: ChatRequest, provider: ResolvedProvider): ChatResponse {
             lastRequest = request
@@ -303,7 +400,10 @@ class ChatViewModelTest {
             lastRequest = request
             lastProvider = provider
             error?.let { throw it }
-            streamChunks.forEach { delta -> emit(ChatChunk(delta)) }
+            streamChunks.forEach { delta ->
+                emit(ChatChunk(delta))
+                streamGate?.await()
+            }
         }
 
         companion object {

@@ -68,7 +68,12 @@
     <string name="chat_status_streaming">Generating…</string>
     <string name="chat_status_interrupted">Interrupted</string>
     <string name="chat_status_failed">Failed</string>
+    <string name="chat_cd_stop">Stop generating</string>
     <string name="chat_error_no_provider">No AI service bound to this session. Add and select one in settings first</string>
+    <string name="chat_error_network">Network error. Check your connection and try again</string>
+    <string name="chat_error_auth">Authentication failed. Check your API key</string>
+    <string name="chat_error_http">The service returned an error. Try again later</string>
+    <string name="chat_error_protocol">Unexpected response format from the service. Try again later</string>
     <!-- Placeholder screens -->
     <string name="build_title">Build &amp; package</string>
     <string name="build_project_label">Project: %1$s</string>

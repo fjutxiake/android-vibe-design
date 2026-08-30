@@ -2,6 +2,7 @@ package com.aeibi.design.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeibi.design.ai.chat.AiChatProtocolException
 import com.aeibi.design.ai.chat.AiChatService
 import com.aeibi.design.ai.chat.ChatMessage
 import com.aeibi.design.ai.chat.ChatRequest
@@ -16,9 +17,12 @@ import com.aeibi.design.data.messages.MessageStatus
 import com.aeibi.design.data.sessions.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
+import java.io.IOException
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -28,6 +32,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** 聊天状态入口：跟随当前会话展示消息流，重开会话可完整恢复历史消息。 */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -40,6 +45,12 @@ class ChatViewModel @Inject constructor(
 ) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<String?>(null)
+
+    private val _isGenerating = MutableStateFlow(false)
+    private var activeGeneration: Job? = null
+
+    /** 是否有回复正在生成;生成中输入区禁用并展示停止按钮。 */
+    val isGenerating: StateFlow<Boolean> = _isGenerating.asStateFlow()
 
     private val _streamingTexts = MutableStateFlow<Map<String, String>>(emptyMap())
 
@@ -69,49 +80,64 @@ class ChatViewModel @Inject constructor(
      * 发送消息:用户消息落库 → 追加 ASSISTANT/STREAMING 条目 → 流式请求 →
      * 增量在内存聚合([streamingTexts] 供 UI 实时渲染)→ 流结束一次性收敛
      * COMPLETED(失败则 FAILED)。resolve 失败(无绑定/无 key)直接 FAILED 落库,
-     * 不发起网络。
+     * 不发起网络。生成中重复发送被拒绝(UI 已禁用输入,此处兜底)。
      */
     fun sendMessage(content: String) {
         val sessionId = currentSessionId.value ?: return
-        viewModelScope.launch {
-            messageRepository.appendMessage(
-                sessionId = sessionId,
-                type = MessageEntryType.USER_MESSAGE,
-                payload = MessagePayload(
-                    role = MessageRole.USER,
-                    status = MessageStatus.COMPLETED,
-                    content = content
-                ),
-                id = UUID.randomUUID().toString(),
-                createdAt = System.currentTimeMillis()
-            )
-
-            val provider = resolveProvider(sessionId)
-            if (provider == null) {
-                appendFailedEntry(sessionId, ERROR_NO_PROVIDER)
-                return@launch
-            }
-
-            val history = messageRepository.getMessages(sessionId)
-            val entry = appendStreamingEntry(sessionId, provider)
+        if (_isGenerating.value) return
+        _isGenerating.value = true
+        activeGeneration = viewModelScope.launch {
             try {
-                val aggregated = StringBuilder()
-                aiChatService.chatStream(
-                    ChatRequest(model = provider.model, messages = buildContext(history)),
-                    provider
-                ).collect { chunk ->
-                    aggregated.append(chunk.delta)
-                    _streamingTexts.value = _streamingTexts.value + (entry.id to aggregated.toString())
+                messageRepository.appendMessage(
+                    sessionId = sessionId,
+                    type = MessageEntryType.USER_MESSAGE,
+                    payload = MessagePayload(
+                        role = MessageRole.USER,
+                        status = MessageStatus.COMPLETED,
+                        content = content
+                    ),
+                    id = UUID.randomUUID().toString(),
+                    createdAt = System.currentTimeMillis()
+                )
+
+                val provider = resolveProvider(sessionId)
+                if (provider == null) {
+                    appendFailedEntry(sessionId, ERROR_NO_PROVIDER)
+                    return@launch
                 }
-                completeEntry(entry.id, aggregated.toString())
-            } catch (ce: CancellationException) {
-                throw ce
-            } catch (e: Exception) {
-                failEntry(entry.id, e.message ?: e.javaClass.simpleName)
+
+                val history = messageRepository.getMessages(sessionId)
+                val entry = appendStreamingEntry(sessionId, provider)
+                val aggregated = StringBuilder()
+                try {
+                    aiChatService.chatStream(
+                        ChatRequest(model = provider.model, messages = buildContext(history)),
+                        provider
+                    ).collect { chunk ->
+                        aggregated.append(chunk.delta)
+                        _streamingTexts.value = _streamingTexts.value + (entry.id to aggregated.toString())
+                    }
+                    completeEntry(entry.id, aggregated.toString())
+                } catch (ce: CancellationException) {
+                    // 停止生成:半截内容按 INTERRUPTED 保留(历史事实,不伪装完成)。
+                    // 写库必须在 NonCancellable 里完成,否则取消中的协程无法再挂起。
+                    interruptEntry(entry.id, aggregated.toString())
+                    throw ce
+                } catch (e: Exception) {
+                    failEntry(entry.id, classifyError(e))
+                } finally {
+                    _streamingTexts.value = _streamingTexts.value - entry.id
+                }
             } finally {
-                _streamingTexts.value = _streamingTexts.value - entry.id
+                _isGenerating.value = false
+                activeGeneration = null
             }
         }
+    }
+
+    /** 停止当前生成:已生成的半截文本以 INTERRUPTED 落库,随后输入恢复可用。 */
+    fun stopGenerating() {
+        activeGeneration?.cancel()
     }
 
     /** 解析当前会话绑定的 provider 配置与 key;未绑定/配置已删/无 key 时返回 null。 */
@@ -201,13 +227,44 @@ class ChatViewModel @Inject constructor(
         )
     }
 
+    /**
+     * 停止生成时的收敛:半截内容按 INTERRUPTED 落库。必须在 NonCancellable
+     * 上下文执行 —— 取消中的协程在下一个挂起点会再次抛出 CancellationException。
+     */
+    private suspend fun interruptEntry(entryId: String, partialContent: String) {
+        withContext(NonCancellable) {
+            messageRepository.updatePayloadAndStatus(
+                entryId = entryId,
+                content = partialContent,
+                newStatus = MessageStatus.INTERRUPTED,
+                allowedFrom = listOf(MessageStatus.STREAMING)
+            )
+        }
+    }
+
+    /**
+     * 失败归类:已知类别落稳定错误码(UI 映射本地化文案),未知异常保留
+     * 原始诊断信息。归类只认异常类型与 HTTP 状态,不解析具体报文。
+     */
+    internal fun classifyError(e: Exception): String = when {
+        e is AiChatProtocolException && (e.statusCode?.value == 401 || e.statusCode?.value == 403) -> ERROR_AUTH
+        e is AiChatProtocolException && e.statusCode != null -> ERROR_HTTP
+        e is AiChatProtocolException -> ERROR_PROTOCOL
+        e is IOException -> ERROR_NETWORK
+        else -> e.message ?: e.javaClass.simpleName
+    }
+
     companion object {
         const val CONTEXT_WINDOW = 20
 
         /**
-         * resolve 失败(未绑定 provider/配置已删/无 key)的统一错误码,
-         * UI 层据此映射本地化文案;其他 error 值为面向诊断的原始信息。
+         * FAILED 条目 error 字段的稳定错误码,UI 层据此映射本地化文案;
+         * 未知值(旧数据/未归类异常)按诊断原文展示。
          */
         const val ERROR_NO_PROVIDER = "no_provider"
+        const val ERROR_NETWORK = "network"
+        const val ERROR_AUTH = "auth"
+        const val ERROR_HTTP = "http"
+        const val ERROR_PROTOCOL = "protocol"
     }
 }
