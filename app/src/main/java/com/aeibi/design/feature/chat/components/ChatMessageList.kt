@@ -45,16 +45,29 @@ fun ChatMessageList(
     }
     val lastStreamingLength = messages.lastOrNull()?.let { streamingTexts[it.id]?.length } ?: 0
 
-    // 新条目到达(用户发送/AI 占位/载入历史/切换会话):始终定位到最新消息。
+    // 新条目到达(用户发送/AI 占位/载入历史/切换会话):一步定位到最新一条的尾部。
+    // scrollToItem(index) 只把"条目顶部"对齐视口顶——长回复会被钉在开头;
+    // 传一个远超条目高度的偏移,滚动会被钳制在列表末端,尾部贴住视口底。
     LaunchedEffect(sessionId, messages.size) {
         if (messages.isNotEmpty()) {
-            listState.scrollToListEnd()
+            listState.scrollToItem(messages.lastIndex, LIST_END_ITEM_OFFSET)
         }
     }
-    // 生成中的文本增长:仅在贴近底部时跟随,用即时滚动追平尾部。
+    // 生成中的文本增长:贴近底部时用 scrollBy 追平差量即可。
+    // 这里绝不能 scrollToItem——它每个 chunk 都先把条目顶部钉回视口顶,
+    // 再补偿滚回底部,一轮"顶→底"往返每秒几十次,就是抖动与
+    // "跳回消息开头"的直接来源。scrollBy 只补增长的那一小段。
     LaunchedEffect(sessionId, lastStreamingLength) {
         if (lastStreamingLength > 0 && nearBottom) {
-            listState.scrollToListEnd()
+            withFrameNanos { } // 等一帧:增长后的高度完成测量再读 layoutInfo
+            if (listState.isScrollInProgress) return@LaunchedEffect // 用户正在滚动:让位
+            val info = listState.layoutInfo
+            val last = info.visibleItemsInfo.lastOrNull() ?: return@LaunchedEffect
+            if (last.index != info.totalItemsCount - 1) return@LaunchedEffect
+            val gap = last.offset + last.size - info.viewportEndOffset
+            if (gap > 0) {
+                listState.scrollBy(gap.toFloat())
+            }
         }
     }
 
@@ -79,27 +92,8 @@ private fun LazyListState.isNearBottom(): Boolean {
     return lastVisible.offset + lastVisible.size <= info.viewportEndOffset + FOLLOW_SLOP_PX
 }
 
-/**
- * 滚动到列表末端(最后一条的尾部对齐视口底部)。
- *
- * scrollToItem(index) 对齐的是"条目顶部在视口顶":最后一条比屏幕长时
- * (长文流式输出),最新内容仍在视口外——表现为消息头部卡在顶部、
- * 增长部分看不见。这里在定位后再补滚条目底部超出视口的部分,把
- * 尾部带进视野;条目比视口短时 scrollToItem 本身已钳制在列表末端。
- */
-private suspend fun LazyListState.scrollToListEnd() {
-    val lastIndex = layoutInfo.totalItemsCount - 1
-    if (lastIndex < 0) return
-    scrollToItem(lastIndex)
-    withFrameNanos { } // 等一帧让快照滚动完成测量,layoutInfo 才是滚动后的
-    val info = layoutInfo
-    val last = info.visibleItemsInfo.lastOrNull() ?: return
-    val overscroll = last.offset + last.size - info.viewportEndOffset
-    if (overscroll > 0) {
-        // 超出末端的部分由 scrollBy 自动钳制,不会滚过头。
-        scrollBy((overscroll + 1).toFloat())
-    }
-}
-
 /** 跟随判定的容差(像素):上翻超过该距离才脱离流式跟随。 */
 private const val FOLLOW_SLOP_PX = 200
+
+/** 远超单条消息可能高度的偏移量:让 scrollToItem 的钳制落到列表末端(尾部对齐视口底)。 */
+private const val LIST_END_ITEM_OFFSET = 1_000_000
