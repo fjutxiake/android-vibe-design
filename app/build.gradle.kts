@@ -71,6 +71,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.datastore.preferences)
+    implementation(libs.androidx.webkit)
     implementation(libs.ucrop)
 
     // Compose
