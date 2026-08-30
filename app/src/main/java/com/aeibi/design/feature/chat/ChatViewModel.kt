@@ -7,6 +7,7 @@ import com.aeibi.design.ai.chat.AiChatService
 import com.aeibi.design.ai.chat.ChatMessage
 import com.aeibi.design.ai.chat.ChatRequest
 import com.aeibi.design.ai.chat.ResolvedProvider
+import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageEntryType
@@ -140,14 +141,34 @@ class ChatViewModel @Inject constructor(
         activeGeneration?.cancel()
     }
 
-    /** 解析当前会话绑定的 provider 配置与 key;未绑定/配置已删/无 key 时返回 null。 */
+    /**
+     * 解析会话生效的 provider 配置与 key。会话绑定优先;未绑定(创建早于默认
+     * 设置/迁移而来的存量会话)或绑定失效(配置已被删)时回退全局默认,回退
+     * 解析成功后把绑定写回会话 —— 等价"出生继承"在首次使用时补发生,此后
+     * 全局默认变化不再影响本会话。两级都无法解析或无 key 时返回 null。
+     */
     private suspend fun resolveProvider(sessionId: String): ResolvedProvider? {
         val session = sessionRepository.getSession(sessionId) ?: return null
-        val configId = session.providerConfigId ?: return null
-        val model = session.model ?: return null
-        val settings = aiProviderRepository.settings.firstOrNull() ?: return null
-        val config = settings.providers.firstOrNull { it.id == configId } ?: return null
-        val apiKey = aiProviderRepository.readApiKey(configId) ?: return null
+        val providers = aiProviderRepository.settings.firstOrNull()?.providers.orEmpty()
+
+        val bound: Pair<ProviderConfig, String>? = providers
+            .firstOrNull { it.id == session.providerConfigId }
+            ?.let { config -> session.model?.let { model -> config to model } }
+
+        val resolved = bound ?: run {
+            val default = aiProviderRepository.defaultSelection.firstOrNull() ?: return null
+            val config = providers.firstOrNull { it.id == default.providerConfigId } ?: return null
+            val model = default.model ?: return null
+            config to model
+        }
+        val (config, model) = resolved
+
+        val apiKey = aiProviderRepository.readApiKey(config.id) ?: return null
+
+        if (session.providerConfigId != config.id || session.model != model) {
+            sessionRepository.saveSession(session.copy(providerConfigId = config.id, model = model))
+        }
+
         return ResolvedProvider(
             configId = config.id,
             providerType = config.providerType,

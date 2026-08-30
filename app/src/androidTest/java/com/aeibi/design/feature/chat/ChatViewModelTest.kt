@@ -94,14 +94,14 @@ class ChatViewModelTest {
         )
     }
 
-    private suspend fun seedProvider(configId: String = "cfg-1") {
+    private suspend fun seedProvider(configId: String = "cfg-1", model: String = "test-model") {
         aiProviderRepository.saveProvider(
             ProviderConfig(
                 id = configId,
                 providerType = "openai_compatible",
                 displayName = "测试服务",
                 endpoint = "https://api.example.com/v1",
-                models = listOf("test-model")
+                models = listOf(model)
             ),
             apiKey = "sk-test"
         )
@@ -178,6 +178,8 @@ class ChatViewModelTest {
 
     @Test
     fun sendMessage_whenNoProviderBound_failsWithoutNetwork() = runTest {
+        // DataStore 状态跨用例共享:显式清默认,保证本用例两级解析都为空。
+        aiProviderRepository.setDefaultSelection(null, null)
         seedSession("s1", updatedAt = 100L)
         val viewModel = viewModel()
         viewModel.bind("s1")
@@ -192,6 +194,51 @@ class ChatViewModelTest {
         val reply = MessagePayloadCodec.decode(entries[1].payload)
         assertEquals(MessageStatus.FAILED, reply.status)
         assertEquals(ChatViewModel.ERROR_NO_PROVIDER, reply.error)
+    }
+
+    @Test
+    fun sendMessage_whenSessionUnbound_fallsBackToDefaultAndBinds() = runTest {
+        seedProvider()
+        aiProviderRepository.setDefaultSelection("cfg-1", "test-model")
+        // 存量会话:创建早于默认设置,无绑定。
+        seedSession("s1", updatedAt = 100L)
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("存量会话首次发言")
+        awaitGenerationDone(viewModel)
+
+        assertEquals(1, fakeService.streamCalls)
+        val entries = database.messageDao().getMessages("s1")
+        assertEquals(2, entries.size)
+        val reply = MessagePayloadCodec.decode(entries[1].payload)
+        assertEquals(MessageStatus.COMPLETED, reply.status)
+        assertEquals("cfg-1", reply.providerConfigId)
+
+        // 回退解析成功后绑定写回:此后全局默认变化不再影响本会话。
+        val session = database.sessionDao().getSession("s1")
+        assertEquals("cfg-1", session!!.providerConfigId)
+        assertEquals("test-model", session.model)
+    }
+
+    @Test
+    fun sendMessage_whenSessionBound_boundWinsOverGlobalDefault() = runTest {
+        seedProvider("cfg-1", "bound-model")
+        seedProvider("cfg-2", "default-model")
+        aiProviderRepository.setDefaultSelection("cfg-2", "default-model")
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "bound-model")
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("绑定优先")
+        awaitGenerationDone(viewModel)
+
+        // 会话绑定优先,解析与落库都不被全局默认改写。
+        assertEquals("cfg-1", fakeService.lastProvider?.configId)
+        assertEquals("bound-model", fakeService.lastProvider?.model)
+        val session = database.sessionDao().getSession("s1")
+        assertEquals("cfg-1", session!!.providerConfigId)
+        assertEquals("bound-model", session.model)
     }
 
     @Test

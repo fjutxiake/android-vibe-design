@@ -69,7 +69,7 @@
     <string name="chat_status_interrupted">已中断</string>
     <string name="chat_status_failed">生成失败</string>
     <string name="chat_cd_stop">停止生成</string>
-    <string name="chat_error_no_provider">本会话未绑定 AI 服务，请先在设置中添加并选择</string>
+    <string name="chat_error_no_provider">未选择 AI 服务，请先在设置中添加并设为默认</string>
     <string name="chat_error_network">网络连接失败，请检查网络后重试</string>
     <string name="chat_error_auth">认证失败，请检查 API Key 是否有效</string>
     <string name="chat_error_http">服务返回错误，请稍后重试</string>
