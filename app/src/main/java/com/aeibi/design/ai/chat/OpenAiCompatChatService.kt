@@ -29,15 +29,6 @@ import kotlinx.serialization.json.put
  */
 class OpenAiCompatChatService(private val client: HttpClient, private val json: Json = DEFAULT_JSON) : AiChatService {
 
-    override suspend fun chat(request: ChatRequest, provider: ResolvedProvider): ChatResponse {
-        val response = client.postCompletions(request, provider, stream = false)
-        val body = response.bodyAsText()
-        val parsed = json.decodeFromString(CompletionResponseBody.serializer(), body)
-        val content = parsed.choices.firstOrNull()?.message?.content
-            ?: throw AiChatProtocolException("响应缺少 choices[0].message.content")
-        return ChatResponse(content)
-    }
-
     override fun chatStream(request: ChatRequest, provider: ResolvedProvider): Flow<ChatChunk> = flow {
         val response = client.postCompletions(request, provider, stream = true)
         val channel = response.bodyAsChannel()
@@ -96,15 +87,6 @@ class OpenAiCompatChatService(private val client: HttpClient, private val json: 
             )
         }
         return json.encodeToString(kotlinx.serialization.json.JsonObject.serializer(), root)
-    }
-
-    @Serializable
-    private data class CompletionResponseBody(@SerialName("choices") val choices: List<Choice> = emptyList()) {
-        @Serializable
-        data class Choice(@SerialName("message") val message: Message? = null) {
-            @Serializable
-            data class Message(@SerialName("content") val content: String? = null)
-        }
     }
 
     @Serializable

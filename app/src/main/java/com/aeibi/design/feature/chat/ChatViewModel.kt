@@ -12,6 +12,7 @@ import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.ai.DefaultProviderSelection
+import com.aeibi.design.data.ai.resolveSelection
 import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageEntryType
 import com.aeibi.design.data.messages.MessagePayload
@@ -159,7 +160,16 @@ class ChatViewModel @Inject constructor(
 
                 val provider = resolveProvider(sessionId)
                 if (provider == null) {
-                    appendFailedEntry(sessionId, ERROR_NO_PROVIDER)
+                    // 区分两种失败:两级都无选择(未配置) vs 有选择但 key 读不到。
+                    val providers = aiProviderRepository.settings.firstOrNull()?.providers.orEmpty()
+                    val default = aiProviderRepository.defaultSelection.firstOrNull()
+                        ?: DefaultProviderSelection(null, null)
+                    val hasSelection = resolveSelection(
+                        sessionRepository.getSession(sessionId),
+                        providers,
+                        default
+                    ) != null
+                    appendFailedEntry(sessionId, if (hasSelection) ERROR_NO_KEY else ERROR_NO_PROVIDER)
                     return@launch
                 }
 
@@ -206,18 +216,9 @@ class ChatViewModel @Inject constructor(
     private suspend fun resolveProvider(sessionId: String): ResolvedProvider? {
         val session = sessionRepository.getSession(sessionId) ?: return null
         val providers = aiProviderRepository.settings.firstOrNull()?.providers.orEmpty()
-
-        val bound: Pair<ProviderConfig, String>? = providers
-            .firstOrNull { it.id == session.providerConfigId }
-            ?.let { config -> session.model?.let { model -> config to model } }
-
-        val resolved = bound ?: run {
-            val default = aiProviderRepository.defaultSelection.firstOrNull() ?: return null
-            val config = providers.firstOrNull { it.id == default.providerConfigId } ?: return null
-            val model = default.model ?: return null
-            config to model
-        }
-        val (config, model) = resolved
+        val default = aiProviderRepository.defaultSelection.firstOrNull() ?: DefaultProviderSelection(null, null)
+        val selection = resolveSelection(session, providers, default) ?: return null
+        val (config, model) = selection
 
         val apiKey = aiProviderRepository.readApiKey(config.id) ?: return null
 
@@ -236,7 +237,7 @@ class ChatViewModel @Inject constructor(
         )
     }
 
-    private fun deriveSessionProviderUi(
+    private suspend fun deriveSessionProviderUi(
         session: SessionEntity?,
         providers: List<ProviderConfig>,
         default: DefaultProviderSelection
@@ -252,16 +253,22 @@ class ChatViewModel @Inject constructor(
             )
         }
 
-        // 绑定指向已删配置时按未绑定处理,与 resolveProvider 的回退规则一致。
-        val bound = session?.let { selectionFor(it.providerConfigId, it.model) }
+        // 与发送路径共用 resolveSelection:顶栏展示的就是下一条消息会用的选择。
+        val resolved = resolveSelection(session, providers, default)
         val defaultSelection = if (default.isSet) {
             selectionFor(default.providerConfigId, default.model)
         } else {
             null
         }
+        // followsDefault = 会话绑定与解析结果一致(会话自己的绑定在生效)。
+        val boundMatches = resolved != null &&
+            session?.providerConfigId == resolved?.config?.id &&
+            session?.model == resolved?.model
         return SessionProviderUiState(
-            current = bound ?: defaultSelection,
-            followsDefault = bound == null,
+            current = resolved?.let { selection ->
+                selectionFor(selection.config.id, selection.model)
+            },
+            followsDefault = !boundMatches,
             defaultSelection = defaultSelection,
             options = providers.map { config ->
                 SessionProviderOption(
@@ -381,6 +388,7 @@ class ChatViewModel @Inject constructor(
          * 未知值(旧数据/未归类异常)按诊断原文展示。
          */
         const val ERROR_NO_PROVIDER = "no_provider"
+        const val ERROR_NO_KEY = "no_key"
         const val ERROR_NETWORK = "network"
         const val ERROR_AUTH = "auth"
         const val ERROR_HTTP = "http"

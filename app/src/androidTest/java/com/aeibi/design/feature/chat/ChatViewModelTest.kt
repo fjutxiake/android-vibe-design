@@ -7,7 +7,6 @@ import com.aeibi.design.ai.chat.AiChatProtocolException
 import com.aeibi.design.ai.chat.AiChatService
 import com.aeibi.design.ai.chat.ChatChunk
 import com.aeibi.design.ai.chat.ChatRequest
-import com.aeibi.design.ai.chat.ChatResponse
 import com.aeibi.design.ai.chat.ResolvedProvider
 import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.provider.DeepSeekProvider
@@ -154,7 +153,7 @@ class ChatViewModelTest {
         val reply = MessagePayloadCodec.decode(assistant.payload)
         assertEquals(MessageRole.ASSISTANT, reply.role)
         assertEquals(MessageStatus.COMPLETED, reply.status)
-        assertEquals(FakeAiChatService.CANNED_REPLY, reply.content)
+        assertEquals(FakeAiChatService.CANNED_REPLY_CHUNKS.joinToString(""), reply.content)
         assertEquals("cfg-1", reply.providerConfigId)
         assertEquals("test-model", reply.model)
         assertNull(reply.error)
@@ -481,13 +480,6 @@ class ChatViewModelTest {
         /** 非空时每个增量发射后挂起等待,模拟慢速流/中途停止的窗口。 */
         var streamGate: CompletableDeferred<Unit>? = null
 
-        override suspend fun chat(request: ChatRequest, provider: ResolvedProvider): ChatResponse {
-            lastRequest = request
-            lastProvider = provider
-            error?.let { throw it }
-            return ChatResponse(CANNED_REPLY)
-        }
-
         override fun chatStream(request: ChatRequest, provider: ResolvedProvider): Flow<ChatChunk> = flow {
             streamCalls++
             lastRequest = request
@@ -500,7 +492,6 @@ class ChatViewModelTest {
         }
 
         companion object {
-            const val CANNED_REPLY = "这是测试回复"
             val CANNED_REPLY_CHUNKS = listOf("这是", "测试", "回复")
         }
     }

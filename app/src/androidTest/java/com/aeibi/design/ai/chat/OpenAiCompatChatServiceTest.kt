@@ -53,55 +53,6 @@ class OpenAiCompatChatServiceTest {
     private fun capturedBody(): String = (capturedRequest.body as TextContent).text
 
     @Test
-    fun chat_parsesContentFromChoices() = runTest {
-        val service = service(
-            body = """{"choices":[{"message":{"role":"assistant","content":"好的,天气卡片如下"}}]}"""
-        )
-
-        val response = service.chat(request, provider)
-
-        assertEquals("好的,天气卡片如下", response.content)
-    }
-
-    @Test
-    fun chat_sendsExpectedRequestShape() = runTest {
-        val service = service(body = """{"choices":[{"message":{"content":"ok"}}]}""")
-
-        service.chat(request, provider)
-
-        assertEquals("https://api.example.com/v1/chat/completions", capturedRequest.url.toString())
-        assertEquals("Bearer sk-test", capturedRequest.headers[HttpHeaders.Authorization])
-        assertEquals("application/json", capturedRequest.headers[HttpHeaders.ContentType])
-        val body = capturedBody()
-        assertTrue("请求体应含 model", body.contains("\"model\":\"test-model\""))
-        assertTrue("非流式请求 stream=false", body.contains("\"stream\":false"))
-        assertTrue("请求体应含多轮消息", body.contains("\"role\":\"user\""))
-        assertTrue(body.contains("\"role\":\"assistant\""))
-    }
-
-    @Test
-    fun chat_whenHttpError_throwsProtocolExceptionWithStatus() = runTest {
-        val service = service(
-            status = HttpStatusCode.Unauthorized,
-            body = """{"error":{"message":"invalid api key"}}"""
-        )
-
-        val error = runCatching { service.chat(request, provider) }.exceptionOrNull()
-
-        assertTrue("非 2xx 应抛协议异常", error is AiChatProtocolException)
-        assertEquals(HttpStatusCode.Unauthorized, (error as AiChatProtocolException).statusCode)
-    }
-
-    @Test
-    fun chat_whenContentMissing_throwsProtocolException() = runTest {
-        val service = service(body = """{"choices":[]}""")
-
-        val error = runCatching { service.chat(request, provider) }.exceptionOrNull()
-
-        assertTrue("缺失 choices[0].message.content 应抛协议异常", error is AiChatProtocolException)
-    }
-
-    @Test
     fun chatStream_emitsDeltasAndStopsAtDone() = runTest {
         val sse = buildString {
             append(": keep-alive\n\n")
@@ -128,7 +79,12 @@ class OpenAiCompatChatServiceTest {
 
         assertEquals("https://api.example.com/v1/chat/completions", capturedRequest.url.toString())
         assertEquals("Bearer sk-test", capturedRequest.headers[HttpHeaders.Authorization])
-        assertTrue("流式请求 stream=true", capturedBody().contains("\"stream\":true"))
+        assertEquals("application/json", capturedRequest.headers[HttpHeaders.ContentType])
+        val body = capturedBody()
+        assertTrue("流式请求 stream=true", body.contains("\"stream\":true"))
+        assertTrue("请求体应含 model", body.contains("\"model\":\"test-model\""))
+        assertTrue("请求体应含多轮消息", body.contains("\"role\":\"user\""))
+        assertTrue(body.contains("\"role\":\"assistant\""))
     }
 
     @Test

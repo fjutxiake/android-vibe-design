@@ -19,10 +19,6 @@ data class ChatMessage(val role: String, val content: String) {
     }
 }
 
-/** 非流式响应。 */
-@Serializable
-data class ChatResponse(val content: String)
-
 /** 流式增量。 */
 @Serializable
 data class ChatChunk(val delta: String)

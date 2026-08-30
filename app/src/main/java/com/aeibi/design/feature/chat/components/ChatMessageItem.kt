@@ -24,6 +24,7 @@ import com.aeibi.design.theme.spacing
 @Composable
 private fun localizedErrorText(error: String): String = when (error) {
     ChatViewModel.ERROR_NO_PROVIDER -> stringResource(R.string.chat_error_no_provider)
+    ChatViewModel.ERROR_NO_KEY -> stringResource(R.string.chat_error_no_key)
     ChatViewModel.ERROR_NETWORK -> stringResource(R.string.chat_error_network)
     ChatViewModel.ERROR_AUTH -> stringResource(R.string.chat_error_auth)
     ChatViewModel.ERROR_HTTP -> stringResource(R.string.chat_error_http)

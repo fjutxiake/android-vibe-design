@@ -13,9 +13,11 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import java.io.IOException
 import java.util.UUID
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -110,7 +112,10 @@ class AiProviderRepository @Inject constructor(
         secureStore.delete(configId)
     }
 
-    fun hasApiKey(configId: String): Boolean = secureStore.contains(configId)
+    /** 文件系统检查(stat),挂起执行避免调用方在主线程做磁盘 IO。 */
+    suspend fun hasApiKey(configId: String): Boolean = withContext(Dispatchers.IO) {
+        secureStore.contains(configId)
+    }
 
     suspend fun readApiKey(configId: String): String? = secureStore.get(configId)
 
