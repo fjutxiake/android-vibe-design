@@ -86,7 +86,7 @@ dependencies {
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
     // AI chat network client
-    implementation(libs.ktor.client.cio)
+    implementation(libs.ktor.client.okhttp)
     // Tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
     // Instrumented tests
