@@ -79,10 +79,27 @@ class AndroidApkEngineTest {
         assertTrue(manifest.readText().contains("com.vibetest.mini"))
     }
 
-    /** 从 target APK 的 assets 提取最小模板（699B，与 frameworks 同类为构建期资源）。 */
-    private fun extractTemplate(): File {
-        val target = File(context.cacheDir, "min-template.apk")
-        context.assets.open(MIN_TEMPLATE_ASSET).use { input ->
+    @Test
+    fun decode_oldTargetSdk_fallsBackToNearestFramework() {
+        // framework 只内置 android-36：targetSdk 23 的模板应经 getNearestVersion 近似解析
+        val template = extractTemplate("min-template-23.apk", "min-template-23")
+        val decodedDir = File(context.cacheDir, "decode23-test").apply {
+            deleteRecursively()
+            mkdirs()
+        }
+
+        engine.decode(template.toPath(), decodedDir.toPath())
+
+        val manifest = decodedDir.resolve("AndroidManifest.xml")
+        assertTrue("老 targetSdk 模板应可解码: $manifest", manifest.exists())
+        val content = manifest.readText()
+        assertTrue("包名应正确: $content", content.contains("com.vibetest.mini23"))
+    }
+
+    /** 从 target APK 的 assets 提取最小模板（与 frameworks 同类为构建期资源）。 */
+    private fun extractTemplate(assetName: String = MIN_TEMPLATE_ASSET, cacheName: String = assetName): File {
+        val target = File(context.cacheDir, cacheName)
+        context.assets.open(assetName).use { input ->
             target.outputStream().use { output -> input.copyTo(output) }
         }
         assertTrue("模板应已提取", target.length() > 0)
