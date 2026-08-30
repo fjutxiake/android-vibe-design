@@ -20,11 +20,20 @@ import com.aeibi.design.feature.chat.ChatViewModel
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 
+/**
+ * 单条消息气泡。生成中的 ASSISTANT 条目以 [streamingText] 展示内存中的
+ * 实时聚合文本(库里此刻仍是空内容),流结束后由落库的完整内容接管。
+ */
 @Composable
-fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier) {
+fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier, streamingText: String? = null) {
     val spacing = MaterialTheme.spacing
     val dimensions = MaterialTheme.dimensions
     val isUser = message.role == MessageRole.USER
+    val displayContent = if (message.status == MessageStatus.STREAMING && streamingText != null) {
+        streamingText
+    } else {
+        message.content
+    }
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -41,7 +50,7 @@ fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier) {
         ) {
             Column(modifier = Modifier.padding(spacing.sm)) {
                 Text(
-                    text = message.content,
+                    text = displayContent,
                     style = MaterialTheme.typography.bodyMedium
                 )
                 // 非完成状态的回复要有明确的可视状态,不能伪装成已完成的空消息。

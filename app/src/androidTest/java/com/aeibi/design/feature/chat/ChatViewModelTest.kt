@@ -26,6 +26,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
@@ -179,7 +180,7 @@ class ChatViewModelTest {
         viewModel.sendMessage("没有绑定 provider 的输入")
 
         // resolve 失败不发起网络,直接 FAILED 落库。
-        assertEquals(0, fakeService.chatCalls)
+        assertEquals(0, fakeService.streamCalls)
         val entries = database.messageDao().getMessages("s1")
         assertEquals(2, entries.size)
         val reply = MessagePayloadCodec.decode(entries[1].payload)
@@ -202,6 +203,32 @@ class ChatViewModelTest {
         val reply = MessagePayloadCodec.decode(entries[1].payload)
         assertEquals(MessageStatus.FAILED, reply.status)
         assertEquals("boom", reply.error)
+    }
+
+    @Test
+    fun sendMessage_streamsLiveTextThenConvergesWithSingleWrite() = runTest {
+        seedProvider()
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "test-model")
+        fakeService.streamChunks = listOf("半", "截")
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        // 记录 streamingTexts 的全部中间态:验证逐块实时文本存在、且收敛后清空。
+        val seenTexts = mutableListOf<Map<String, String>>()
+        backgroundScope.launch(dispatcher) { viewModel.streamingTexts.collect { seenTexts.add(it) } }
+
+        viewModel.sendMessage("触发流式")
+
+        // 增量只在内存聚合,不逐块落库:仍只有一条 assistant 条目。
+        val entries = database.messageDao().getMessages("s1")
+        assertEquals(2, entries.size)
+        val reply = MessagePayloadCodec.decode(entries[1].payload)
+        assertEquals(MessageStatus.COMPLETED, reply.status)
+        assertEquals("半截", reply.content)
+
+        assertTrue("收敛后实时文本应清空", viewModel.streamingTexts.value.isEmpty())
+        val liveStates = seenTexts.mapNotNull { it[entries[1].id] }
+        assertEquals(listOf("半", "半截"), liveStates)
     }
 
     @Test
@@ -256,15 +283,15 @@ class ChatViewModelTest {
         }
     }
 
-    /** 可编程的假聊天服务:记录请求,返回预设回复或抛预设异常。 */
+    /** 可编程的假聊天服务:记录请求,按剧本发射流式增量或抛预设异常。 */
     private class FakeAiChatService : AiChatService {
         var error: Exception? = null
-        var chatCalls = 0
+        var streamCalls = 0
         var lastRequest: ChatRequest? = null
         var lastProvider: ResolvedProvider? = null
+        var streamChunks: List<String> = CANNED_REPLY_CHUNKS
 
         override suspend fun chat(request: ChatRequest, provider: ResolvedProvider): ChatResponse {
-            chatCalls++
             lastRequest = request
             lastProvider = provider
             error?.let { throw it }
@@ -272,11 +299,16 @@ class ChatViewModelTest {
         }
 
         override fun chatStream(request: ChatRequest, provider: ResolvedProvider): Flow<ChatChunk> = flow {
-            emit(ChatChunk(CANNED_REPLY))
+            streamCalls++
+            lastRequest = request
+            lastProvider = provider
+            error?.let { throw it }
+            streamChunks.forEach { delta -> emit(ChatChunk(delta)) }
         }
 
         companion object {
             const val CANNED_REPLY = "这是测试回复"
+            val CANNED_REPLY_CHUNKS = listOf("这是", "测试", "回复")
         }
     }
 }

@@ -22,13 +22,15 @@ fun ChatScreen(
         viewModel.bind(sessionId)
     }
     val messages by viewModel.messages.collectAsStateWithLifecycle()
+    val streamingTexts by viewModel.streamingTexts.collectAsStateWithLifecycle()
 
     Column(modifier = modifier.fillMaxSize()) {
         ChatMessageList(
             projectId = projectId,
             sessionId = sessionId,
             messages = messages,
-            modifier = Modifier.weight(1f)
+            modifier = Modifier.weight(1f),
+            streamingTexts = streamingTexts
         )
         ChatComposer(
             enabled = sessionId != null,

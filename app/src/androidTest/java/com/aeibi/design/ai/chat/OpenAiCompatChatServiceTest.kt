@@ -8,6 +8,7 @@ import io.ktor.http.HttpHeaders
 import io.ktor.http.HttpStatusCode
 import io.ktor.http.content.TextContent
 import io.ktor.http.headersOf
+import kotlinx.coroutines.flow.toList
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -98,5 +99,56 @@ class OpenAiCompatChatServiceTest {
         val error = runCatching { service.chat(request, provider) }.exceptionOrNull()
 
         assertTrue("缺失 choices[0].message.content 应抛协议异常", error is AiChatProtocolException)
+    }
+
+    @Test
+    fun chatStream_emitsDeltasAndStopsAtDone() = runTest {
+        val sse = buildString {
+            append(": keep-alive\n\n")
+            append("data: {\"choices\":[{\"delta\":{\"role\":\"assistant\"}}]}\n\n")
+            append("data: {\"choices\":[{\"delta\":{\"content\":\"你\"}}]}\n\n")
+            append("\n") // 空行:事件分隔
+            append("data: {\"choices\":[{\"delta\":{\"content\":\"好\"}}]}\n\n")
+            append("data: [DONE]\n\n")
+            append("data: {\"choices\":[{\"delta\":{\"content\":\"终止后不应到达\"}}]}\n")
+        }
+        val service = service(body = sse)
+
+        val chunks = service.chatStream(request, provider).toList()
+
+        // role-only 首块无 content,不发射;[DONE] 后流正常完结,不再消费后续行。
+        assertEquals(listOf("你", "好"), chunks.map { it.delta })
+    }
+
+    @Test
+    fun chatStream_sendsStreamFlagAndAuth() = runTest {
+        val service = service(body = "data: [DONE]\n\n")
+
+        service.chatStream(request, provider).toList()
+
+        assertEquals("https://api.example.com/v1/chat/completions", capturedRequest.url.toString())
+        assertEquals("Bearer sk-test", capturedRequest.headers[HttpHeaders.Authorization])
+        assertTrue("流式请求 stream=true", capturedBody().contains("\"stream\":true"))
+    }
+
+    @Test
+    fun chatStream_whenMalformedChunk_throwsProtocolException() = runTest {
+        val service = service(body = "data: {not-json\n\n")
+
+        val error = runCatching { service.chatStream(request, provider).toList() }.exceptionOrNull()
+
+        assertTrue("非法 SSE chunk 应抛协议异常", error is AiChatProtocolException)
+    }
+
+    @Test
+    fun chatStream_whenHttpError_throwsProtocolException() = runTest {
+        val service = service(
+            status = HttpStatusCode.Unauthorized,
+            body = """{"error":{"message":"invalid api key"}}"""
+        )
+
+        val error = runCatching { service.chatStream(request, provider).toList() }.exceptionOrNull()
+
+        assertTrue("非 2xx 应抛协议异常", error is AiChatProtocolException)
     }
 }

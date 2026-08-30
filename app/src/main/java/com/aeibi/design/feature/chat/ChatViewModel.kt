@@ -22,6 +22,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -40,6 +41,14 @@ class ChatViewModel @Inject constructor(
 
     private val currentSessionId = MutableStateFlow<String?>(null)
 
+    private val _streamingTexts = MutableStateFlow<Map<String, String>>(emptyMap())
+
+    /**
+     * 生成中的实时文本:entryId → 目前收到的增量聚合。只存在于内存,
+     * 流结束后一次性收敛入库(UI 先看到完整内容,库不承受逐块写放大)。
+     */
+    val streamingTexts: StateFlow<Map<String, String>> = _streamingTexts.asStateFlow()
+
     /** 当前会话的消息列表；sessionId 变化时自动切换到新会话的数据源。 */
     val messages: StateFlow<List<MessageEntry>> = currentSessionId
         .flatMapLatest { sessionId ->
@@ -57,8 +66,9 @@ class ChatViewModel @Inject constructor(
     }
 
     /**
-     * 发送消息:用户消息落库 → 追加 ASSISTANT/STREAMING 条目 → 非流式请求 →
-     * 状态收敛(COMPLETED/FAILED)。resolve 失败(无绑定/无 key)直接 FAILED 落库,
+     * 发送消息:用户消息落库 → 追加 ASSISTANT/STREAMING 条目 → 流式请求 →
+     * 增量在内存聚合([streamingTexts] 供 UI 实时渲染)→ 流结束一次性收敛
+     * COMPLETED(失败则 FAILED)。resolve 失败(无绑定/无 key)直接 FAILED 落库,
      * 不发起网络。
      */
     fun sendMessage(content: String) {
@@ -85,15 +95,21 @@ class ChatViewModel @Inject constructor(
             val history = messageRepository.getMessages(sessionId)
             val entry = appendStreamingEntry(sessionId, provider)
             try {
-                val response = aiChatService.chat(
+                val aggregated = StringBuilder()
+                aiChatService.chatStream(
                     ChatRequest(model = provider.model, messages = buildContext(history)),
                     provider
-                )
-                completeEntry(entry.id, response.content)
+                ).collect { chunk ->
+                    aggregated.append(chunk.delta)
+                    _streamingTexts.value = _streamingTexts.value + (entry.id to aggregated.toString())
+                }
+                completeEntry(entry.id, aggregated.toString())
             } catch (ce: CancellationException) {
                 throw ce
             } catch (e: Exception) {
                 failEntry(entry.id, e.message ?: e.javaClass.simpleName)
+            } finally {
+                _streamingTexts.value = _streamingTexts.value - entry.id
             }
         }
     }
