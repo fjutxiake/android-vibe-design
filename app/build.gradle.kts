@@ -72,6 +72,8 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.ucrop)
+    // APK 引擎（ARSCLib 重定位版，见 kniv001/ARSCLib）
+    implementation(libs.arsc.lib)
 
     // Compose
     implementation(libs.androidx.compose.ui)

@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>静态内容演示</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 0; padding: 24px;
+         background: #0f172a; color: #e2e8f0; }
+  h1 { font-size: 18px; }
+  .card { background: #1e293b; border-radius: 12px; padding: 16px; margin-top: 12px; }
+  .ok { color: #4ade80; }
+</style>
+</head>
+<body>
+  <h1>⚡ 静态内容预览（mode: static）</h1>
+  <div class="card">
+    本页面由 WebViewAssetLoader 拦截器提供——<b>无服务器、无端口</b>，
+    从本地静态内容加载，JS 正常执行。
+    <p id="js-check" class="ok">检查 JS…</p>
+  </div>
+  <script>
+    document.getElementById("js-check").textContent =
+      "✅ JS 执行正常：当前时间 " + new Date().toLocaleTimeString();
+  </script>
+</body>
+</html>
