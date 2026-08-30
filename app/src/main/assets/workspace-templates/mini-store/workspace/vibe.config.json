@@ -1,0 +1,7 @@
+{
+  "schemaVersion": 1,
+  "projectType": "static-web",
+  "entry": "index.html",
+  "preview": { "mode": "static", "root": ".", "fallback": "index.html" },
+  "build": { "command": null, "outputDirectory": "." }
+}

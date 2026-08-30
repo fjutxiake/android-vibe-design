@@ -35,6 +35,7 @@ class ProjectRepositoryTest {
         val created = repo.createProject("周末去哪", "短途路线", null)
 
         assertTrue(File(root, created.id).isDirectory)
+        assertTrue(File(File(root, created.id), "workspace").isDirectory)
         val metadataFile = File(File(root, created.id), "project.json")
         assertTrue(metadataFile.exists())
         assertFalse(metadataFile.readText().contains("\"id\""))

@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>专注计划</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <main class="app">
+    <header><div><small>8月28日 · 星期五</small><h1>早上好，今天专注什么？</h1></div><button class="avatar">YC</button></header>
+    <section class="focus"><span>本次专注</span><strong id="timer">25:00</strong><button id="start">开始专注</button></section>
+    <section class="title"><h2>今日任务</h2><span>2 / 4 完成</span></section>
+    <ul>
+      <li class="done"><button>✓</button><div><b>梳理产品首页</b><small>设计 · 30 分钟</small></div></li>
+      <li class="done"><button>✓</button><div><b>回复项目邮件</b><small>工作 · 15 分钟</small></div></li>
+      <li><button></button><div><b>制作交互原型</b><small>设计 · 45 分钟</small></div></li>
+      <li><button></button><div><b>整理本周计划</b><small>个人 · 20 分钟</small></div></li>
+    </ul>
+  </main>
+  <script>
+    let running=false, seconds=1500, handle; const timer=document.querySelector('#timer'), start=document.querySelector('#start');
+    start.onclick=()=>{ running=!running; start.textContent=running?'暂停':'继续'; clearInterval(handle); if(running) handle=setInterval(()=>{seconds=Math.max(0,seconds-1); timer.textContent=String(Math.floor(seconds/60)).padStart(2,'0')+':'+String(seconds%60).padStart(2,'0')},1000)};
+  </script>
+</body>
+</html>

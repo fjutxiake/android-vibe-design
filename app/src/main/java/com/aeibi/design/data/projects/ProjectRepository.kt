@@ -42,6 +42,8 @@ class ProjectRepository(
             val dir = File(projectsDir, id)
             check(dir.mkdirs()) { "无法创建项目目录" }
             try {
+                check(File(dir, WORKSPACE_DIR).mkdir()) { "无法创建项目工作区目录" }
+
                 val iconFileName = iconUri?.let { writeIcon(it, dir) }
                 val metadata = ProjectMetadata(
                     name = name,
@@ -148,6 +150,7 @@ class ProjectRepository(
 
     private companion object {
         const val PROJECT_JSON = "project.json"
+        const val WORKSPACE_DIR = "workspace"
     }
 }
 

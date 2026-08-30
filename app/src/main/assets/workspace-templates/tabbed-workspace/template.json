@@ -1,0 +1,10 @@
+{
+  "category": "productivity",
+  "name": "多页工作台",
+  "description": "包含首页、动态和个人三个独立 HTML 页面，用于验证同一 Workspace 内的 Tab 页面跳转。",
+  "cover": "previews/cover.webp",
+  "previews": [
+    "previews/activity.webp",
+    "previews/profile.webp"
+  ]
+}
