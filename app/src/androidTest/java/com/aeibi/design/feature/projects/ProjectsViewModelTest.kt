@@ -2,6 +2,7 @@ package com.aeibi.design.feature.projects
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
+import com.aeibi.design.data.projects.Project
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
@@ -60,7 +61,7 @@ class ProjectsViewModelTest {
     }
 
     private fun viewModel(root: File, dao: SessionDao = FakeSessionDao()): ProjectsViewModel {
-        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
         return ProjectsViewModel(repository, SessionRepository(dao))
     }
 
@@ -68,7 +69,7 @@ class ProjectsViewModelTest {
     fun createProject_whenRepositoryFails_reportsFailure() = runTest {
         // 项目根目录是个普通文件,建目录必然失败。
         val root = tmp.newFile()
-        var result: Result<Unit>? = null
+        var result: Result<Project>? = null
 
         viewModel(root).createProject("新项目", "", null) { result = it }
 
@@ -77,11 +78,26 @@ class ProjectsViewModelTest {
 
     @Test
     fun createProject_whenSuccessful_reportsSuccess() = runTest {
-        var result: Result<Unit>? = null
+        var result: Result<Project>? = null
 
         viewModel(tmp.newFolder()).createProject("新项目", "", null) { result = it }
 
         assertTrue("应当上报成功,实际为 $result", result?.isSuccess == true)
+        assertTrue(result?.getOrNull()?.isInitialized == false)
+    }
+
+    @Test
+    fun markInitialized_whenSuccessful_updatesProject() = runTest {
+        val root = tmp.newFolder()
+        val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
+        val created = repository.createProject("New project", "", null)
+        var result: Result<Unit>? = null
+
+        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()))
+            .markInitialized(created.id) { result = it }
+
+        assertTrue(result?.isSuccess == true)
+        assertTrue(repository.getProject(created.id)?.isInitialized == true)
     }
 
     @Test
@@ -96,7 +112,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenDirectoryCannotBeRemoved_reportsFailure() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
         val created = repository.createProject("删不掉", "", null)
         val dir = File(root, created.id)
         val locked = File(dir, "locked.bin").apply { writeText("x") }
@@ -118,7 +134,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenSuccessful_reportsSuccess() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
         val created = repository.createProject("待删", "", null)
         var result: Result<Unit>? = null
 
@@ -132,7 +148,7 @@ class ProjectsViewModelTest {
     @Test
     fun deleteProject_whenSessionCleanupFails_stillDeletesProjectAndReportsSuccess() = runTest {
         val root = tmp.newFolder()
-        val repository = ProjectRepository(root, context.contentResolver, dispatcher)
+        val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
         val created = repository.createProject("待删", "", null)
         val failingDao = FakeSessionDao { throw IllegalStateException("数据库不可用") }
         var result: Result<Unit>? = null

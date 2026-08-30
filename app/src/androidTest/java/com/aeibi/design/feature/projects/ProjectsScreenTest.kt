@@ -3,6 +3,7 @@ package com.aeibi.design.feature.projects
 import androidx.activity.ComponentActivity
 import androidx.compose.ui.semantics.SemanticsActions
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onNodeWithText
@@ -10,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso.pressBack
 import com.aeibi.design.R
 import com.aeibi.design.data.projects.Project
 import java.io.IOException
@@ -114,7 +116,7 @@ class ProjectsScreenTest {
         composeTestRule.setContent {
             ProjectsScreen(projects = emptyList(), onCreateProject = { n, d, i, onResult ->
                 created = Triple(n, d, i)
-                onResult(Result.success(Unit))
+                onResult(Result.success(sample.first()))
             })
         }
 
@@ -153,7 +155,7 @@ class ProjectsScreenTest {
     fun createSheet_whenCreateSucceeds_closesSheet() {
         composeTestRule.setContent {
             ProjectsScreen(projects = emptyList(), onCreateProject = { _, _, _, onResult ->
-                onResult(Result.success(Unit))
+                onResult(Result.success(sample.first()))
             })
         }
 
@@ -164,5 +166,27 @@ class ProjectsScreenTest {
             .performClick()
 
         composeTestRule.onNodeWithTag("project_name_input").assertDoesNotExist()
+    }
+
+    @Test
+    fun createSheet_whileCreating_disablesCancel() {
+        composeTestRule.setContent {
+            ProjectsScreen(
+                projects = emptyList(),
+                onCreateProject = { _, _, _, _ -> }
+            )
+        }
+
+        composeTestRule.onNodeWithTag("new_project_button").performClick()
+        composeTestRule.onNodeWithTag("project_name_input").performTextInput("New project")
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
+            .performClick()
+
+        composeTestRule
+            .onNodeWithText(composeTestRule.activity.getString(R.string.cancel))
+            .assertIsNotEnabled()
+        pressBack()
+        composeTestRule.onNodeWithTag("project_name_input").assertIsDisplayed()
     }
 }

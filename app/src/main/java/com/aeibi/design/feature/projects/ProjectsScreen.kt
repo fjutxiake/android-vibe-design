@@ -1,5 +1,4 @@
 package com.aeibi.design.feature.projects
-
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
@@ -45,7 +44,7 @@ fun ProjectsScreen(
         name: String,
         description: String,
         iconUri: String?,
-        onResult: (Result<Unit>) -> Unit
+        onResult: (Result<Project>) -> Unit
     ) -> Unit = { _, _, _, _ -> },
     onUpdateProject: (
         id: String,
@@ -63,6 +62,7 @@ fun ProjectsScreen(
     var editError by rememberSaveable { mutableStateOf<Int?>(null) }
     var creating by remember { mutableStateOf(false) }
     var editing by remember { mutableStateOf(false) }
+
     Scaffold(
         modifier = modifier.fillMaxSize(),
         topBar = {

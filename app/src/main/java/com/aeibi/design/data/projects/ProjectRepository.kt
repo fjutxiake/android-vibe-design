@@ -1,10 +1,14 @@
 package com.aeibi.design.data.projects
 
 import android.content.ContentResolver
+import android.content.res.AssetManager
 import androidx.core.net.toUri
 import androidx.core.util.AtomicFile
 import java.io.File
 import java.io.IOException
+import java.nio.file.AtomicMoveNotSupportedException
+import java.nio.file.Files
+import java.nio.file.StandardCopyOption
 import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -19,6 +23,7 @@ import kotlinx.serialization.json.Json
 class ProjectRepository(
     private val projectsDir: File,
     private val contentResolver: ContentResolver,
+    private val assets: AssetManager,
     private val ioDispatcher: CoroutineDispatcher = Dispatchers.IO
 ) {
 
@@ -50,7 +55,8 @@ class ProjectRepository(
                     description = description,
                     createdAt = now,
                     updatedAt = now,
-                    iconFileName = iconFileName
+                    iconFileName = iconFileName,
+                    isInitialized = false
                 )
                 writeMetadata(dir, metadata)
                 _projects.value = listProjects()
@@ -71,7 +77,8 @@ class ProjectRepository(
                 description = description,
                 createdAt = existing.createdAt,
                 updatedAt = System.currentTimeMillis(),
-                iconFileName = iconFileName
+                iconFileName = iconFileName,
+                isInitialized = existing.isInitialized
             )
             writeMetadata(dir, metadata)
             _projects.value = listProjects()
@@ -86,6 +93,60 @@ class ProjectRepository(
             throw IOException("无法删除项目目录: ${dir.path}")
         }
         _projects.value = listProjects()
+    }
+
+    suspend fun markInitialized(id: String) = withContext(ioDispatcher) {
+        val dir = File(projectsDir, id)
+        val existing = readMetadata(dir) ?: error("Project not found: $id")
+        if (!existing.isInitialized) {
+            val workspace = File(dir, WORKSPACE_DIR)
+            if (!workspace.deleteRecursively() && workspace.exists()) {
+                throw IOException("Could not clear workspace: ${workspace.path}")
+            }
+            check(workspace.mkdir()) { "Could not create workspace: ${workspace.path}" }
+            val pendingWorkspace = File(dir, PENDING_WORKSPACE_DIR)
+            if (!pendingWorkspace.deleteRecursively() && pendingWorkspace.exists()) {
+                throw IOException("Could not clear pending workspace: ${pendingWorkspace.path}")
+            }
+            writeMetadata(
+                dir,
+                existing.copy(
+                    updatedAt = System.currentTimeMillis(),
+                    isInitialized = true
+                )
+            )
+            _projects.value = listProjects()
+        }
+    }
+
+    suspend fun initializeFromTemplate(id: String, workspaceAssetPath: String) = withContext(ioDispatcher) {
+        val dir = File(projectsDir, id)
+        val existing = readMetadata(dir) ?: error("Project not found: $id")
+        check(!existing.isInitialized) { "Project is already initialized: $id" }
+
+        val pendingWorkspace = File(dir, PENDING_WORKSPACE_DIR)
+        if (!pendingWorkspace.deleteRecursively() && pendingWorkspace.exists()) {
+            throw IOException("Could not clear pending workspace: ${pendingWorkspace.path}")
+        }
+
+        try {
+            copyAssetTree(workspaceAssetPath, pendingWorkspace)
+            if (!pendingWorkspace.isDirectory) {
+                throw IOException("Template workspace is not a directory: $workspaceAssetPath")
+            }
+            replaceWorkspace(dir, pendingWorkspace)
+            writeMetadata(
+                dir,
+                existing.copy(
+                    updatedAt = System.currentTimeMillis(),
+                    isInitialized = true
+                )
+            )
+            _projects.value = listProjects()
+        } catch (error: Exception) {
+            pendingWorkspace.deleteRecursively()
+            throw error
+        }
     }
 
     private fun listProjects(): List<Project> = projectsDir.listFiles()
@@ -133,6 +194,46 @@ class ProjectRepository(
         return fileName
     }
 
+    private fun copyAssetTree(sourcePath: String, target: File) {
+        val children = assets.list(sourcePath).orEmpty()
+        if (children.isEmpty()) {
+            target.parentFile?.mkdirs()
+            assets.open(sourcePath).use { input ->
+                target.outputStream().use { output -> input.copyTo(output) }
+            }
+            return
+        }
+
+        check(target.mkdirs() || target.isDirectory) {
+            "Could not create workspace directory: ${target.path}"
+        }
+        children.forEach { name ->
+            copyAssetTree("$sourcePath/$name", File(target, name))
+        }
+    }
+
+    private fun replaceWorkspace(projectDir: File, pendingWorkspace: File) {
+        val workspace = File(projectDir, WORKSPACE_DIR)
+        if (!workspace.deleteRecursively() && workspace.exists()) {
+            throw IOException("Could not replace workspace: ${workspace.path}")
+        }
+
+        try {
+            try {
+                Files.move(
+                    pendingWorkspace.toPath(),
+                    workspace.toPath(),
+                    StandardCopyOption.ATOMIC_MOVE
+                )
+            } catch (_: AtomicMoveNotSupportedException) {
+                Files.move(pendingWorkspace.toPath(), workspace.toPath())
+            }
+        } catch (error: Exception) {
+            workspace.mkdirs()
+            throw error
+        }
+    }
+
     private fun ProjectMetadata.toProject(id: String, dir: File): Project {
         val iconFile = resolveIconFileName(dir)?.let { File(dir, it) }
         return Project(
@@ -141,7 +242,8 @@ class ProjectRepository(
             description = description,
             iconUri = iconFile?.toURI()?.toString(),
             createdAt = createdAt,
-            updatedAt = updatedAt
+            updatedAt = updatedAt,
+            isInitialized = isInitialized
         )
     }
 
@@ -151,6 +253,7 @@ class ProjectRepository(
     private companion object {
         const val PROJECT_JSON = "project.json"
         const val WORKSPACE_DIR = "workspace"
+        const val PENDING_WORKSPACE_DIR = "workspace.pending"
     }
 }
 
@@ -160,5 +263,6 @@ private data class ProjectMetadata(
     val description: String,
     val createdAt: Long,
     val updatedAt: Long,
-    val iconFileName: String? = null
+    val iconFileName: String? = null,
+    val isInitialized: Boolean = true
 )

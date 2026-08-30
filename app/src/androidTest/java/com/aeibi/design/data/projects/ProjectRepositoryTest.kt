@@ -1,8 +1,10 @@
 package com.aeibi.design.data.projects
 
 import android.content.Context
+import android.content.res.AssetManager
 import android.net.Uri
 import androidx.test.core.app.ApplicationProvider
+import androidx.test.platform.app.InstrumentationRegistry
 import java.io.File
 import java.io.FileInputStream
 import java.io.IOException
@@ -25,7 +27,12 @@ class ProjectRepositoryTest {
 
     private val context: Context = ApplicationProvider.getApplicationContext()
 
-    private fun repository(root: File) = ProjectRepository(root, context.contentResolver, UnconfinedTestDispatcher())
+    private fun repository(root: File, assets: AssetManager = context.assets) = ProjectRepository(
+        root,
+        context.contentResolver,
+        assets,
+        UnconfinedTestDispatcher()
+    )
 
     @Test
     fun createProject_writesJsonAndListsProject() = runTest {
@@ -41,6 +48,7 @@ class ProjectRepositoryTest {
         assertFalse(metadataFile.readText().contains("\"id\""))
         assertFalse(metadataFile.readText().contains("\"icon\""))
         assertEquals("周末去哪", created.name)
+        assertFalse(created.isInitialized)
         repo.refresh()
         assertEquals(listOf(created), repo.projects.value)
     }
@@ -63,6 +71,56 @@ class ProjectRepositoryTest {
         repo.refresh()
 
         assertEquals(listOf("b", "a"), repo.projects.value.map { it.id })
+        assertTrue(repo.projects.value.all { it.isInitialized })
+    }
+
+    @Test
+    fun markInitialized_persistsState() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val created = repo.createProject("New project", "", null)
+        val workspace = File(File(root, created.id), "workspace")
+        File(workspace, "unfinished.txt").writeText("unfinished")
+
+        repo.markInitialized(created.id)
+
+        assertTrue(workspace.listFiles().orEmpty().isEmpty())
+        assertTrue(repo.getProject(created.id)?.isInitialized == true)
+        assertTrue(repository(root).getProject(created.id)?.isInitialized == true)
+    }
+
+    @Test
+    fun initializeFromTemplate_copiesWorkspaceAndPersistsState() = runTest {
+        val root = tmp.newFolder()
+        val testAssets = InstrumentationRegistry.getInstrumentation().context.assets
+        val repo = repository(root, testAssets)
+        val created = repo.createProject("Template project", "", null)
+
+        repo.initializeFromTemplate(created.id, "project-template/workspace")
+
+        val workspace = File(File(root, created.id), "workspace")
+        assertEquals("template", File(workspace, "index.html").readText().trimEnd())
+        assertEquals("console.log('template')", File(workspace, "scripts/app.js").readText().trimEnd())
+        assertFalse(File(File(root, created.id), "workspace.pending").exists())
+        assertTrue(repo.getProject(created.id)?.isInitialized == true)
+    }
+
+    @Test
+    fun initializeFromTemplate_whenCopyFails_keepsProjectUninitialized() = runTest {
+        val root = tmp.newFolder()
+        val repo = repository(root)
+        val created = repo.createProject("Template project", "", null)
+
+        val error = runCatching {
+            repo.initializeFromTemplate(created.id, "workspace-templates/missing/workspace")
+        }.exceptionOrNull()
+
+        val projectDir = File(root, created.id)
+        assertTrue(error is IOException)
+        assertTrue(File(projectDir, "workspace").isDirectory)
+        assertTrue(File(projectDir, "workspace").listFiles().orEmpty().isEmpty())
+        assertFalse(File(projectDir, "workspace.pending").exists())
+        assertFalse(repo.getProject(created.id)?.isInitialized == true)
     }
 
     @Test

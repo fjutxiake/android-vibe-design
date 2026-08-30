@@ -22,6 +22,9 @@ data class ProjectVersions(val projectId: String) : NavKey
 data class ProjectSettings(val projectId: String) : NavKey
 
 @Serializable
+data class ProjectSetup(val projectId: String) : NavKey
+
+@Serializable
 data class TemplateGallery(val projectId: String) : NavKey
 
 @Serializable

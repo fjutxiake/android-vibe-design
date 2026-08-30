@@ -76,6 +76,24 @@
     <string name="versions_placeholder">Version history for project %1$s</string>
     <string name="project_settings_title">Project settings</string>
     <string name="project_settings_placeholder">Settings for project %1$s</string>
+    <!-- Project setup -->
+    <string name="project_setup_title">Project setup</string>
+    <string name="project_setup_template_title">Start from a template</string>
+    <string name="project_setup_start_blank">Start with a blank project</string>
+    <string name="project_setup_start_failed">Could not initialize the project. Try again</string>
+    <!-- Template gallery -->
+    <string name="template_gallery_title">Choose a template</string>
+    <string name="template_gallery_empty">No templates available</string>
+    <string name="template_gallery_load_failed">Could not load templates</string>
+    <string name="retry">Retry</string>
+    <string name="template_gallery_cover_cd">%1$s cover</string>
+    <string name="template_gallery_preview_cd">%1$s preview %2$d</string>
+    <string name="template_gallery_image_failed">Could not load image</string>
+    <string name="template_gallery_page_indicator">Image %1$d of %2$d</string>
+    <string name="template_gallery_readme_title" translatable="false">README</string>
+    <string name="template_gallery_readme_unavailable">No template notes available</string>
+    <string name="template_gallery_use_template">Use this template</string>
+    <string name="template_gallery_apply_failed">Could not apply the template. Try again</string>
     <!-- AI providers settings -->
     <string name="ai_add_service">Add service</string>
     <string name="ai_no_providers">No AI service configured yet</string>

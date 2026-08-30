@@ -13,18 +13,22 @@ import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.aeibi.design.feature.build.ProjectBuildScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
+import com.aeibi.design.feature.projects.ProjectSetupScreen
 import com.aeibi.design.feature.projects.ProjectsScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.projectsettings.ProjectSettingsScreen
 import com.aeibi.design.feature.settings.SettingsScreen
 import com.aeibi.design.feature.settings.ai.AiProvidersScreen
 import com.aeibi.design.feature.settings.language.LanguageSettingsScreen
+import com.aeibi.design.feature.templates.TemplateGalleryScreen
 import com.aeibi.design.feature.versions.ProjectVersionsScreen
 import com.aeibi.design.feature.workspace.ProjectWorkspaceScreen
 
 @Composable
 fun AppNavigation() {
     val backStack = rememberNavBackStack(ProjectPicker)
+    val projectsViewModel = hiltViewModel<ProjectsViewModel>()
+    val projects by projectsViewModel.projects.collectAsState()
 
     NavDisplay(
         backStack = backStack,
@@ -48,16 +52,29 @@ fun AppNavigation() {
                 )
             }
             entry<ProjectPicker> {
-                val viewModel = hiltViewModel<ProjectsViewModel>()
-                val projects by viewModel.projects.collectAsState()
                 ProjectsScreen(
                     projects = projects,
                     modifier = Modifier.fillMaxSize(),
                     onSettingsClick = { backStack.add(ApplicationSettings) },
-                    onProjectClick = { projectId -> backStack.add(ProjectChat(projectId)) },
-                    onCreateProject = viewModel::createProject,
-                    onUpdateProject = viewModel::updateProject,
-                    onDeleteProject = viewModel::deleteProject
+                    onProjectClick = { projectId ->
+                        projects.firstOrNull { it.id == projectId }?.let { project ->
+                            backStack.add(
+                                if (project.isInitialized) {
+                                    ProjectChat(project.id)
+                                } else {
+                                    ProjectSetup(project.id)
+                                }
+                            )
+                        }
+                    },
+                    onCreateProject = { name, description, iconUri, onResult ->
+                        projectsViewModel.createProject(name, description, iconUri) { result ->
+                            onResult(result)
+                            result.onSuccess { project -> backStack.add(ProjectSetup(project.id)) }
+                        }
+                    },
+                    onUpdateProject = projectsViewModel::updateProject,
+                    onDeleteProject = projectsViewModel::deleteProject
                 )
             }
             entry<ProjectPreview> { route ->
@@ -86,6 +103,35 @@ fun AppNavigation() {
                     projectId = route.projectId,
                     modifier = Modifier.fillMaxSize(),
                     onBackClick = { backStack.removeLastOrNull() }
+                )
+            }
+            entry<ProjectSetup> { route ->
+                ProjectSetupScreen(
+                    modifier = Modifier.fillMaxSize(),
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onBrowseTemplatesClick = { backStack.add(TemplateGallery(route.projectId)) },
+                    onStartBlankClick = { onResult ->
+                        projectsViewModel.markInitialized(route.projectId) { result ->
+                            onResult(result)
+                            result.onSuccess {
+                                if (backStack.lastOrNull() == route) {
+                                    backStack.removeLastOrNull()
+                                    backStack.add(ProjectChat(route.projectId))
+                                }
+                            }
+                        }
+                    }
+                )
+            }
+            entry<TemplateGallery> { route ->
+                TemplateGalleryScreen(
+                    projectId = route.projectId,
+                    onBackClick = { backStack.removeLastOrNull() },
+                    onProjectInitialized = { projectId ->
+                        backStack.removeLastOrNull()
+                        backStack.removeLastOrNull()
+                        backStack.add(ProjectChat(projectId))
+                    }
                 )
             }
             entry<ApplicationSettings> {

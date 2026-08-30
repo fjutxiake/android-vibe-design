@@ -10,13 +10,17 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.ModalBottomSheetProperties
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -39,12 +43,24 @@ fun NewProjectBottomSheet(
     var iconUri by rememberSaveable { mutableStateOf<String?>(null) }
     var iconError by rememberSaveable { mutableStateOf<Int?>(null) }
     val spacing = MaterialTheme.spacing
-    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val currentSubmitting by rememberUpdatedState(submitting)
+    val confirmSheetValueChange: (SheetValue) -> Boolean = remember {
+        { value -> value != SheetValue.Hidden || !currentSubmitting }
+    }
+    val sheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = confirmSheetValueChange
+    )
 
     ModalBottomSheet(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!submitting) onDismiss() },
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface
+        sheetGesturesEnabled = !submitting,
+        containerColor = MaterialTheme.colorScheme.surface,
+        properties = ModalBottomSheetProperties(
+            shouldDismissOnBackPress = !submitting,
+            shouldDismissOnClickOutside = !submitting
+        )
     ) {
         Column(
             modifier = Modifier.fillMaxWidth().padding(horizontal = spacing.lg),
@@ -93,7 +109,9 @@ fun NewProjectBottomSheet(
                 modifier = Modifier.fillMaxWidth().padding(top = spacing.sm, bottom = spacing.lg),
                 horizontalArrangement = Arrangement.SpaceBetween
             ) {
-                TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+                TextButton(onClick = onDismiss, enabled = !submitting) {
+                    Text(stringResource(R.string.cancel))
+                }
                 Button(
                     onClick = { onCreate(name, description, iconUri) },
                     enabled = name.isNotBlank() && !submitting

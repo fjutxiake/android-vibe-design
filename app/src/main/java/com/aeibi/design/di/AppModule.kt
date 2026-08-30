@@ -37,7 +37,7 @@ object AppModule {
     @Provides
     @Singleton
     fun provideProjectRepository(projectsDir: File, @ApplicationContext context: Context): ProjectRepository =
-        ProjectRepository(projectsDir, context.contentResolver)
+        ProjectRepository(projectsDir, context.contentResolver, context.assets)
 
     @Provides
     @Singleton

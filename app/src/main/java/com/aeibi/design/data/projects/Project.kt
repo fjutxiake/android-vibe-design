@@ -6,5 +6,6 @@ data class Project(
     val description: String,
     val iconUri: String? = null,
     val createdAt: Long,
-    val updatedAt: Long
+    val updatedAt: Long,
+    val isInitialized: Boolean = true
 )
