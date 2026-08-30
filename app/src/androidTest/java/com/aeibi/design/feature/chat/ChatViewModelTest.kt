@@ -9,6 +9,9 @@ import com.aeibi.design.ai.chat.ChatChunk
 import com.aeibi.design.ai.chat.ChatRequest
 import com.aeibi.design.ai.chat.ChatResponse
 import com.aeibi.design.ai.chat.ResolvedProvider
+import com.aeibi.design.ai.provider.AiProviderRegistry
+import com.aeibi.design.ai.provider.DeepSeekProvider
+import com.aeibi.design.ai.provider.OpenAiProvider
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.database.AppDatabase
@@ -71,7 +74,8 @@ class ChatViewModelTest {
         MessageRepository(database.messageDao(), database.sessionDao()),
         SessionRepository(database.sessionDao()),
         aiProviderRepository,
-        fakeService
+        fakeService,
+        AiProviderRegistry(OpenAiProvider(), DeepSeekProvider())
     )
 
     private suspend fun seedSession(
@@ -352,6 +356,48 @@ class ChatViewModelTest {
         )
         assertEquals(ChatViewModel.ERROR_PROTOCOL, viewModel.classifyError(AiChatProtocolException("x")))
         assertEquals("boom", viewModel.classifyError(IllegalStateException("boom")))
+    }
+
+    @Test
+    fun selectSessionProvider_writesBindingAndNextSendUsesIt() = runTest {
+        seedProvider("cfg-1", "model-a")
+        seedProvider("cfg-2", "model-b")
+        seedSession("s1", updatedAt = 100L)
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+        // WhileSubscribed 状态流:先挂收集器,上游才开始派生。
+        backgroundScope.launch(dispatcher) { viewModel.sessionProvider.collect {} }
+
+        viewModel.selectSessionProvider("cfg-2", "model-b")
+        awaitCondition { viewModel.sessionProvider.value.current?.providerConfigId == "cfg-2" }
+
+        // 换绑即时生效:下一条消息用新绑定,不需要重进会话。
+        viewModel.sendMessage("换绑后发言")
+        awaitGenerationDone(viewModel)
+        assertEquals("cfg-2", fakeService.lastProvider?.configId)
+        assertEquals("model-b", fakeService.lastProvider?.model)
+        assertEquals("model-b", viewModel.sessionProvider.value.current?.model)
+        assertTrue("已绑定会话不再跟随默认", !viewModel.sessionProvider.value.followsDefault)
+    }
+
+    @Test
+    fun selectSessionProvider_clearsBackToFollowDefault() = runTest {
+        seedProvider("cfg-1", "model-a")
+        aiProviderRepository.setDefaultSelection("cfg-1", "model-a")
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "model-a")
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+        backgroundScope.launch(dispatcher) { viewModel.sessionProvider.collect {} }
+        awaitCondition { viewModel.sessionProvider.value.current != null }
+
+        viewModel.selectSessionProvider(null, null)
+
+        // 解除绑定后回到跟随默认,当前值取全局默认。
+        awaitCondition { viewModel.sessionProvider.value.followsDefault }
+        val state = viewModel.sessionProvider.value
+        assertEquals("cfg-1", state.defaultSelection?.providerConfigId)
+        assertEquals("cfg-1", state.current?.providerConfigId)
+        assertNull(database.sessionDao().getSession("s1")?.providerConfigId)
     }
 
     @Test

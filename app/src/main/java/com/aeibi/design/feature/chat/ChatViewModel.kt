@@ -2,19 +2,23 @@ package com.aeibi.design.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeibi.design.R
 import com.aeibi.design.ai.chat.AiChatProtocolException
 import com.aeibi.design.ai.chat.AiChatService
 import com.aeibi.design.ai.chat.ChatMessage
 import com.aeibi.design.ai.chat.ChatRequest
 import com.aeibi.design.ai.chat.ResolvedProvider
+import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.data.ai.AiProviderRepository
+import com.aeibi.design.data.ai.DefaultProviderSelection
 import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageEntryType
 import com.aeibi.design.data.messages.MessagePayload
 import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.messages.MessageRole
 import com.aeibi.design.data.messages.MessageStatus
+import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
@@ -28,12 +32,33 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+
+/** 会话级选择面板中的一个可选项:配置 + 图标 + 是否已存 key(缺 key 时禁选)。 */
+data class SessionProviderOption(val config: ProviderConfig, val iconRes: Int, val hasApiKey: Boolean)
+
+/** 一次生效的 provider/model 选择,供顶栏与面板展示当前值。 */
+data class SessionProviderSelection(
+    val providerConfigId: String,
+    val displayName: String,
+    val iconRes: Int,
+    val model: String
+)
+
+/** 会话级 provider 状态:[current] 是下一条消息将实际使用的选择。 */
+data class SessionProviderUiState(
+    val current: SessionProviderSelection? = null,
+    /** 会话未绑定(跟随全局默认)时为 true。 */
+    val followsDefault: Boolean = true,
+    val defaultSelection: SessionProviderSelection? = null,
+    val options: List<SessionProviderOption> = emptyList()
+)
 
 /** 聊天状态入口：跟随当前会话展示消息流，重开会话可完整恢复历史消息。 */
 @OptIn(ExperimentalCoroutinesApi::class)
@@ -42,7 +67,8 @@ class ChatViewModel @Inject constructor(
     private val messageRepository: MessageRepository,
     private val sessionRepository: SessionRepository,
     private val aiProviderRepository: AiProviderRepository,
-    private val aiChatService: AiChatService
+    private val aiChatService: AiChatService,
+    private val providerRegistry: AiProviderRegistry
 ) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<String?>(null)
@@ -75,6 +101,36 @@ class ChatViewModel @Inject constructor(
     /** 绑定当前会话；null 表示尚未选中会话。 */
     fun bind(sessionId: String?) {
         currentSessionId.value = sessionId
+    }
+
+    /**
+     * 会话级 provider 状态(顶栏展示 + 选择面板数据)。派生规则与
+     * [resolveProvider] 一致:会话绑定优先,绑定失效/未绑定时当前值取全局
+     * 默认 —— 展示的就是下一条消息实际会用的选择。
+     */
+    val sessionProvider: StateFlow<SessionProviderUiState> = currentSessionId
+        .flatMapLatest { sessionId ->
+            if (sessionId == null) {
+                flowOf(null)
+            } else {
+                sessionRepository.observeSession(sessionId)
+            }
+        }
+        .combine(aiProviderRepository.settings) { session, settings -> session to settings.providers }
+        .combine(aiProviderRepository.defaultSelection) { (session, providers), default ->
+            deriveSessionProviderUi(session, providers, default)
+        }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), SessionProviderUiState())
+
+    /**
+     * 选择本会话使用的 provider/model(null/null 解除绑定,回到跟随全局默认)。
+     * 只影响后续消息;进行中的生成沿用发起时已解析的 provider。
+     */
+    fun selectSessionProvider(providerConfigId: String?, model: String?) {
+        val sessionId = currentSessionId.value ?: return
+        viewModelScope.launch {
+            sessionRepository.updateProviderBinding(sessionId, providerConfigId, model)
+        }
     }
 
     /**
@@ -166,7 +222,8 @@ class ChatViewModel @Inject constructor(
         val apiKey = aiProviderRepository.readApiKey(config.id) ?: return null
 
         if (session.providerConfigId != config.id || session.model != model) {
-            sessionRepository.saveSession(session.copy(providerConfigId = config.id, model = model))
+            // 定向 UPDATE 只改绑定列,不携带旧行整行覆盖 title/updated_at。
+            sessionRepository.updateProviderBinding(sessionId, config.id, model)
         }
 
         return ResolvedProvider(
@@ -178,6 +235,47 @@ class ChatViewModel @Inject constructor(
             model = model
         )
     }
+
+    private fun deriveSessionProviderUi(
+        session: SessionEntity?,
+        providers: List<ProviderConfig>,
+        default: DefaultProviderSelection
+    ): SessionProviderUiState {
+        fun selectionFor(configId: String?, model: String?): SessionProviderSelection? {
+            if (configId == null || model == null) return null
+            val config = providers.firstOrNull { it.id == configId } ?: return null
+            return SessionProviderSelection(
+                providerConfigId = config.id,
+                displayName = config.displayName,
+                iconRes = iconFor(config.providerType),
+                model = model
+            )
+        }
+
+        // 绑定指向已删配置时按未绑定处理,与 resolveProvider 的回退规则一致。
+        val bound = session?.let { selectionFor(it.providerConfigId, it.model) }
+        val defaultSelection = if (default.isSet) {
+            selectionFor(default.providerConfigId, default.model)
+        } else {
+            null
+        }
+        return SessionProviderUiState(
+            current = bound ?: defaultSelection,
+            followsDefault = bound == null,
+            defaultSelection = defaultSelection,
+            options = providers.map { config ->
+                SessionProviderOption(
+                    config = config,
+                    iconRes = iconFor(config.providerType),
+                    hasApiKey = aiProviderRepository.hasApiKey(config.id)
+                )
+            }
+        )
+    }
+
+    private fun iconFor(providerType: String): Int = providerRegistry.definitions
+        .firstOrNull { it.type == providerType }?.iconRes
+        ?: R.drawable.provider_default
 
     /**
      * 组装发给模型的上下文:user 全进,assistant 只进 COMPLETED(中断/失败的回复是

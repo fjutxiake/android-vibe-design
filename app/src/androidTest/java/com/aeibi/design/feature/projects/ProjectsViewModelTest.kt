@@ -38,6 +38,11 @@ class ProjectsViewModelTest {
 
         override suspend fun getSession(sessionId: String): SessionEntity? = null
 
+        override fun observeSession(sessionId: String): Flow<SessionEntity?> = flowOf(null)
+
+        override suspend fun updateProviderBinding(sessionId: String, providerConfigId: String?, model: String?): Int =
+            0
+
         override suspend fun upsertSession(session: SessionEntity) = Unit
 
         override suspend fun renameSession(sessionId: String, title: String, updatedAt: Long): Int = 0

@@ -12,6 +12,12 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
 
     suspend fun getSession(sessionId: String): SessionEntity? = sessionDao.getSession(sessionId)
 
+    fun observeSession(sessionId: String): Flow<SessionEntity?> = sessionDao.observeSession(sessionId)
+
+    /** 更新会话的 provider/model 绑定;null 表示回到跟随全局默认。 */
+    suspend fun updateProviderBinding(sessionId: String, providerConfigId: String?, model: String?): Boolean =
+        sessionDao.updateProviderBinding(sessionId, providerConfigId, model) > 0
+
     suspend fun saveSession(session: SessionEntity) {
         sessionDao.upsertSession(session)
     }

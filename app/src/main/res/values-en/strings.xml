@@ -74,6 +74,13 @@
     <string name="chat_error_auth">Authentication failed. Check your API key</string>
     <string name="chat_error_http">The service returned an error. Try again later</string>
     <string name="chat_error_protocol">Unexpected response format from the service. Try again later</string>
+    <string name="chat_provider_none">No AI service selected</string>
+    <string name="chat_cd_change_provider">Change AI service for this session</string>
+    <string name="chat_provider_sheet_title">Choose AI service</string>
+    <string name="chat_provider_follow_default">Follow global default</string>
+    <string name="chat_provider_default_unset">No default set</string>
+    <string name="chat_provider_missing_key">Missing API key. Add it in settings first</string>
+    <string name="chat_provider_empty">No AI service configured yet. Add one in settings first</string>
     <!-- Placeholder screens -->
     <string name="build_title">Build &amp; package</string>
     <string name="build_project_label">Project: %1$s</string>

@@ -21,8 +21,15 @@ interface SessionDao {
     @Query("SELECT * FROM sessions WHERE id = :sessionId LIMIT 1")
     suspend fun getSession(sessionId: String): SessionEntity?
 
+    @Query("SELECT * FROM sessions WHERE id = :sessionId LIMIT 1")
+    fun observeSession(sessionId: String): Flow<SessionEntity?>
+
     @Upsert
     suspend fun upsertSession(session: SessionEntity)
+
+    /** 只改绑定列:不动 title/updated_at,换 provider 不算会话内容变化。 */
+    @Query("UPDATE sessions SET provider_config_id = :providerConfigId, model = :model WHERE id = :sessionId")
+    suspend fun updateProviderBinding(sessionId: String, providerConfigId: String?, model: String?): Int
 
     @Query(
         """
