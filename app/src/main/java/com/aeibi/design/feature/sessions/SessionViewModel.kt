@@ -5,6 +5,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.R
+import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionRepository
@@ -15,6 +16,7 @@ import java.util.UUID
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
 /** 会话列表状态入口：暴露按项目隔离的会话流，并承载创建、重命名、删除动作。 */
@@ -22,6 +24,7 @@ import kotlinx.coroutines.launch
 class SessionViewModel @Inject constructor(
     private val repository: SessionRepository,
     private val messageRepository: MessageRepository,
+    private val aiProviderRepository: AiProviderRepository,
     @ApplicationContext private val context: Context
 ) : ViewModel() {
 
@@ -38,12 +41,16 @@ class SessionViewModel @Inject constructor(
     /** 创建新会话并返回其 id，调用方可直接导航进入。 */
     suspend fun createSession(projectId: String): String {
         val now = System.currentTimeMillis()
+        // 会话出生时继承全局默认 provider/model;之后全局默认的变化不影响本会话。
+        val default = aiProviderRepository.defaultSelection.first()
         val session = SessionEntity(
             id = UUID.randomUUID().toString(),
             projectId = projectId,
             title = defaultTitle(),
             createdAt = now,
-            updatedAt = now
+            updatedAt = now,
+            providerConfigId = default.providerConfigId,
+            model = default.model
         )
         repository.saveSession(session)
         return session.id

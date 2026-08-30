@@ -65,8 +65,10 @@
     <string name="chat_empty_title">开始新的对话</string>
     <string name="chat_empty_no_session">项目 %1$s · 尚未创建会话</string>
     <string name="chat_empty_session">项目 %1$s · 会话 %2$s</string>
+    <string name="chat_status_streaming">生成中…</string>
     <string name="chat_status_interrupted">已中断</string>
     <string name="chat_status_failed">生成失败</string>
+    <string name="chat_error_no_provider">本会话未绑定 AI 服务，请先在设置中添加并选择</string>
     <!-- Placeholder screens -->
     <string name="build_title">打包与构建</string>
     <string name="build_project_label">项目：%1$s</string>
@@ -99,6 +101,10 @@
     <!-- AI providers settings -->
     <string name="ai_add_service">添加服务</string>
     <string name="ai_no_providers">尚未添加 AI 服务</string>
+    <string name="ai_cd_set_default">将 %1$s 设为默认服务</string>
+    <string name="ai_cd_default_provider">%1$s 是默认服务</string>
+    <string name="ai_pick_model_title">为 %1$s 选择默认模型</string>
+    <string name="ai_default_model_label">默认模型：%1$s</string>
     <string name="ai_remove_provider_title">移除 %1$s？</string>
     <string name="ai_remove_provider_message">保存的 API Key 也会被移除。</string>
     <string name="ai_remove">移除</string>

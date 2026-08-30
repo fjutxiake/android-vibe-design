@@ -69,7 +69,16 @@ enum class MessageEntryType(val value: String) {
  * 升级 type 或引入新 type,不在旧 type 上做不兼容改动。
  */
 @kotlinx.serialization.Serializable
-data class MessagePayload(val role: MessageRole, val status: MessageStatus, val content: String)
+data class MessagePayload(
+    val role: MessageRole,
+    val status: MessageStatus,
+    val content: String,
+    /** 生成该条目时使用的 provider 配置 id 与 model(请求快照,供历史溯源)。 */
+    val providerConfigId: String? = null,
+    val model: String? = null,
+    /** 失败原因(仅 FAILED 状态填充)。 */
+    val error: String? = null
+)
 
 /** 消息角色。预留扩展值(如未来的工具活动),不影响 TEXT 列的存储格式。 */
 @kotlinx.serialization.Serializable
@@ -111,4 +120,5 @@ data class MessageEntry(val entity: MessageEntryEntity, val payload: MessagePayl
     val role: MessageRole get() = payload.role
     val status: MessageStatus get() = payload.status
     val content: String get() = payload.content
+    val error: String? get() = payload.error
 }

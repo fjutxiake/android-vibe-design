@@ -65,8 +65,10 @@
     <string name="chat_empty_title">Start a new conversation</string>
     <string name="chat_empty_no_session">Project %1$s · No session yet</string>
     <string name="chat_empty_session">Project %1$s · Session %2$s</string>
+    <string name="chat_status_streaming">Generating…</string>
     <string name="chat_status_interrupted">Interrupted</string>
     <string name="chat_status_failed">Failed</string>
+    <string name="chat_error_no_provider">No AI service bound to this session. Add and select one in settings first</string>
     <!-- Placeholder screens -->
     <string name="build_title">Build &amp; package</string>
     <string name="build_project_label">Project: %1$s</string>
@@ -99,6 +101,10 @@
     <!-- AI providers settings -->
     <string name="ai_add_service">Add service</string>
     <string name="ai_no_providers">No AI service configured yet</string>
+    <string name="ai_cd_set_default">Set %1$s as default service</string>
+    <string name="ai_cd_default_provider">%1$s is the default service</string>
+    <string name="ai_pick_model_title">Choose default model for %1$s</string>
+    <string name="ai_default_model_label">Default model: %1$s</string>
     <string name="ai_remove_provider_title">Remove %1$s?</string>
     <string name="ai_remove_provider_message">The saved API Key will also be removed.</string>
     <string name="ai_remove">Remove</string>

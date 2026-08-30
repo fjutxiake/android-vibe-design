@@ -5,6 +5,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
@@ -15,8 +16,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteOutline
 import androidx.compose.material.icons.filled.Hub
+import androidx.compose.material.icons.outlined.CheckCircle
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -38,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -71,7 +75,9 @@ fun AiProvidersScreen(
         onClearFeedback = viewModel::clearFeedback,
         onRevealApiKey = viewModel::revealApiKey,
         onSaveProvider = viewModel::saveProvider,
-        onDeleteProvider = viewModel::deleteProvider
+        onDeleteProvider = viewModel::deleteProvider,
+        onSetDefault = viewModel::setDefaultProvider,
+        onClearDefault = viewModel::clearDefaultProvider
     )
 }
 
@@ -84,13 +90,16 @@ private fun AiProvidersContent(
     onClearFeedback: () -> Unit = {},
     onRevealApiKey: suspend (String) -> String? = { null },
     onSaveProvider: (ProviderConfig, String, (Boolean) -> Unit) -> Unit = { _, _, onComplete -> onComplete(true) },
-    onDeleteProvider: (String) -> Unit = {}
+    onDeleteProvider: (String) -> Unit = {},
+    onSetDefault: (String, String) -> Unit = { _, _ -> },
+    onClearDefault: () -> Unit = {}
 ) {
     val spacing = MaterialTheme.spacing
     val context = LocalContext.current
     var editingProvider by remember { mutableStateOf<ProviderConfigItem?>(null) }
     var pendingDelete by remember { mutableStateOf<ProviderConfig?>(null) }
     var showProviderPicker by remember { mutableStateOf(false) }
+    var defaultCandidate by remember { mutableStateOf<ProviderConfig?>(null) }
 
     LaunchedEffect(uiState.feedback) {
         uiState.feedback?.let { resId ->
@@ -125,6 +134,8 @@ private fun AiProvidersContent(
                 item {
                     ProviderGroup(
                         providers = uiState.configuredProviders,
+                        defaultConfigId = uiState.defaultSelection.providerConfigId,
+                        defaultModel = uiState.defaultSelection.model,
                         providerIconRes = { item ->
                             uiState.providerDefinitions
                                 .firstOrNull { it.type == item.config.providerType }
@@ -136,6 +147,17 @@ private fun AiProvidersContent(
                             editingProvider = it
                         },
                         onDelete = { pendingDelete = it.config },
+                        onSetDefault = { item ->
+                            // 单模型直接生效;多模型先选模型。
+                            if (item.config.models.size <= 1) {
+                                item.config.models.firstOrNull()?.let { model ->
+                                    onSetDefault(item.config.id, model)
+                                }
+                            } else {
+                                defaultCandidate = item.config
+                            }
+                        },
+                        onClearDefault = onClearDefault,
                         onAdd = { showProviderPicker = true }
                     )
                 }
@@ -197,6 +219,36 @@ private fun AiProvidersContent(
             },
             dismissButton = {
                 TextButton(onClick = { pendingDelete = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
+
+    // 多模型服务设默认:先选模型。
+    defaultCandidate?.let { config ->
+        AlertDialog(
+            onDismissRequest = { defaultCandidate = null },
+            title = { Text(stringResource(R.string.ai_pick_model_title, config.displayName)) },
+            text = {
+                Column {
+                    config.models.forEach { model ->
+                        ListItem(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(MaterialTheme.shapes.medium)
+                                .clickable {
+                                    onSetDefault(config.id, model)
+                                    defaultCandidate = null
+                                },
+                            headlineContent = { Text(model) }
+                        )
+                    }
+                }
+            },
+            confirmButton = {},
+            dismissButton = {
+                TextButton(onClick = { defaultCandidate = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             }
@@ -266,9 +318,13 @@ private fun AiProvidersConfiguredScreenPreview() {
 @Composable
 private fun ProviderGroup(
     providers: List<ProviderConfigItem>,
+    defaultConfigId: String?,
+    defaultModel: String?,
     providerIconRes: (ProviderConfigItem) -> Int,
     onEdit: (ProviderConfigItem) -> Unit,
     onDelete: (ProviderConfigItem) -> Unit,
+    onSetDefault: (ProviderConfigItem) -> Unit,
+    onClearDefault: () -> Unit,
     onAdd: () -> Unit
 ) {
     val spacing = MaterialTheme.spacing
@@ -283,8 +339,13 @@ private fun ProviderGroup(
                 ProviderRow(
                     item = item,
                     providerIconRes = providerIconRes(item),
+                    isDefault = defaultConfigId == item.config.id,
+                    defaultModel = defaultModel,
                     onClick = { onEdit(item) },
-                    onDelete = { onDelete(item) }
+                    onDelete = { onDelete(item) },
+                    onToggleDefault = {
+                        if (defaultConfigId == item.config.id) onClearDefault() else onSetDefault(item)
+                    }
                 )
             }
             HorizontalDivider(modifier = Modifier.padding(start = spacing.md))
@@ -312,8 +373,20 @@ private fun ProviderGroup(
 }
 
 @Composable
-private fun ProviderRow(item: ProviderConfigItem, providerIconRes: Int, onClick: () -> Unit, onDelete: () -> Unit) {
-    val modelSummary = item.config.models.joinToString()
+private fun ProviderRow(
+    item: ProviderConfigItem,
+    providerIconRes: Int,
+    isDefault: Boolean,
+    defaultModel: String?,
+    onClick: () -> Unit,
+    onDelete: () -> Unit,
+    onToggleDefault: () -> Unit
+) {
+    val modelSummary = if (isDefault && defaultModel != null) {
+        stringResource(R.string.ai_default_model_label, defaultModel)
+    } else {
+        item.config.models.joinToString()
+    }
 
     ListItem(
         modifier = Modifier.clickable(onClick = onClick),
@@ -342,15 +415,31 @@ private fun ProviderRow(item: ProviderConfigItem, providerIconRes: Int, onClick:
             )
         },
         trailingContent = {
-            IconButton(onClick = onDelete) {
-                Icon(
-                    Icons.Default.DeleteOutline,
-                    contentDescription = stringResource(
-                        R.string.ai_cd_remove_provider,
-                        item.config.displayName
-                    ),
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onToggleDefault) {
+                    Icon(
+                        imageVector = if (isDefault) Icons.Filled.CheckCircle else Icons.Outlined.CheckCircle,
+                        contentDescription = stringResource(
+                            if (isDefault) R.string.ai_cd_default_provider else R.string.ai_cd_set_default,
+                            item.config.displayName
+                        ),
+                        tint = if (isDefault) {
+                            MaterialTheme.colorScheme.primary
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                    )
+                }
+                IconButton(onClick = onDelete) {
+                    Icon(
+                        Icons.Default.DeleteOutline,
+                        contentDescription = stringResource(
+                            R.string.ai_cd_remove_provider,
+                            item.config.displayName
+                        ),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
         }
     )

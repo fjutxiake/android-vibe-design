@@ -67,6 +67,30 @@ interface MessageDao {
     suspend fun transitionStatus(entryId: String, newStatus: String, allowedFrom: List<String>): Int
 
     /**
+     * 生成完成时的完整收敛:content 与 status 一并写入(仍带 CAS 守卫)。
+     * error 仅在转 FAILED 时写入;转 COMPLETED 时清除。
+     */
+    @Query(
+        """
+      UPDATE messages
+      SET payload = json_set(
+            json_set(payload, '$.content', :content, '$.status', :newStatus),
+            '$.error',
+            CASE WHEN :newStatus = 'FAILED' THEN :error ELSE NULL END
+          )
+      WHERE id = :entryId
+        AND json_extract(payload, '$.status') IN (:allowedFrom)
+    """
+    )
+    suspend fun updatePayloadAndStatus(
+        entryId: String,
+        content: String,
+        newStatus: String,
+        allowedFrom: List<String>,
+        error: String?
+    ): Int
+
+    /**
      * 启动恢复:把所有非终态(STREAMING)的条目收敛为 INTERRUPTED。
      * 终态(COMPLETED/INTERRUPTED/FAILED)不受影响。返回收敛的条目数。
      */

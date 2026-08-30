@@ -2,19 +2,27 @@ package com.aeibi.design.feature.chat
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.aeibi.design.ai.chat.AiChatService
+import com.aeibi.design.ai.chat.ChatMessage
+import com.aeibi.design.ai.chat.ChatRequest
+import com.aeibi.design.ai.chat.ResolvedProvider
+import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageEntryType
 import com.aeibi.design.data.messages.MessagePayload
 import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.messages.MessageRole
 import com.aeibi.design.data.messages.MessageStatus
+import com.aeibi.design.data.sessions.SessionRepository
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import java.util.UUID
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
@@ -23,7 +31,12 @@ import kotlinx.coroutines.launch
 /** 聊天状态入口：跟随当前会话展示消息流，重开会话可完整恢复历史消息。 */
 @OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
-class ChatViewModel @Inject constructor(private val messageRepository: MessageRepository) : ViewModel() {
+class ChatViewModel @Inject constructor(
+    private val messageRepository: MessageRepository,
+    private val sessionRepository: SessionRepository,
+    private val aiProviderRepository: AiProviderRepository,
+    private val aiChatService: AiChatService
+) : ViewModel() {
 
     private val currentSessionId = MutableStateFlow<String?>(null)
 
@@ -44,8 +57,9 @@ class ChatViewModel @Inject constructor(private val messageRepository: MessageRe
     }
 
     /**
-     * 把用户消息写入当前会话(与 touch 会话同一事务)。AI 回复的生成在 #23 中接入,
-     * 届时以 ASSISTANT/STREAMING 起始条目追加,再经状态转换收敛到终态。
+     * 发送消息:用户消息落库 → 追加 ASSISTANT/STREAMING 条目 → 非流式请求 →
+     * 状态收敛(COMPLETED/FAILED)。resolve 失败(无绑定/无 key)直接 FAILED 落库,
+     * 不发起网络。
      */
     fun sendMessage(content: String) {
         val sessionId = currentSessionId.value ?: return
@@ -61,6 +75,123 @@ class ChatViewModel @Inject constructor(private val messageRepository: MessageRe
                 id = UUID.randomUUID().toString(),
                 createdAt = System.currentTimeMillis()
             )
+
+            val provider = resolveProvider(sessionId)
+            if (provider == null) {
+                appendFailedEntry(sessionId, ERROR_NO_PROVIDER)
+                return@launch
+            }
+
+            val history = messageRepository.getMessages(sessionId)
+            val entry = appendStreamingEntry(sessionId, provider)
+            try {
+                val response = aiChatService.chat(
+                    ChatRequest(model = provider.model, messages = buildContext(history)),
+                    provider
+                )
+                completeEntry(entry.id, response.content)
+            } catch (ce: CancellationException) {
+                throw ce
+            } catch (e: Exception) {
+                failEntry(entry.id, e.message ?: e.javaClass.simpleName)
+            }
         }
+    }
+
+    /** 解析当前会话绑定的 provider 配置与 key;未绑定/配置已删/无 key 时返回 null。 */
+    private suspend fun resolveProvider(sessionId: String): ResolvedProvider? {
+        val session = sessionRepository.getSession(sessionId) ?: return null
+        val configId = session.providerConfigId ?: return null
+        val model = session.model ?: return null
+        val settings = aiProviderRepository.settings.firstOrNull() ?: return null
+        val config = settings.providers.firstOrNull { it.id == configId } ?: return null
+        val apiKey = aiProviderRepository.readApiKey(configId) ?: return null
+        return ResolvedProvider(
+            configId = config.id,
+            providerType = config.providerType,
+            displayName = config.displayName,
+            endpoint = config.endpoint,
+            apiKey = apiKey,
+            model = model
+        )
+    }
+
+    /**
+     * 组装发给模型的上下文:user 全进,assistant 只进 COMPLETED(中断/失败的回复是
+     * UI 事实而非模型事实);再取最近 [CONTEXT_WINDOW] 条控制请求规模。
+     */
+    internal fun buildContext(history: List<MessageEntry>): List<ChatMessage> = history
+        .filter { entry ->
+            entry.payload.role == MessageRole.USER || entry.payload.status == MessageStatus.COMPLETED
+        }
+        .takeLast(CONTEXT_WINDOW)
+        .map { entry ->
+            ChatMessage(
+                role = if (entry.payload.role == MessageRole.USER) {
+                    ChatMessage.ROLE_USER
+                } else {
+                    ChatMessage.ROLE_ASSISTANT
+                },
+                content = entry.payload.content
+            )
+        }
+
+    private suspend fun appendStreamingEntry(sessionId: String, provider: ResolvedProvider): MessageEntry =
+        messageRepository.appendMessage(
+            sessionId = sessionId,
+            type = MessageEntryType.ASSISTANT_MESSAGE,
+            payload = MessagePayload(
+                role = MessageRole.ASSISTANT,
+                status = MessageStatus.STREAMING,
+                content = "",
+                providerConfigId = provider.configId,
+                model = provider.model
+            ),
+            id = UUID.randomUUID().toString(),
+            createdAt = System.currentTimeMillis()
+        )
+
+    private suspend fun appendFailedEntry(sessionId: String, error: String) {
+        messageRepository.appendMessage(
+            sessionId = sessionId,
+            type = MessageEntryType.ASSISTANT_MESSAGE,
+            payload = MessagePayload(
+                role = MessageRole.ASSISTANT,
+                status = MessageStatus.FAILED,
+                content = "",
+                error = error
+            ),
+            id = UUID.randomUUID().toString(),
+            createdAt = System.currentTimeMillis()
+        )
+    }
+
+    private suspend fun completeEntry(entryId: String, content: String) {
+        messageRepository.updatePayloadAndStatus(
+            entryId = entryId,
+            content = content,
+            newStatus = MessageStatus.COMPLETED,
+            allowedFrom = listOf(MessageStatus.STREAMING)
+        )
+    }
+
+    private suspend fun failEntry(entryId: String, error: String) {
+        messageRepository.updatePayloadAndStatus(
+            entryId = entryId,
+            content = "",
+            newStatus = MessageStatus.FAILED,
+            allowedFrom = listOf(MessageStatus.STREAMING),
+            error = error
+        )
+    }
+
+    companion object {
+        const val CONTEXT_WINDOW = 20
+
+        /**
+         * resolve 失败(未绑定 provider/配置已删/无 key)的统一错误码,
+         * UI 层据此映射本地化文案;其他 error 值为面向诊断的原始信息。
+         */
+        const val ERROR_NO_PROVIDER = "no_provider"
     }
 }

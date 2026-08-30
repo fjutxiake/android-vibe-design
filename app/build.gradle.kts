@@ -85,11 +85,14 @@ dependencies {
     // Local static file server
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
+    // AI chat network client
+    implementation(libs.ktor.client.cio)
     // Tooling
     debugImplementation(libs.androidx.compose.ui.tooling)
     // Instrumented tests
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
+    androidTestImplementation(libs.ktor.client.mock)
 
     // Local tests: jUnit, coroutines, Android runner
     testImplementation(libs.junit)

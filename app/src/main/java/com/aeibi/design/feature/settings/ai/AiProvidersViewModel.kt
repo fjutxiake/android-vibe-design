@@ -8,6 +8,7 @@ import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.provider.ProviderConfig
 import com.aeibi.design.ai.provider.ProviderDefinition
 import com.aeibi.design.data.ai.AiProviderRepository
+import com.aeibi.design.data.ai.DefaultProviderSelection
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -21,6 +22,8 @@ data class ProviderConfigItem(val config: ProviderConfig, val hasApiKey: Boolean
 data class AiProvidersUiState(
     val configuredProviders: List<ProviderConfigItem> = emptyList(),
     val providerDefinitions: List<ProviderDefinition> = emptyList(),
+    /** 全局默认 provider/model;新会话创建时继承。 */
+    val defaultSelection: DefaultProviderSelection = DefaultProviderSelection(null, null),
     val isSaving: Boolean = false,
     @StringRes val feedback: Int? = null
 )
@@ -34,12 +37,17 @@ class AiProvidersViewModel @Inject constructor(
 ) : ViewModel() {
     private val operation = MutableStateFlow(OperationState())
 
-    val uiState = combine(repository.settings, operation) { settings, operation ->
+    val uiState = combine(
+        repository.settings,
+        repository.defaultSelection,
+        operation
+    ) { settings, defaultSelection, operation ->
         AiProvidersUiState(
             configuredProviders = settings.providers.map { config ->
                 ProviderConfigItem(config, repository.hasApiKey(config.id))
             },
             providerDefinitions = providerRegistry.definitions,
+            defaultSelection = defaultSelection,
             isSaving = operation.isSaving,
             feedback = operation.feedback
         )
@@ -48,6 +56,19 @@ class AiProvidersViewModel @Inject constructor(
         started = SharingStarted.WhileSubscribed(5_000),
         initialValue = AiProvidersUiState(providerDefinitions = providerRegistry.definitions)
     )
+
+    /** 设为全局默认;存量会话不受影响,只有之后新建的会话继承。 */
+    fun setDefaultProvider(configId: String, model: String) {
+        viewModelScope.launch {
+            repository.setDefaultSelection(configId, model)
+        }
+    }
+
+    fun clearDefaultProvider() {
+        viewModelScope.launch {
+            repository.setDefaultSelection(null, null)
+        }
+    }
 
     fun saveProvider(config: ProviderConfig, apiKey: String, onComplete: (Boolean) -> Unit) {
         viewModelScope.launch {

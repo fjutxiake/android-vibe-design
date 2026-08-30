@@ -6,7 +6,8 @@ import androidx.sqlite.execSQL
 
 /**
  * v1→v2:新增 messages 表(entries 风格:id 主键、UNIQUE(session_id, seq) 排序、
- * type + payload JSON 结构化存储、FK 级联回 sessions)。sessions 表保持不动。
+ * type + payload JSON 结构化存储、FK 级联回 sessions),并为 sessions 补上
+ * provider_config_id / model 两列(会话绑定的 AI 配置快照)。
  * v2 从未发布,后续形状调整直接改这里,不产生 v3。
  */
 val MIGRATION_1_2 =
@@ -23,5 +24,8 @@ val MIGRATION_1_2 =
             connection.execSQL(
                 "CREATE UNIQUE INDEX IF NOT EXISTS `index_messages_session_id_seq` ON `messages` (`session_id`, `seq`)"
             )
+            // sessions 新列:可空、无默认值,与 Entity 声明保持一致。
+            connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `provider_config_id` TEXT")
+            connection.execSQL("ALTER TABLE `sessions` ADD COLUMN `model` TEXT")
         }
     }

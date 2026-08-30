@@ -3,21 +3,36 @@ package com.aeibi.design.feature.chat
 import android.content.Context
 import androidx.room3.Room
 import androidx.test.core.app.ApplicationProvider
+import com.aeibi.design.ai.chat.AiChatService
+import com.aeibi.design.ai.chat.ChatChunk
+import com.aeibi.design.ai.chat.ChatRequest
+import com.aeibi.design.ai.chat.ChatResponse
+import com.aeibi.design.ai.chat.ResolvedProvider
+import com.aeibi.design.ai.provider.ProviderConfig
+import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.database.AppDatabase
+import com.aeibi.design.data.messages.MessageEntry
+import com.aeibi.design.data.messages.MessageEntryEntity
 import com.aeibi.design.data.messages.MessageEntryType
+import com.aeibi.design.data.messages.MessagePayload
 import com.aeibi.design.data.messages.MessagePayloadCodec
 import com.aeibi.design.data.messages.MessageRepository
 import com.aeibi.design.data.messages.MessageRole
 import com.aeibi.design.data.messages.MessageStatus
+import com.aeibi.design.data.securestore.SecureStore
 import com.aeibi.design.data.sessions.SessionEntity
+import com.aeibi.design.data.sessions.SessionRepository
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.ExperimentalCoroutinesApi
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.test.UnconfinedTestDispatcher
 import kotlinx.coroutines.test.resetMain
 import kotlinx.coroutines.test.runTest
 import kotlinx.coroutines.test.setMain
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -28,6 +43,8 @@ class ChatViewModelTest {
     private val context: Context = ApplicationProvider.getApplicationContext()
     private lateinit var database: AppDatabase
     private val dispatcher = UnconfinedTestDispatcher()
+    private lateinit var aiProviderRepository: AiProviderRepository
+    private lateinit var fakeService: FakeAiChatService
 
     @Before
     fun setUp() {
@@ -35,6 +52,8 @@ class ChatViewModelTest {
         database = Room.inMemoryDatabaseBuilder(context, AppDatabase::class.java)
             .allowMainThreadQueries()
             .build()
+        aiProviderRepository = AiProviderRepository(context, FakeSecureStore())
+        fakeService = FakeAiChatService()
     }
 
     @After
@@ -44,43 +63,104 @@ class ChatViewModelTest {
     }
 
     private fun viewModel(): ChatViewModel = ChatViewModel(
-        MessageRepository(database.messageDao(), database.sessionDao())
+        MessageRepository(database.messageDao(), database.sessionDao()),
+        SessionRepository(database.sessionDao()),
+        aiProviderRepository,
+        fakeService
     )
 
-    private suspend fun seedSession(id: String, projectId: String, updatedAt: Long) {
+    private suspend fun seedSession(
+        id: String,
+        projectId: String = "p1",
+        updatedAt: Long = 100L,
+        providerConfigId: String? = null,
+        model: String? = null
+    ) {
         database.sessionDao().upsertSession(
             SessionEntity(
                 id = id,
                 projectId = projectId,
                 title = "会话 $id",
                 createdAt = 1L,
-                updatedAt = updatedAt
+                updatedAt = updatedAt,
+                providerConfigId = providerConfigId,
+                model = model
             )
         )
     }
 
+    private suspend fun seedProvider(configId: String = "cfg-1") {
+        aiProviderRepository.saveProvider(
+            ProviderConfig(
+                id = configId,
+                providerType = "openai_compatible",
+                displayName = "测试服务",
+                endpoint = "https://api.example.com/v1",
+                models = listOf("test-model")
+            ),
+            apiKey = "sk-test"
+        )
+    }
+
+    private fun entry(
+        seq: Long,
+        role: MessageRole,
+        status: MessageStatus,
+        content: String,
+        sessionId: String = "s1"
+    ): MessageEntry = MessageEntry(
+        entity = MessageEntryEntity(
+            id = "e$seq",
+            sessionId = sessionId,
+            seq = seq,
+            type = if (role == MessageRole.USER) MessageEntryType.USER_MESSAGE else MessageEntryType.ASSISTANT_MESSAGE,
+            payload = MessagePayloadCodec.encode(MessagePayload(role = role, status = status, content = content)),
+            createdAt = seq
+        ),
+        payload = MessagePayload(role = role, status = status, content = content)
+    )
+
     @Test
-    fun sendMessage_persistsUserMessageAndTouchesSession() = runTest {
-        seedSession("s1", "p1", updatedAt = 100L)
+    fun sendMessage_persistsConversationAndCompletesReply() = runTest {
+        seedProvider()
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "test-model")
         val viewModel = viewModel()
         viewModel.bind("s1")
 
         viewModel.sendMessage("做一个天气卡片")
 
         val entries = database.messageDao().getMessages("s1")
-        assertEquals(1, entries.size)
-        assertEquals(MessageEntryType.USER_MESSAGE, entries.single().type)
-        val payload = MessagePayloadCodec.decode(entries.single().payload)
-        assertEquals("做一个天气卡片", payload.content)
-        assertEquals(MessageRole.USER, payload.role)
-        assertEquals(MessageStatus.COMPLETED, payload.status)
+        assertEquals(2, entries.size)
+
+        val user = entries[0]
+        assertEquals(MessageEntryType.USER_MESSAGE, user.type)
+        val userPayload = MessagePayloadCodec.decode(user.payload)
+        assertEquals("做一个天气卡片", userPayload.content)
+        assertEquals(MessageRole.USER, userPayload.role)
+        assertEquals(MessageStatus.COMPLETED, userPayload.status)
+
+        val assistant = entries[1]
+        assertEquals(MessageEntryType.ASSISTANT_MESSAGE, assistant.type)
+        val reply = MessagePayloadCodec.decode(assistant.payload)
+        assertEquals(MessageRole.ASSISTANT, reply.role)
+        assertEquals(MessageStatus.COMPLETED, reply.status)
+        assertEquals(FakeAiChatService.CANNED_REPLY, reply.content)
+        assertEquals("cfg-1", reply.providerConfigId)
+        assertEquals("test-model", reply.model)
+        assertNull(reply.error)
+
+        // 请求上下文只含刚发送的用户消息;model 取会话绑定值。
+        assertEquals(listOf("做一个天气卡片"), fakeService.lastRequest?.messages?.map { it.content })
+        assertEquals("test-model", fakeService.lastRequest?.model)
+        assertEquals("test-model", fakeService.lastProvider?.model)
+
         val session = database.sessionDao().getSession("s1")
         assertTrue("会话 updated_at 应被刷新", session!!.updatedAt > 100L)
     }
 
     @Test
     fun sendMessage_whenNoSessionBound_persistsNothing() = runTest {
-        seedSession("s1", "p1", updatedAt = 100L)
+        seedSession("s1", updatedAt = 100L)
         val viewModel = viewModel()
         viewModel.bind(null)
 
@@ -88,5 +168,115 @@ class ChatViewModelTest {
 
         assertTrue(database.messageDao().getMessages("s1").isEmpty())
         assertEquals(100L, database.sessionDao().getSession("s1")!!.updatedAt)
+    }
+
+    @Test
+    fun sendMessage_whenNoProviderBound_failsWithoutNetwork() = runTest {
+        seedSession("s1", updatedAt = 100L)
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("没有绑定 provider 的输入")
+
+        // resolve 失败不发起网络,直接 FAILED 落库。
+        assertEquals(0, fakeService.chatCalls)
+        val entries = database.messageDao().getMessages("s1")
+        assertEquals(2, entries.size)
+        val reply = MessagePayloadCodec.decode(entries[1].payload)
+        assertEquals(MessageStatus.FAILED, reply.status)
+        assertEquals(ChatViewModel.ERROR_NO_PROVIDER, reply.error)
+    }
+
+    @Test
+    fun sendMessage_whenServiceThrows_marksEntryFailed() = runTest {
+        seedProvider()
+        seedSession("s1", updatedAt = 100L, providerConfigId = "cfg-1", model = "test-model")
+        fakeService.error = IllegalStateException("boom")
+        val viewModel = viewModel()
+        viewModel.bind("s1")
+
+        viewModel.sendMessage("触发服务异常")
+
+        val entries = database.messageDao().getMessages("s1")
+        assertEquals(2, entries.size)
+        val reply = MessagePayloadCodec.decode(entries[1].payload)
+        assertEquals(MessageStatus.FAILED, reply.status)
+        assertEquals("boom", reply.error)
+    }
+
+    @Test
+    fun buildContext_keepsUsersAndCompletedOnly() = runTest {
+        val viewModel = viewModel()
+        val history = listOf(
+            entry(1, MessageRole.USER, MessageStatus.COMPLETED, "问题一"),
+            entry(2, MessageRole.ASSISTANT, MessageStatus.COMPLETED, "回答一"),
+            entry(3, MessageRole.ASSISTANT, MessageStatus.INTERRUPTED, "半截回答不进上下文"),
+            entry(4, MessageRole.ASSISTANT, MessageStatus.FAILED, ""),
+            entry(5, MessageRole.ASSISTANT, MessageStatus.STREAMING, ""),
+            entry(6, MessageRole.USER, MessageStatus.COMPLETED, "问题二")
+        )
+
+        val context = viewModel.buildContext(history)
+
+        assertEquals(
+            listOf("user" to "问题一", "assistant" to "回答一", "user" to "问题二"),
+            context.map { it.role to it.content }
+        )
+    }
+
+    @Test
+    fun buildContext_capsToRecentWindow() = runTest {
+        val viewModel = viewModel()
+        // 30 条用户消息,窗口只保留最近 20 条。
+        val history = (1..30).map { seq ->
+            entry(seq.toLong(), MessageRole.USER, MessageStatus.COMPLETED, "消息$seq")
+        }
+
+        val context = viewModel.buildContext(history)
+
+        assertEquals(ChatViewModel.CONTEXT_WINDOW, context.size)
+        assertEquals("消息11", context.first().content)
+        assertEquals("消息30", context.last().content)
+    }
+
+    /** 内存版 SecureStore,测试不触碰 Keystore。 */
+    private class FakeSecureStore : SecureStore {
+        private val map = mutableMapOf<String, String>()
+
+        override fun contains(key: String): Boolean = map.containsKey(key)
+
+        override suspend fun put(key: String, value: String) {
+            map[key] = value
+        }
+
+        override suspend fun get(key: String): String? = map[key]
+
+        override suspend fun delete(key: String) {
+            map.remove(key)
+        }
+    }
+
+    /** 可编程的假聊天服务:记录请求,返回预设回复或抛预设异常。 */
+    private class FakeAiChatService : AiChatService {
+        var error: Exception? = null
+        var chatCalls = 0
+        var lastRequest: ChatRequest? = null
+        var lastProvider: ResolvedProvider? = null
+
+        override suspend fun chat(request: ChatRequest, provider: ResolvedProvider): ChatResponse {
+            chatCalls++
+            lastRequest = request
+            lastProvider = provider
+            error?.let { throw it }
+            return ChatResponse(CANNED_REPLY)
+        }
+
+        override fun chatStream(request: ChatRequest, provider: ResolvedProvider): Flow<ChatChunk> = flow {
+            emit(ChatChunk(CANNED_REPLY))
+        }
+
+        companion object {
+            const val CANNED_REPLY = "这是测试回复"
+        }
     }
 }

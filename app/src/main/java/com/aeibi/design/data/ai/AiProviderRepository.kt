@@ -21,6 +21,11 @@ import org.json.JSONObject
 
 private val Context.aiSettingsDataStore by preferencesDataStore(name = "ai_settings")
 
+/** 全局默认的 provider/model:新会话创建时继承为出生值,此后全局变化不影响存量会话。 */
+data class DefaultProviderSelection(val providerConfigId: String?, val model: String?) {
+    val isSet: Boolean get() = providerConfigId != null && model != null
+}
+
 @Singleton
 class AiProviderRepository @Inject constructor(
     @param:ApplicationContext private val context: Context,
@@ -31,6 +36,28 @@ class AiProviderRepository @Inject constructor(
             if (error is IOException) emit(emptyPreferences()) else throw error
         }
         .map(::decodeSettings)
+
+    /** 全局默认 provider/model;未设置时 [DefaultProviderSelection.isSet] 为 false。 */
+    val defaultSelection: Flow<DefaultProviderSelection> = context.aiSettingsDataStore.data
+        .catch { error ->
+            if (error is IOException) emit(emptyPreferences()) else throw error
+        }
+        .map(::decodeDefaultSelection)
+
+    /** 设置全局默认(同时清空 key 时置 null)。 */
+    suspend fun setDefaultSelection(providerConfigId: String?, model: String?) {
+        context.aiSettingsDataStore.edit { preferences ->
+            val root = JSONObject(preferences[SETTINGS_KEY] ?: "{}")
+            if (providerConfigId == null || model == null) {
+                root.remove("defaultProviderConfigId")
+                root.remove("defaultModel")
+            } else {
+                root.put("defaultProviderConfigId", providerConfigId)
+                root.put("defaultModel", model)
+            }
+            preferences[SETTINGS_KEY] = root.toString()
+        }
+    }
 
     suspend fun saveProvider(config: ProviderConfig, apiKey: String) {
         val normalized = config.copy(
@@ -56,10 +83,29 @@ class AiProviderRepository @Inject constructor(
 
     suspend fun deleteProvider(configId: String) {
         context.aiSettingsDataStore.edit { preferences ->
-            val current = decodeSettings(preferences)
-            preferences[SETTINGS_KEY] = encodeSettings(
-                AiProviderSettings(current.providers.filterNot { it.id == configId })
+            val root = JSONObject(preferences[SETTINGS_KEY] ?: "{}")
+            val providers = decodeSettings(preferences).providers.filterNot { it.id == configId }
+            root.put(
+                "providers",
+                JSONArray().apply {
+                    providers.forEach { config ->
+                        put(
+                            JSONObject()
+                                .put("id", config.id)
+                                .put("providerType", config.providerType)
+                                .put("displayName", config.displayName)
+                                .put("endpoint", config.endpoint)
+                                .put("models", JSONArray(config.models))
+                        )
+                    }
+                }
             )
+            // 被删配置若正是全局默认,一并清除,避免悬空引用。
+            if (root.optString("defaultProviderConfigId") == configId) {
+                root.remove("defaultProviderConfigId")
+                root.remove("defaultModel")
+            }
+            preferences[SETTINGS_KEY] = root.toString()
         }
         secureStore.delete(configId)
     }
@@ -67,6 +113,15 @@ class AiProviderRepository @Inject constructor(
     fun hasApiKey(configId: String): Boolean = secureStore.contains(configId)
 
     suspend fun readApiKey(configId: String): String? = secureStore.get(configId)
+
+    private fun decodeDefaultSelection(preferences: Preferences): DefaultProviderSelection {
+        val root = runCatching { JSONObject(preferences[SETTINGS_KEY] ?: return DefaultProviderSelection(null, null)) }
+            .getOrDefault(JSONObject())
+        return DefaultProviderSelection(
+            providerConfigId = root.optString("defaultProviderConfigId").takeIf(String::isNotEmpty),
+            model = root.optString("defaultModel").takeIf(String::isNotEmpty)
+        )
+    }
 
     private fun decodeSettings(preferences: Preferences): AiProviderSettings = preferences[SETTINGS_KEY]
         ?.let(::decodeSettings)
@@ -125,7 +180,7 @@ class AiProviderRepository @Inject constructor(
     }.getOrDefault(AiProviderSettings())
 
     private companion object {
-        const val SETTINGS_VERSION = 3
+        const val SETTINGS_VERSION = 4
         val SETTINGS_KEY = stringPreferencesKey("profiles")
     }
 }

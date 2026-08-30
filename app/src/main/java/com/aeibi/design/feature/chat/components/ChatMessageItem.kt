@@ -16,6 +16,7 @@ import com.aeibi.design.R
 import com.aeibi.design.data.messages.MessageEntry
 import com.aeibi.design.data.messages.MessageRole
 import com.aeibi.design.data.messages.MessageStatus
+import com.aeibi.design.feature.chat.ChatViewModel
 import com.aeibi.design.theme.dimensions
 import com.aeibi.design.theme.spacing
 
@@ -43,22 +44,40 @@ fun ChatMessageItem(message: MessageEntry, modifier: Modifier = Modifier) {
                     text = message.content,
                     style = MaterialTheme.typography.bodyMedium
                 )
-                // 中断或失败的回复不能伪装成已成功完成的消息。
-                if (message.role == MessageRole.ASSISTANT && message.status != MessageStatus.COMPLETED) {
-                    val failed = message.status == MessageStatus.FAILED
-                    Text(
-                        text = if (failed) {
-                            stringResource(R.string.chat_status_failed)
-                        } else {
-                            stringResource(R.string.chat_status_interrupted)
-                        },
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (failed) {
-                            MaterialTheme.colorScheme.error
-                        } else {
-                            MaterialTheme.colorScheme.onSurfaceVariant
+                // 非完成状态的回复要有明确的可视状态,不能伪装成已完成的空消息。
+                if (message.role == MessageRole.ASSISTANT) {
+                    when (message.status) {
+                        MessageStatus.COMPLETED -> Unit
+                        MessageStatus.STREAMING -> Text(
+                            text = stringResource(R.string.chat_status_streaming),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        MessageStatus.INTERRUPTED -> Text(
+                            text = stringResource(R.string.chat_status_interrupted),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        MessageStatus.FAILED -> {
+                            Text(
+                                text = stringResource(R.string.chat_status_failed),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                            // 失败原因:no_provider 错误码映射本地化文案,其余为诊断原文。
+                            message.error?.let { error ->
+                                Text(
+                                    text = if (error == ChatViewModel.ERROR_NO_PROVIDER) {
+                                        stringResource(R.string.chat_error_no_provider)
+                                    } else {
+                                        error
+                                    },
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
-                    )
+                    }
                 }
             }
         }

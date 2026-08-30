@@ -65,6 +65,25 @@ class MessageRepository @Inject constructor(private val messageDao: MessageDao, 
     ) > 0
 
     /**
+     * 生成完成时的完整收敛:content 与 status 一并写入(仍带 CAS 守卫,
+     * 仅 STREAMING 可转终态)。error 仅在转 FAILED 时落库;转 COMPLETED 清除。
+     * 返回是否成功:源状态不符时历史未被改写。
+     */
+    suspend fun updatePayloadAndStatus(
+        entryId: String,
+        content: String,
+        newStatus: MessageStatus,
+        allowedFrom: List<MessageStatus>,
+        error: String? = null
+    ): Boolean = messageDao.updatePayloadAndStatus(
+        entryId = entryId,
+        content = content,
+        newStatus = newStatus.name,
+        allowedFrom = allowedFrom.map { it.name },
+        error = error
+    ) > 0
+
+    /**
      * 启动恢复:应用在 assistant 生成中途退出后,遗留的 STREAMING 条目在下次
      * 启动时确定性地收敛为 INTERRUPTED。产生源在 #23 接入,不变式现在就位。
      */
