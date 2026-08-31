@@ -44,7 +44,7 @@ class LocalStaticFileServerTest {
         assertResponse(endpoint, "/style.css", 200, "text/css", "body { color: teal; }")
         assertResponse(endpoint, "/app.js", 200, "text/javascript", "console.log('ready')")
         assertResponse(endpoint, "/assets/page.html?preview=true", 200, "text/html", "<p>Nested page</p>")
-        assertTrue(endpoint.toString().startsWith("http://127.0.0.1:"))
+        assertTrue(endpoint.toString().startsWith("http://localhost:"))
         assertTrue(endpoint.port > 0)
     }
 

@@ -32,6 +32,8 @@ class ProjectRepository(
     private val _projects = MutableStateFlow<List<Project>>(emptyList())
     val projects: StateFlow<List<Project>> = _projects.asStateFlow()
 
+    fun workspaceDirectory(projectId: String): File = File(File(projectsDir, projectId), WORKSPACE_DIR)
+
     suspend fun refresh() {
         _projects.value = withContext(ioDispatcher) { listProjects() }
     }

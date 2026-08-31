@@ -232,7 +232,12 @@ private fun TemplateGrid(
                         .clip(RoundedCornerShape(spacing.xs))
                 )
                 Column(
-                    modifier = Modifier.padding(start = spacing.sm, top = 10.dp, end = spacing.sm, bottom = 14.dp)
+                    modifier = Modifier.padding(
+                        start = spacing.sm,
+                        top = spacing.xs,
+                        end = spacing.sm,
+                        bottom = spacing.sm
+                    )
                 ) {
                     Text(
                         text = template.category,

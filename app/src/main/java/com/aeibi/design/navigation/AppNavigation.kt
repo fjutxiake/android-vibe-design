@@ -12,7 +12,6 @@ import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
 import com.aeibi.design.feature.build.ProjectBuildScreen
-import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectSetupScreen
 import com.aeibi.design.feature.projects.ProjectsScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
@@ -44,7 +43,6 @@ fun AppNavigation() {
                     projectId = route.projectId,
                     modifier = Modifier.fillMaxSize(),
                     onProjectPickerClick = { backStack.removeLastOrNull() },
-                    onPreviewClick = { backStack.add(ProjectPreview(route.projectId)) },
                     onBuildClick = { backStack.add(ProjectBuild(route.projectId)) },
                     onVersionsClick = { backStack.add(ProjectVersions(route.projectId)) },
                     onProjectSettingsClick = { backStack.add(ProjectSettings(route.projectId)) },
@@ -75,13 +73,6 @@ fun AppNavigation() {
                     },
                     onUpdateProject = projectsViewModel::updateProject,
                     onDeleteProject = projectsViewModel::deleteProject
-                )
-            }
-            entry<ProjectPreview> { route ->
-                ProjectPreviewScreen(
-                    projectId = route.projectId,
-                    modifier = Modifier.fillMaxSize(),
-                    onBackClick = { backStack.removeLastOrNull() }
                 )
             }
             entry<ProjectBuild> { route ->

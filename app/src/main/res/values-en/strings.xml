@@ -70,8 +70,12 @@
     <string name="build_project_label">Project: %1$s</string>
     <string name="build_log_empty">No build records yet</string>
     <string name="preview_title">Live preview</string>
+    <string name="preview_cd_refresh">Refresh preview</string>
+    <string name="preview_cd_start">Start preview</string>
+    <string name="preview_cd_stop">Stop preview</string>
     <string name="preview_cd_fullscreen">Fullscreen preview</string>
-    <string name="preview_placeholder">Live preview area for project %1$s</string>
+    <string name="preview_stopped">Preview stopped</string>
+    <string name="preview_failed">Preview failed to start</string>
     <string name="versions_title">Versions</string>
     <string name="versions_placeholder">Version history for project %1$s</string>
     <string name="project_settings_title">Project settings</string>

@@ -34,9 +34,15 @@ class LocalStaticAssetLoaderTest {
     }
 
     @Test
-    fun start_returnsStableBaseUrl() {
+    fun start_returnsDefaultEntryUrl() {
         val uri = loader.start(rootDir.toPath())
-        assertEquals("https://appassets.androidplatform.net/", uri.toString())
+        assertEquals("https://appassets.androidplatform.net/index.html", uri.toString())
+    }
+
+    @Test
+    fun start_returnsConfiguredEntryUrl() {
+        val uri = loader.start(rootDir.toPath(), "pages/home.html")
+        assertEquals("https://appassets.androidplatform.net/pages/home.html", uri.toString())
     }
 
     @Test

@@ -21,10 +21,15 @@ class LocalStaticFileServer {
                 }
             }
         }
-        newServer.start(wait = false)
-        val actualPort = newServer.engine.resolvedConnectors().single().port
         server = newServer
-        return URI("http://127.0.0.1:$actualPort/")
+        return try {
+            newServer.start(wait = false)
+            val actualPort = newServer.engine.resolvedConnectors().single().port
+            URI("http://localhost:$actualPort/")
+        } catch (error: Exception) {
+            stop()
+            throw error
+        }
     }
 
     fun stop(gracePeriodMillis: Long = 0, timeoutMillis: Long = 2_000) {

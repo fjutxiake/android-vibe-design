@@ -1,0 +1,7 @@
+{
+  "preview": {
+    "mode": "asset-loader",
+    "root": ".",
+    "entry": "index.html"
+  }
+}

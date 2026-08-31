@@ -10,9 +10,6 @@ data class ProjectChat(val projectId: String) : NavKey
 data object ProjectPicker : NavKey
 
 @Serializable
-data class ProjectPreview(val projectId: String) : NavKey
-
-@Serializable
 data class ProjectBuild(val projectId: String) : NavKey
 
 @Serializable

@@ -35,6 +35,15 @@ class ProjectRepositoryTest {
     )
 
     @Test
+    fun workspaceDirectoryReturnsProjectWorkspace() {
+        val root = tmp.newFolder()
+
+        val workspace = repository(root).workspaceDirectory("project-id")
+
+        assertEquals(File(File(root, "project-id"), "workspace"), workspace)
+    }
+
+    @Test
     fun createProject_writesJsonAndListsProject() = runTest {
         val root = tmp.newFolder()
         val repo = repository(root)
