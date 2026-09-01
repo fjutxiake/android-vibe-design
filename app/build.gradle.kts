@@ -65,7 +65,9 @@ room3 {
 
 dependencies {
     val composeBom = platform(libs.androidx.compose.bom)
+    val ktorBom = platform(libs.ktor.bom)
     implementation(composeBom)
+    implementation(ktorBom)
     androidTestImplementation(composeBom)
 
     // Core Android dependencies
@@ -86,6 +88,14 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    // Agent
+    implementation(libs.koog.agents.core)
+    implementation(libs.koog.agents.features.event.handler)
+    implementation(libs.koog.agents.features.memory)
+    implementation(libs.koog.prompt.executor.openai.client)
+    implementation(libs.koog.prompt.executor.deepseek.client)
+    implementation(libs.koog.http.client.ktor)
+    implementation(libs.ktor.client.okhttp)
     // Local static file server
     implementation(libs.ktor.server.core)
     implementation(libs.ktor.server.cio)
@@ -98,6 +108,7 @@ dependencies {
     // Local tests: jUnit, coroutines, Android runner
     testImplementation(libs.junit)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.koog.agents.test)
 
     // Instrumented tests: jUnit rules and runners
     androidTestImplementation(libs.androidx.test.core)

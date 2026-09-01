@@ -1,5 +1,8 @@
 package com.aeibi.design.di
 
+import ai.koog.agents.chatMemory.feature.InMemoryChatHistoryProvider
+import ai.koog.http.client.KoogHttpClient
+import ai.koog.http.client.ktor.KtorKoogHttpClient
 import android.content.Context
 import androidx.room3.Room
 import com.aeibi.design.data.database.AppDatabase
@@ -12,6 +15,8 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import io.ktor.client.HttpClient
+import io.ktor.client.engine.okhttp.OkHttp
 import jakarta.inject.Singleton
 import java.io.File
 
@@ -49,6 +54,14 @@ object AppModule {
     @Singleton
     fun provideTemplateRepository(@ApplicationContext context: Context): TemplateRepository =
         TemplateRepository(context.assets)
+
+    @Provides
+    @Singleton
+    fun provideKoogHttpClientFactory(): KoogHttpClient.Factory = KtorKoogHttpClient.Factory(HttpClient(OkHttp))
+
+    @Provides
+    @Singleton
+    fun provideChatHistoryProvider(): InMemoryChatHistoryProvider = InMemoryChatHistoryProvider()
 
     private const val DATABASE_NAME = "vibe-design.db"
 }

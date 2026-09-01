@@ -122,6 +122,7 @@ fun ProjectWorkspaceScreen(
             ChatScreen(
                 projectId = projectId,
                 sessionId = selectedSessionId,
+                onSessionCreated = { selectedSessionId = it },
                 modifier = Modifier.fillMaxSize().padding(innerPadding)
             )
         }

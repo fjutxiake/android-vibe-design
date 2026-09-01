@@ -12,7 +12,6 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import java.io.IOException
-import java.util.UUID
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.map
@@ -39,9 +38,10 @@ class AiProviderRepository @Inject constructor(
             models = config.models.map(String::trim).filter(String::isNotEmpty).distinct()
         )
 
-        require(normalized.displayName.isNotEmpty()) { "配置名称不能为空" }
-        require(normalized.endpoint.isNotEmpty()) { "API 地址不能为空" }
-        require(normalized.models.isNotEmpty()) { "至少添加一个模型" }
+        require(normalized.displayName.isNotEmpty()) { "Provider name is required" }
+        require(normalized.endpoint.isNotEmpty()) { "API endpoint is required" }
+        require(normalized.models.isNotEmpty()) { "At least one model is required" }
+        require(apiKey.isNotBlank()) { "API key is required" }
 
         secureStore.put(normalized.id, apiKey)
 
@@ -50,15 +50,40 @@ class AiProviderRepository @Inject constructor(
             val providers = current.providers
                 .filterNot { it.id == normalized.id }
                 .plus(normalized)
-            preferences[SETTINGS_KEY] = encodeSettings(AiProviderSettings(providers))
+            val selectedProviderId = current.selectedProviderId ?: normalized.id
+            val selectedModelId = if (selectedProviderId == normalized.id) {
+                current.selectedModelId?.takeIf(normalized.models::contains) ?: normalized.models.first()
+            } else {
+                current.selectedModelId
+            }
+            preferences[SETTINGS_KEY] = encodeSettings(
+                AiProviderSettings(providers, selectedProviderId, selectedModelId)
+            )
+        }
+    }
+
+    suspend fun selectModel(providerId: String, modelId: String) {
+        context.aiSettingsDataStore.edit { preferences ->
+            val current = decodeSettings(preferences)
+            val provider = current.providers.firstOrNull { it.id == providerId }
+                ?: error("Selected provider does not exist")
+            require(modelId in provider.models) { "Selected model does not belong to the provider" }
+            preferences[SETTINGS_KEY] = encodeSettings(
+                current.copy(selectedProviderId = providerId, selectedModelId = modelId)
+            )
         }
     }
 
     suspend fun deleteProvider(configId: String) {
         context.aiSettingsDataStore.edit { preferences ->
             val current = decodeSettings(preferences)
+            val deletingSelection = current.selectedProviderId == configId
             preferences[SETTINGS_KEY] = encodeSettings(
-                AiProviderSettings(current.providers.filterNot { it.id == configId })
+                current.copy(
+                    providers = current.providers.filterNot { it.id == configId },
+                    selectedProviderId = current.selectedProviderId.takeUnless { deletingSelection },
+                    selectedModelId = current.selectedModelId.takeUnless { deletingSelection }
+                )
             )
         }
         secureStore.delete(configId)
@@ -74,6 +99,8 @@ class AiProviderRepository @Inject constructor(
 
     private fun encodeSettings(settings: AiProviderSettings): String = JSONObject()
         .put("version", SETTINGS_VERSION)
+        .put("selectedProviderId", settings.selectedProviderId)
+        .put("selectedModelId", settings.selectedModelId)
         .put(
             "providers",
             JSONArray().apply {
@@ -93,39 +120,38 @@ class AiProviderRepository @Inject constructor(
 
     private fun decodeSettings(encoded: String): AiProviderSettings = runCatching {
         val root = JSONObject(encoded)
-        val providersJson = root.optJSONArray("providers")
-            ?: root.optJSONArray("profiles")
-            ?: JSONArray()
+        require(root.optInt("version") == SETTINGS_VERSION)
+        val providersJson = root.getJSONArray("providers")
         val providers = buildList {
             for (index in 0 until providersJson.length()) {
-                val config = providersJson.optJSONObject(index) ?: continue
-                val id = config.optString("id")
-                val providerType = config.optString("providerType")
-                    .ifBlank { config.optString("providerId") }
-                if (id.isBlank() || providerType.isBlank() || runCatching { UUID.fromString(id) }.isFailure) continue
-                val models = config.optJSONArray("models")?.let { modelsJson ->
-                    buildList {
-                        for (modelIndex in 0 until modelsJson.length()) {
-                            modelsJson.optString(modelIndex).trim().takeIf(String::isNotEmpty)?.let(::add)
-                        }
+                val config = providersJson.getJSONObject(index)
+                val modelsJson = config.getJSONArray("models")
+                val models = buildList {
+                    for (modelIndex in 0 until modelsJson.length()) {
+                        modelsJson.getString(modelIndex).trim().takeIf(String::isNotEmpty)?.let(::add)
                     }
-                } ?: listOfNotNull(config.optString("model").trim().takeIf(String::isNotEmpty))
+                }.distinct()
                 add(
                     ProviderConfig(
-                        id = id,
-                        providerType = providerType,
-                        displayName = config.optString("displayName"),
-                        endpoint = config.optString("endpoint"),
-                        models = models.distinct()
+                        id = config.getString("id"),
+                        providerType = config.getString("providerType"),
+                        displayName = config.getString("displayName"),
+                        endpoint = config.getString("endpoint"),
+                        models = models
                     )
                 )
             }
         }
-        AiProviderSettings(providers)
+        val selectedProviderId = root.optString("selectedProviderId").takeIf(String::isNotBlank)
+        val selectedModelId = root.optString("selectedModelId").takeIf(String::isNotBlank)
+        val selectedProvider = providers.firstOrNull { it.id == selectedProviderId }
+        require(selectedProviderId == null || selectedProvider != null)
+        require(selectedModelId == null || selectedProvider?.models?.contains(selectedModelId) == true)
+        AiProviderSettings(providers, selectedProviderId, selectedModelId)
     }.getOrDefault(AiProviderSettings())
 
     private companion object {
-        const val SETTINGS_VERSION = 3
-        val SETTINGS_KEY = stringPreferencesKey("profiles")
+        const val SETTINGS_VERSION = 1
+        val SETTINGS_KEY = stringPreferencesKey("settings")
     }
 }

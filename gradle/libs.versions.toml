@@ -19,8 +19,10 @@ room3 = "3.0.1"
 ksp = "2.3.9"
 hilt = "2.60.1"
 androidxHilt = "1.4.0"
-kotlinxSerializationJson = "1.7.3"
+kotlinxSerializationJson = "1.10.0"
 ktor = "3.5.1"
+koog = "1.2.0"
+koogDeepSeek = "1.2.0-beta"
 ktlint = "14.2.0"
 dataStore = "1.2.1"
 ucrop = "2.2.11"
@@ -48,6 +50,15 @@ kotlinx-coroutines-test = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-t
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 ktor-server-cio = { module = "io.ktor:ktor-server-cio", version.ref = "ktor" }
 ktor-server-core = { module = "io.ktor:ktor-server-core", version.ref = "ktor" }
+ktor-client-okhttp = { module = "io.ktor:ktor-client-okhttp", version.ref = "ktor" }
+ktor-bom = { module = "io.ktor:ktor-bom", version.ref = "ktor" }
+koog-agents-core = { module = "ai.koog:agents-core", version.ref = "koog" }
+koog-agents-features-event-handler = { module = "ai.koog:agents-features-event-handler", version.ref = "koog" }
+koog-agents-features-memory = { module = "ai.koog:agents-features-memory", version.ref = "koog" }
+koog-agents-test = { module = "ai.koog:agents-test", version.ref = "koog" }
+koog-prompt-executor-openai-client = { module = "ai.koog:prompt-executor-openai-client", version.ref = "koog" }
+koog-prompt-executor-deepseek-client = { module = "ai.koog:prompt-executor-deepseek-client", version.ref = "koogDeepSeek" }
+koog-http-client-ktor = { module = "ai.koog:http-client-ktor", version.ref = "koog" }
 androidx-navigation3-runtime = { module = "androidx.navigation3:navigation3-runtime", version.ref = "nav3Core" }
 androidx-navigation3-ui = { module = "androidx.navigation3:navigation3-ui", version.ref = "nav3Core" }
 androidx-lifecycle-viewmodel-navigation3 = { module = "androidx.lifecycle:lifecycle-viewmodel-navigation3", version.ref = "lifecycleViewmodelNav3" }

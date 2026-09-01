@@ -62,6 +62,12 @@
     <string name="chat_cd_add_tool">Add tool</string>
     <string name="chat_input_hint">Describe what you want to build</string>
     <string name="chat_cd_send">Send</string>
+    <string name="chat_cd_cancel">Stop</string>
+    <string name="chat_agent_working">Working…</string>
+    <string name="chat_agent_cancelled">Task cancelled</string>
+    <string name="chat_agent_failed">Agent execution failed</string>
+    <string name="chat_tool_started">Running %1$s</string>
+    <string name="chat_tool_finished">Finished %1$s</string>
     <string name="chat_empty_title">Start a new conversation</string>
     <string name="chat_empty_no_session">Project %1$s · No session yet</string>
     <string name="chat_empty_session">Project %1$s · Session %2$s</string>
@@ -114,6 +120,8 @@
     <string name="ai_err_name_empty">Configuration name cannot be empty</string>
     <string name="ai_err_endpoint_empty">API endpoint cannot be empty</string>
     <string name="ai_err_models_empty">At least one model is required</string>
+    <string name="ai_err_key_empty">API key cannot be empty</string>
+    <string name="ai_selection_failed">Unable to select this model</string>
     <string name="ai_cd_hide_key">Hide API Key</string>
     <string name="ai_cd_show_key">Show API Key</string>
     <string name="ai_custom_settings">Custom settings</string>

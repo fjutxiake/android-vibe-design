@@ -62,6 +62,12 @@
     <string name="chat_cd_add_tool">添加工具</string>
     <string name="chat_input_hint">向 AI 描述你想构建的内容</string>
     <string name="chat_cd_send">发送</string>
+    <string name="chat_cd_cancel">停止</string>
+    <string name="chat_agent_working">正在处理…</string>
+    <string name="chat_agent_cancelled">任务已取消</string>
+    <string name="chat_agent_failed">Agent 执行失败</string>
+    <string name="chat_tool_started">正在执行 %1$s</string>
+    <string name="chat_tool_finished">已完成 %1$s</string>
     <string name="chat_empty_title">开始新的对话</string>
     <string name="chat_empty_no_session">项目 %1$s · 尚未创建会话</string>
     <string name="chat_empty_session">项目 %1$s · 会话 %2$s</string>
@@ -114,6 +120,8 @@
     <string name="ai_err_name_empty">配置名称不能为空</string>
     <string name="ai_err_endpoint_empty">API 地址不能为空</string>
     <string name="ai_err_models_empty">至少添加一个模型</string>
+    <string name="ai_err_key_empty">API Key 不能为空</string>
+    <string name="ai_selection_failed">无法选择该模型</string>
     <string name="ai_api_key_label" translatable="false">API Key</string>
     <string name="ai_cd_hide_key">隐藏 API Key</string>
     <string name="ai_cd_show_key">显示 API Key</string>

@@ -8,4 +8,7 @@ class AiProviderRegistry @Inject constructor(openAiProvider: OpenAiProvider, dee
     private val providers: List<AiProvider> = listOf(deepSeekProvider, openAiProvider)
 
     val definitions: List<ProviderDefinition> = providers.map(AiProvider::definition)
+
+    fun get(providerType: String): AiProvider = providers.firstOrNull { it.definition.type == providerType }
+        ?: error("Unsupported AI provider: $providerType")
 }
