@@ -20,6 +20,9 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
+/** The per-project workspace directory name, shared with the file-tools factory. */
+const val WORKSPACE_DIR = "workspace"
+
 class ProjectRepository(
     private val projectsDir: File,
     private val contentResolver: ContentResolver,
@@ -252,7 +255,6 @@ class ProjectRepository(
 
     private companion object {
         const val PROJECT_JSON = "project.json"
-        const val WORKSPACE_DIR = "workspace"
         const val PENDING_WORKSPACE_DIR = "workspace.pending"
     }
 }

@@ -3,6 +3,7 @@ package com.aeibi.design.di
 import android.content.Context
 import androidx.room3.Room
 import com.aeibi.design.data.database.AppDatabase
+import com.aeibi.design.data.projectfiles.ProjectFileToolsFactory
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.templates.TemplateRepository
@@ -38,6 +39,11 @@ object AppModule {
     @Singleton
     fun provideProjectRepository(projectsDir: File, @ApplicationContext context: Context): ProjectRepository =
         ProjectRepository(projectsDir, context.contentResolver, context.assets)
+
+    @Provides
+    @Singleton
+    fun provideProjectFileToolsFactory(projectsDir: File): ProjectFileToolsFactory =
+        ProjectFileToolsFactory(projectsDir)
 
     @Provides
     @Singleton
