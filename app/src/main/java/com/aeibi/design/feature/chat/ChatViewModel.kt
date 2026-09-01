@@ -1,11 +1,17 @@
 package com.aeibi.design.feature.chat
 
+import ai.koog.prompt.message.Message
+import ai.koog.prompt.message.MessagePart
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.ai.AgentEvent
 import com.aeibi.design.ai.KoogAgentRunner
+import com.aeibi.design.data.sessions.MessageOrigin
 import com.aeibi.design.data.sessions.SessionEntity
+import com.aeibi.design.data.sessions.SessionEntryEntity
+import com.aeibi.design.data.sessions.SessionEntryType
 import com.aeibi.design.data.sessions.SessionRepository
+import com.aeibi.design.data.sessions.TurnStatus
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import java.util.UUID
@@ -14,6 +20,7 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.job
 import kotlinx.coroutines.launch
@@ -30,23 +37,21 @@ enum class ChatMessageStatus {
     CANCELLED
 }
 
-data class ChatMessage(
-    val id: String = UUID.randomUUID().toString(),
-    val role: ChatRole,
-    val text: String,
-    val status: ChatMessageStatus = ChatMessageStatus.COMPLETE
-)
-
 sealed interface ChatTimelineItem {
     val id: String
 
-    data class Message(val message: ChatMessage) : ChatTimelineItem {
-        override val id: String = message.id
-    }
+    data class Message(
+        override val id: String,
+        val role: ChatRole,
+        val text: String,
+        val status: ChatMessageStatus = ChatMessageStatus.COMPLETE
+    ) : ChatTimelineItem
 
-    data class ToolEvent(
-        override val id: String = UUID.randomUUID().toString(),
-        val event: AgentEvent
+    data class ToolCall(
+        override val id: String,
+        val name: String,
+        val isFinished: Boolean = false,
+        val isError: Boolean = false
     ) : ChatTimelineItem
 }
 
@@ -54,6 +59,9 @@ data class ChatUiState(
     val sessionId: String? = null,
     val input: String = "",
     val timeline: List<ChatTimelineItem> = emptyList(),
+    val isLoadingSession: Boolean = false,
+    val streamingText: String? = null,
+    val streamingStatus: ChatMessageStatus = ChatMessageStatus.WORKING,
     val isRunning: Boolean = false
 )
 
@@ -65,107 +73,65 @@ class ChatViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
-    private val timelineByConversation = mutableMapOf<String, List<ChatTimelineItem>>()
     private var projectId: String? = null
     private var sessionId: String? = null
-    private var conversationKey: String? = null
+    private var entriesJob: Job? = null
     private var runJob: Job? = null
 
     fun bind(projectId: String, sessionId: String?) {
-        val nextKey = conversationKey(projectId, sessionId)
-        if (this.projectId == projectId && (this.sessionId == sessionId || conversationKey == nextKey)) return
+        if (this.projectId == projectId && this.sessionId == sessionId) return
 
-        conversationKey?.let { timelineByConversation[it] = _uiState.value.timeline }
         runJob?.cancel()
+        entriesJob?.cancel()
         this.projectId = projectId
         this.sessionId = sessionId
-        conversationKey = nextKey
         _uiState.value = ChatUiState(
             sessionId = sessionId,
-            timeline = timelineByConversation[nextKey].orEmpty()
+            isLoadingSession = sessionId != null
         )
+        sessionId?.let(::observeEntries)
     }
 
     fun updateInput(value: String) {
         _uiState.update { it.copy(input = value) }
     }
 
-    fun send() {
+    fun send(onSessionCreated: (String) -> Unit = {}) {
         val input = _uiState.value.input.trim()
         val activeProjectId = projectId ?: return
         if (input.isEmpty() || _uiState.value.isRunning) return
 
         val activeSessionId = sessionId ?: UUID.randomUUID().toString().also { createdSessionId ->
-            val oldKey = conversationKey
             sessionId = createdSessionId
-            conversationKey = conversationKey(activeProjectId, createdSessionId)
-            oldKey?.let(timelineByConversation::remove)
+            observeEntries(createdSessionId)
+            onSessionCreated(createdSessionId)
         }
-        val assistantId = UUID.randomUUID().toString()
-        val assistantMessageIds = mutableListOf(assistantId)
-        var activeAssistantMessageId: String? = assistantId
-        _uiState.update { state ->
-            state.copy(
+        _uiState.update {
+            it.copy(
                 sessionId = activeSessionId,
                 input = "",
-                timeline = state.timeline + listOf(
-                    ChatTimelineItem.Message(ChatMessage(role = ChatRole.USER, text = input)),
-                    ChatTimelineItem.Message(
-                        ChatMessage(
-                            id = assistantId,
-                            role = ChatRole.ASSISTANT,
-                            text = "",
-                            status = ChatMessageStatus.WORKING
-                        )
-                    )
-                ),
+                streamingText = null,
+                streamingStatus = ChatMessageStatus.WORKING,
                 isRunning = true
             )
         }
-        val runKey = requireNotNull(conversationKey)
-        timelineByConversation[runKey] = _uiState.value.timeline
 
         runJob = viewModelScope.launch {
             try {
                 ensureSession(activeProjectId, activeSessionId, input)
-                val response = agentRunner.run(activeProjectId, activeSessionId, input) { event ->
-                    activeAssistantMessageId = onAgentEvent(
-                        key = runKey,
-                        assistantId = activeAssistantMessageId,
-                        assistantMessageIds = assistantMessageIds,
-                        event = event
-                    )
-                }
-                updateAssistant(
-                    key = runKey,
-                    assistantMessageIds = assistantMessageIds,
-                    activeAssistantMessageId = activeAssistantMessageId,
-                    text = response,
-                    status = ChatMessageStatus.COMPLETE
-                )
-                sessionRepository.touchSession(activeSessionId, System.currentTimeMillis())
+                agentRunner.run(activeProjectId, activeSessionId, input, ::onAgentEvent)
             } catch (error: CancellationException) {
-                updateAssistant(
-                    key = runKey,
-                    assistantMessageIds = assistantMessageIds,
-                    activeAssistantMessageId = activeAssistantMessageId,
-                    text = null,
-                    status = ChatMessageStatus.CANCELLED
-                )
+                _uiState.update { it.copy(streamingStatus = ChatMessageStatus.CANCELLED) }
                 throw error
             } catch (error: Exception) {
-                updateAssistant(
-                    key = runKey,
-                    assistantMessageIds = assistantMessageIds,
-                    activeAssistantMessageId = activeAssistantMessageId,
-                    text = error.message ?: error.javaClass.simpleName,
-                    status = ChatMessageStatus.FAILED
-                )
-            } finally {
-                if (conversationKey == runKey) {
-                    _uiState.update { it.copy(isRunning = false) }
-                    timelineByConversation[runKey] = _uiState.value.timeline
+                _uiState.update {
+                    it.copy(
+                        streamingText = error.message ?: error.javaClass.simpleName,
+                        streamingStatus = ChatMessageStatus.FAILED
+                    )
                 }
+            } finally {
+                _uiState.update { it.copy(isRunning = false) }
                 if (runJob == coroutineContext.job) runJob = null
             }
         }
@@ -173,6 +139,41 @@ class ChatViewModel @Inject constructor(
 
     fun cancel() {
         runJob?.cancel()
+    }
+
+    private fun observeEntries(sessionId: String) {
+        entriesJob?.cancel()
+        entriesJob = viewModelScope.launch {
+            sessionRepository.observeEntries(sessionId).collect { entries ->
+                if (this@ChatViewModel.sessionId != sessionId) return@collect
+                val timeline = entries.toTimeline(sessionRepository)
+                _uiState.update {
+                    it.copy(
+                        timeline = timeline,
+                        isLoadingSession = false,
+                        streamingText = when (entries.lastOrNull()?.type) {
+                            SessionEntryType.MESSAGE.name -> if (
+                                sessionRepository.decodeMessage(entries.last()).origin == MessageOrigin.ASSISTANT
+                            ) {
+                                null
+                            } else {
+                                it.streamingText
+                            }
+                            SessionEntryType.TURN_FINISHED.name -> null
+                            else -> it.streamingText
+                        }
+                    )
+                }
+            }
+        }
+    }
+
+    private fun onAgentEvent(event: AgentEvent) {
+        if (event is AgentEvent.TextDelta) {
+            _uiState.update { state ->
+                state.copy(streamingText = (state.streamingText ?: "") + event.text)
+            }
+        }
     }
 
     private suspend fun ensureSession(projectId: String, sessionId: String, firstMessage: String) {
@@ -188,108 +189,73 @@ class ChatViewModel @Inject constructor(
             )
         )
     }
+}
 
-    private fun onAgentEvent(
-        key: String,
-        assistantId: String?,
-        assistantMessageIds: MutableList<String>,
-        event: AgentEvent
-    ): String? {
-        if (conversationKey != key) return assistantId
-        return when (event) {
-            is AgentEvent.TextDelta -> {
-                appendAssistantText(key, assistantId, event.text).also { messageId ->
-                    if (messageId !in assistantMessageIds) assistantMessageIds += messageId
-                }
-            }
-            is AgentEvent.ToolStarted,
-            is AgentEvent.ToolFinished -> {
-                _uiState.update { state ->
-                    state.copy(timeline = state.timeline + ChatTimelineItem.ToolEvent(event = event))
-                }
-                timelineByConversation[key] = _uiState.value.timeline
-                null
-            }
-        }
-    }
-
-    private fun appendAssistantText(key: String, id: String?, delta: String): String {
-        val messageId = id ?: UUID.randomUUID().toString()
-        _uiState.update { state ->
-            state.copy(
-                timeline = if (id == null) {
-                    state.timeline + ChatTimelineItem.Message(
-                        ChatMessage(
-                            id = messageId,
-                            role = ChatRole.ASSISTANT,
-                            text = delta,
-                            status = ChatMessageStatus.WORKING
+private fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): List<ChatTimelineItem> {
+    val timeline = mutableListOf<ChatTimelineItem>()
+    forEach { entry ->
+        when (entry.type) {
+            SessionEntryType.MESSAGE.name -> {
+                val payload = repository.decodeMessage(entry)
+                when (val message = payload.message) {
+                    is Message.User -> when (payload.origin) {
+                        MessageOrigin.USER -> timeline += ChatTimelineItem.Message(
+                            id = entry.id.toString(),
+                            role = ChatRole.USER,
+                            text = message.textContent()
                         )
-                    )
-                } else {
-                    state.timeline.map { item ->
-                        if (item is ChatTimelineItem.Message && item.message.id == messageId) {
-                            item.copy(message = item.message.copy(text = item.message.text + delta))
-                        } else {
-                            item
+                        MessageOrigin.TOOL -> {
+                            message.parts
+                                .filterIsInstance<MessagePart.Tool.Result>()
+                                .forEach { result ->
+                                    val key = result.id ?: result.tool
+                                    val index = timeline.indexOfLast { it is ChatTimelineItem.ToolCall && it.id == key }
+                                    if (index >= 0) {
+                                        val call = timeline[index] as ChatTimelineItem.ToolCall
+                                        timeline[index] = call.copy(isFinished = true, isError = result.isError)
+                                    }
+                                }
+                        }
+                        MessageOrigin.ASSISTANT -> Unit
+                    }
+                    is Message.Assistant -> {
+                        message.textContent().takeIf(String::isNotBlank)?.let { text ->
+                            timeline += ChatTimelineItem.Message(
+                                id = entry.id.toString(),
+                                role = ChatRole.ASSISTANT,
+                                text = text
+                            )
+                        }
+                        message.parts.filterIsInstance<MessagePart.Tool.Call>().forEachIndexed { index, call ->
+                            timeline += ChatTimelineItem.ToolCall(
+                                id = call.id ?: "${entry.id}:$index",
+                                name = call.tool
+                            )
                         }
                     }
-                }
-            )
-        }
-        timelineByConversation[key] = _uiState.value.timeline
-        return messageId
-    }
-
-    private fun updateAssistant(
-        key: String,
-        assistantMessageIds: List<String>,
-        activeAssistantMessageId: String?,
-        text: String?,
-        status: ChatMessageStatus
-    ) {
-        val appendFinalMessage = activeAssistantMessageId == null && !text.isNullOrBlank()
-        val finalMessageId = activeAssistantMessageId ?: assistantMessageIds.last()
-
-        fun update(timeline: List<ChatTimelineItem>): List<ChatTimelineItem> = buildList {
-            timeline.forEach { item ->
-                if (item is ChatTimelineItem.Message && item.message.id in assistantMessageIds) {
-                    val updatedText = when {
-                        item.message.id != finalMessageId -> item.message.text
-                        status != ChatMessageStatus.COMPLETE && text != null -> text
-                        item.message.text.isBlank() && text != null -> text
-                        else -> item.message.text
-                    }
-                    add(item.copy(message = item.message.copy(text = updatedText, status = status)))
-                } else {
-                    add(item)
+                    is Message.System -> Unit
                 }
             }
-            if (appendFinalMessage) {
-                add(
-                    ChatTimelineItem.Message(
-                        ChatMessage(
-                            role = ChatRole.ASSISTANT,
-                            text = requireNotNull(text),
-                            status = status
-                        )
+            SessionEntryType.TURN_FINISHED.name -> {
+                val payload = repository.decodeTurnFinished(entry)
+                when (payload.status) {
+                    TurnStatus.FAILED -> timeline += ChatTimelineItem.Message(
+                        id = entry.id.toString(),
+                        role = ChatRole.ASSISTANT,
+                        text = payload.failure?.message.orEmpty(),
+                        status = ChatMessageStatus.FAILED
                     )
-                )
+                    TurnStatus.CANCELLED -> timeline += ChatTimelineItem.Message(
+                        id = entry.id.toString(),
+                        role = ChatRole.ASSISTANT,
+                        text = "",
+                        status = ChatMessageStatus.CANCELLED
+                    )
+                    TurnStatus.COMPLETE -> Unit
+                }
             }
-        }
-
-        if (conversationKey == key) {
-            _uiState.update { state -> state.copy(timeline = update(state.timeline)) }
-            timelineByConversation[key] = _uiState.value.timeline
-        } else {
-            timelineByConversation[key] = update(timelineByConversation[key].orEmpty())
+            SessionEntryType.CONTEXT_REPLACED.name -> Unit
         }
     }
-
-    private fun conversationKey(projectId: String, sessionId: String?): String =
-        "$projectId:${sessionId ?: NEW_SESSION_KEY}"
-
-    private companion object {
-        const val NEW_SESSION_KEY = "new"
-    }
+    return timeline
 }

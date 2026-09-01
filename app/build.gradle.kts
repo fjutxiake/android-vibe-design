@@ -91,7 +91,6 @@ dependencies {
     // Agent
     implementation(libs.koog.agents.core)
     implementation(libs.koog.agents.features.event.handler)
-    implementation(libs.koog.agents.features.memory)
     implementation(libs.koog.prompt.executor.openai.client)
     implementation(libs.koog.prompt.executor.deepseek.client)
     implementation(libs.koog.http.client.ktor)

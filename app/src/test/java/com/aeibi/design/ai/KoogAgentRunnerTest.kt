@@ -1,6 +1,5 @@
 package com.aeibi.design.ai
 
-import ai.koog.agents.chatMemory.feature.InMemoryChatHistoryProvider
 import ai.koog.agents.core.tools.reflect.ToolFromCallable
 import ai.koog.agents.testing.tools.getMockExecutor
 import ai.koog.prompt.llm.LLMCapability
@@ -9,6 +8,8 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.serialization.kotlinx.KotlinxSerializer
 import com.aeibi.design.ai.tools.WorkspaceTools
+import com.aeibi.design.data.sessions.InMemorySessionDao
+import com.aeibi.design.data.sessions.SessionRepository
 import java.nio.file.Files
 import kotlin.reflect.full.valueParameters
 import kotlinx.coroutines.awaitCancellation
@@ -51,14 +52,16 @@ class KoogAgentRunnerTest {
                 ) onRequestContains "Updated index.html"
             }
             val events = mutableListOf<AgentEvent>()
+            val sessionRepository = SessionRepository(InMemorySessionDao())
 
             val result = try {
                 executeKoogAgent(
                     promptExecutor = executor,
                     model = TEST_MODEL,
                     workspaceTools = tools,
-                    chatHistoryProvider = InMemoryChatHistoryProvider(),
+                    sessionRepository = sessionRepository,
                     sessionId = "session",
+                    turnId = "turn",
                     input = "Create the page",
                     onEvent = events::add
                 )
@@ -67,6 +70,10 @@ class KoogAgentRunnerTest {
             }
 
             assertEquals("Created the page.", result)
+            assertEquals(
+                listOf("Create the page", "Created the page."),
+                sessionRepository.loadModelMessages("session").map { it.textContent() }.filter(String::isNotBlank)
+            )
             assertEquals("<h1>Hello</h1>", workspace.resolve("index.html").toFile().readText())
             assertEquals(
                 listOf(
@@ -100,8 +107,9 @@ class KoogAgentRunnerTest {
                     promptExecutor = executor,
                     model = TEST_MODEL,
                     workspaceTools = WorkspaceTools(workspace.toFile()),
-                    chatHistoryProvider = InMemoryChatHistoryProvider(),
+                    sessionRepository = SessionRepository(InMemorySessionDao()),
                     sessionId = "cancel-session",
+                    turnId = "turn",
                     input = "Keep streaming",
                     onEvent = events::add
                 )

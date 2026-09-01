@@ -11,13 +11,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import com.aeibi.design.R
-import com.aeibi.design.feature.chat.ChatMessage
 import com.aeibi.design.feature.chat.ChatMessageStatus
 import com.aeibi.design.feature.chat.ChatRole
+import com.aeibi.design.feature.chat.ChatTimelineItem
 import com.aeibi.design.theme.spacing
 
 @Composable
-fun ChatMessageItem(message: ChatMessage, modifier: Modifier = Modifier) {
+fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.spacing
     val isUser = message.role == ChatRole.USER
     val displayedText = when (message.status) {

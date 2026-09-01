@@ -1,6 +1,5 @@
 package com.aeibi.design.ai
 
-import ai.koog.agents.chatMemory.feature.InMemoryChatHistoryProvider
 import ai.koog.http.client.ktor.KtorKoogHttpClient
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekClientSettings
 import ai.koog.prompt.executor.clients.deepseek.DeepSeekLLMClient
@@ -9,6 +8,8 @@ import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import com.aeibi.design.ai.tools.WorkspaceTools
+import com.aeibi.design.data.sessions.InMemorySessionDao
+import com.aeibi.design.data.sessions.SessionRepository
 import io.ktor.client.HttpClient
 import io.ktor.client.engine.okhttp.OkHttp
 import java.nio.file.Files
@@ -37,8 +38,9 @@ class DeepSeekIntegrationTest {
                 promptExecutor = executor,
                 model = DEEPSEEK_CHAT_MODEL,
                 workspaceTools = WorkspaceTools(workspace.toFile()),
-                chatHistoryProvider = InMemoryChatHistoryProvider(),
+                sessionRepository = SessionRepository(InMemorySessionDao()),
                 sessionId = "deepseek-integration",
+                turnId = "turn",
                 input = TEST_PROMPT,
                 onEvent = events::add
             )

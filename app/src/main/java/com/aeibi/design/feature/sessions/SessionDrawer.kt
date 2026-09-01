@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 fun SessionDrawer(
     projectId: String,
     selectedSessionId: String?,
-    onSessionSelected: (String) -> Unit,
+    onSessionSelected: (String?) -> Unit,
     onCurrentSessionDeleted: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -60,9 +60,7 @@ fun SessionDrawer(
         Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
             Button(
                 onClick = {
-                    scope.launch {
-                        onSessionSelected(viewModel.createSession(projectId))
-                    }
+                    onSessionSelected(null)
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

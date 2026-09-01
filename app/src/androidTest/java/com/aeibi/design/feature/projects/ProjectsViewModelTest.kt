@@ -6,6 +6,7 @@ import com.aeibi.design.data.projects.Project
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
+import com.aeibi.design.data.sessions.SessionEntryEntity
 import com.aeibi.design.data.sessions.SessionRepository
 import java.io.File
 import java.io.FileInputStream
@@ -44,6 +45,12 @@ class ProjectsViewModelTest {
         override suspend fun renameSession(sessionId: String, title: String, updatedAt: Long): Int = 0
 
         override suspend fun touchSession(sessionId: String, updatedAt: Long): Int = 0
+
+        override fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>> = flowOf(emptyList())
+
+        override suspend fun getEntries(sessionId: String): List<SessionEntryEntity> = emptyList()
+
+        override suspend fun insertEntry(entry: SessionEntryEntity) = Unit
 
         override suspend fun deleteSession(sessionId: String): Int = 0
 

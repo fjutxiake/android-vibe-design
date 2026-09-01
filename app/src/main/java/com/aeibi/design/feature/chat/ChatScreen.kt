@@ -20,26 +20,34 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val timeline = uiState.timeline + listOfNotNull(
+        uiState.streamingText?.let {
+            ChatTimelineItem.Message(
+                id = "streaming-assistant",
+                role = ChatRole.ASSISTANT,
+                text = it,
+                status = uiState.streamingStatus
+            )
+        }
+    )
 
     LaunchedEffect(projectId, sessionId) {
         viewModel.bind(projectId, sessionId)
     }
-    LaunchedEffect(uiState.sessionId, sessionId) {
-        if (sessionId == null) uiState.sessionId?.let(onSessionCreated)
-    }
-
     Column(modifier = modifier.fillMaxSize()) {
         ChatMessageList(
             projectId = projectId,
             sessionId = sessionId,
-            timeline = uiState.timeline,
+            timeline = timeline,
+            isLoading = uiState.sessionId != sessionId || uiState.isLoadingSession,
+            isRunning = uiState.isRunning,
             modifier = Modifier.weight(1f)
         )
         ChatComposer(
             input = uiState.input,
             isRunning = uiState.isRunning,
             onInputChange = viewModel::updateInput,
-            onSend = viewModel::send,
+            onSend = { viewModel.send(onSessionCreated) },
             onCancel = viewModel::cancel
         )
     }

@@ -1,6 +1,5 @@
 package com.aeibi.design.di
 
-import ai.koog.agents.chatMemory.feature.InMemoryChatHistoryProvider
 import ai.koog.http.client.KoogHttpClient
 import ai.koog.http.client.ktor.KtorKoogHttpClient
 import android.content.Context
@@ -30,7 +29,7 @@ object AppModule {
         context = context,
         klass = AppDatabase::class.java,
         name = DATABASE_NAME
-    ).build()
+    ).fallbackToDestructiveMigration().build()
 
     @Provides
     fun provideSessionDao(database: AppDatabase): SessionDao = database.sessionDao()
@@ -58,10 +57,6 @@ object AppModule {
     @Provides
     @Singleton
     fun provideKoogHttpClientFactory(): KoogHttpClient.Factory = KtorKoogHttpClient.Factory(HttpClient(OkHttp))
-
-    @Provides
-    @Singleton
-    fun provideChatHistoryProvider(): InMemoryChatHistoryProvider = InMemoryChatHistoryProvider()
 
     private const val DATABASE_NAME = "vibe-design.db"
 }

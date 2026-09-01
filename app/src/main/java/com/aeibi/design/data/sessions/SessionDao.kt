@@ -1,7 +1,9 @@
 package com.aeibi.design.data.sessions
 
 import androidx.room3.Dao
+import androidx.room3.Insert
 import androidx.room3.Query
+import androidx.room3.Transaction
 import androidx.room3.Upsert
 import kotlinx.coroutines.flow.Flow
 
@@ -34,6 +36,21 @@ interface SessionDao {
 
     @Query("UPDATE sessions SET updated_at = :updatedAt WHERE id = :sessionId")
     suspend fun touchSession(sessionId: String, updatedAt: Long): Int
+
+    @Query("SELECT * FROM session_entries WHERE session_id = :sessionId ORDER BY id ASC")
+    fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>>
+
+    @Query("SELECT * FROM session_entries WHERE session_id = :sessionId ORDER BY id ASC")
+    suspend fun getEntries(sessionId: String): List<SessionEntryEntity>
+
+    @Insert
+    suspend fun insertEntry(entry: SessionEntryEntity)
+
+    @Transaction
+    suspend fun appendEntry(entry: SessionEntryEntity) {
+        insertEntry(entry)
+        touchSession(entry.sessionId, entry.createdAt)
+    }
 
     @Query("DELETE FROM sessions WHERE id = :sessionId")
     suspend fun deleteSession(sessionId: String): Int
