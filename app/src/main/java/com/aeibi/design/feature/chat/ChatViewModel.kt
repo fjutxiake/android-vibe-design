@@ -117,18 +117,21 @@ class ChatViewModel @Inject constructor(
         }
 
         runJob = viewModelScope.launch {
+            var agentStarted = false
             try {
                 ensureSession(activeProjectId, activeSessionId, input)
+                agentStarted = true
                 agentRunner.run(activeProjectId, activeSessionId, input, ::onAgentEvent)
             } catch (error: CancellationException) {
-                _uiState.update { it.copy(streamingStatus = ChatMessageStatus.CANCELLED) }
                 throw error
             } catch (error: Exception) {
-                _uiState.update {
-                    it.copy(
-                        streamingText = error.message ?: error.javaClass.simpleName,
-                        streamingStatus = ChatMessageStatus.FAILED
-                    )
+                if (!agentStarted) {
+                    _uiState.update {
+                        it.copy(
+                            streamingText = error.message ?: error.javaClass.simpleName,
+                            streamingStatus = ChatMessageStatus.FAILED
+                        )
+                    }
                 }
             } finally {
                 _uiState.update { it.copy(isRunning = false) }
@@ -191,7 +194,7 @@ class ChatViewModel @Inject constructor(
     }
 }
 
-private fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): List<ChatTimelineItem> {
+internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): List<ChatTimelineItem> {
     val timeline = mutableListOf<ChatTimelineItem>()
     forEach { entry ->
         when (entry.type) {
@@ -238,6 +241,19 @@ private fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): 
             }
             SessionEntryType.TURN_FINISHED.name -> {
                 val payload = repository.decodeTurnFinished(entry)
+                val partialResponse = payload.partialResponse?.takeIf(String::isNotBlank)
+                partialResponse?.let { text ->
+                    timeline += ChatTimelineItem.Message(
+                        id = "${entry.id}:partial",
+                        role = ChatRole.ASSISTANT,
+                        text = text,
+                        status = if (payload.status == TurnStatus.CANCELLED) {
+                            ChatMessageStatus.CANCELLED
+                        } else {
+                            ChatMessageStatus.COMPLETE
+                        }
+                    )
+                }
                 when (payload.status) {
                     TurnStatus.FAILED -> timeline += ChatTimelineItem.Message(
                         id = entry.id.toString(),
@@ -245,12 +261,14 @@ private fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): 
                         text = payload.failure?.message.orEmpty(),
                         status = ChatMessageStatus.FAILED
                     )
-                    TurnStatus.CANCELLED -> timeline += ChatTimelineItem.Message(
-                        id = entry.id.toString(),
-                        role = ChatRole.ASSISTANT,
-                        text = "",
-                        status = ChatMessageStatus.CANCELLED
-                    )
+                    TurnStatus.CANCELLED -> if (partialResponse == null) {
+                        timeline += ChatTimelineItem.Message(
+                            id = entry.id.toString(),
+                            role = ChatRole.ASSISTANT,
+                            text = "",
+                            status = ChatMessageStatus.CANCELLED
+                        )
+                    }
                     TurnStatus.COMPLETE -> Unit
                 }
             }

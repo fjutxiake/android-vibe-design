@@ -48,6 +48,7 @@ class KoogAgentRunner @Inject constructor(
 ) {
     suspend fun run(projectId: String, sessionId: String, input: String, onEvent: (AgentEvent) -> Unit): String {
         val turnId = UUID.randomUUID().toString()
+        val pendingText = StringBuilder()
         var executor: MultiLLMPromptExecutor? = null
         try {
             sessionRepository.repairInterruptedToolCalls(sessionId)
@@ -83,19 +84,29 @@ class KoogAgentRunner @Inject constructor(
                 input = input,
                 modelMessages = modelMessages,
                 persistUserMessage = false,
-                onEvent = onEvent
+                onEvent = { event ->
+                    if (event is AgentEvent.TextDelta) pendingText.append(event.text)
+                    onEvent(event)
+                },
+                onAssistantMessageStored = pendingText::clear
             )
             sessionRepository.finishTurn(sessionId, turnId, TurnStatus.COMPLETE)
             return response
         } catch (error: CancellationException) {
-            sessionRepository.finishTurn(sessionId, turnId, TurnStatus.CANCELLED)
+            sessionRepository.finishTurn(
+                sessionId = sessionId,
+                turnId = turnId,
+                status = TurnStatus.CANCELLED,
+                partialResponse = pendingText.toString().takeIf(String::isNotEmpty)
+            )
             throw error
         } catch (error: Exception) {
             sessionRepository.finishTurn(
                 sessionId = sessionId,
                 turnId = turnId,
                 status = TurnStatus.FAILED,
-                failure = error.toAgentFailure()
+                failure = error.toAgentFailure(),
+                partialResponse = pendingText.toString().takeIf(String::isNotEmpty)
             )
             throw error
         } finally {
@@ -114,12 +125,19 @@ internal suspend fun executeKoogAgent(
     input: String,
     modelMessages: List<Message>? = null,
     persistUserMessage: Boolean = true,
-    onEvent: (AgentEvent) -> Unit
+    onEvent: (AgentEvent) -> Unit,
+    onAssistantMessageStored: () -> Unit = {}
 ): String {
     val history = modelMessages ?: sessionRepository.loadModelMessages(sessionId)
     val agent = AIAgent(
         promptExecutor = promptExecutor,
-        strategy = streamingReActStrategy(sessionRepository, sessionId, turnId, persistUserMessage),
+        strategy = streamingReActStrategy(
+            sessionRepository,
+            sessionId,
+            turnId,
+            persistUserMessage,
+            onAssistantMessageStored
+        ),
         toolRegistry = ToolRegistry { tools(workspaceTools.asTools()) },
         agentConfig = AIAgentConfig(
             prompt = prompt(sessionId) {
@@ -148,7 +166,8 @@ private fun streamingReActStrategy(
     sessionRepository: SessionRepository,
     sessionId: String,
     turnId: String,
-    persistUserMessage: Boolean
+    persistUserMessage: Boolean,
+    onAssistantMessageStored: () -> Unit
 ) = strategy<String, String>("streaming_react") {
     val appendUserMessage by node<String, Message.User> { input ->
         Message.User(input, RequestMetaInfo.Empty).also {
@@ -174,6 +193,7 @@ private fun streamingReActStrategy(
     }
     val appendAssistantMessage by node<Message.Assistant, Message.Assistant> { response ->
         sessionRepository.appendMessage(sessionId, turnId, MessageOrigin.ASSISTANT, response)
+        onAssistantMessageStored()
         llm.writeSession {
             appendPrompt { message(response) }
         }
