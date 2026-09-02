@@ -21,6 +21,7 @@ import ai.koog.prompt.streaming.toMessageResponse
 import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.ai.AiProviderRepository
+import com.aeibi.design.data.projectfiles.ProjectFileTools
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.AgentFailure
 import com.aeibi.design.data.sessions.MessageOrigin
@@ -80,7 +81,7 @@ class KoogAgentRunner @Inject constructor(
             val response = executeKoogAgent(
                 promptExecutor = createdExecutor,
                 model = provider.createModel(modelId),
-                workspaceTools = WorkspaceTools(projectRepository.workspaceDirectory(projectId)),
+                workspaceTools = WorkspaceTools(ProjectFileTools(projectRepository.workspaceDirectory(projectId))),
                 sessionRepository = sessionRepository,
                 sessionId = sessionId,
                 turnId = turnId,

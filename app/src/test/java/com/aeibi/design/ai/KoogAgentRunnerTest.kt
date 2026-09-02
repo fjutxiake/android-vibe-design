@@ -8,6 +8,7 @@ import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.serialization.kotlinx.KotlinxSerializer
 import com.aeibi.design.ai.tools.WorkspaceTools
+import com.aeibi.design.data.projectfiles.ProjectFileTools
 import com.aeibi.design.data.sessions.InMemorySessionDao
 import com.aeibi.design.data.sessions.SessionRepository
 import java.nio.file.Files
@@ -27,7 +28,7 @@ class KoogAgentRunnerTest {
     fun executesWriteToolAndReturnsFinalResponseInEventOrder() = runTest {
         val workspace = Files.createTempDirectory("koog-agent-runner-test")
         try {
-            val tools = WorkspaceTools(workspace.toFile())
+            val tools = WorkspaceTools(ProjectFileTools(workspace.toFile()))
 
             @Suppress("UNCHECKED_CAST")
             val writeTool = tools.getTool("write_file") as ToolFromCallable<String>
@@ -118,7 +119,7 @@ class KoogAgentRunnerTest {
                 executeKoogAgent(
                     promptExecutor = executor,
                     model = TEST_MODEL,
-                    workspaceTools = WorkspaceTools(workspace.toFile()),
+                    workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
                     sessionRepository = SessionRepository(InMemorySessionDao()),
                     sessionId = "cancel-session",
                     turnId = "turn",
