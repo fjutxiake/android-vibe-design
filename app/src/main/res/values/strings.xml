@@ -76,6 +76,7 @@
     <string name="preview_cd_fullscreen">全屏预览</string>
     <string name="preview_stopped">预览已停止</string>
     <string name="preview_failed">预览启动失败</string>
+    <string name="preview_page_errors">页面错误（%1$d）</string>
     <string name="versions_title">版本管理</string>
     <string name="versions_placeholder">项目 %1$s 的版本记录区域</string>
     <string name="project_settings_title">项目设置</string>

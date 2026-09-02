@@ -237,7 +237,10 @@ internal fun WorkspacePreviewPane(
         modifier = if (visible) modifier.fillMaxSize() else Modifier.size(0.dp),
         fullscreen = fullscreen,
         onBackClick = onBackClick,
-        onRefreshClick = { webView?.reload() },
+        onRefreshClick = {
+            viewModel.clearPreviewPageErrors()
+            webView?.reload()
+        },
         onToggleBackendClick = {
             if (state.status == PreviewStatus.RUNNING) {
                 viewModel.stopPreview()
@@ -269,5 +272,26 @@ private fun createPreviewWebView(context: Context, viewModel: ProjectWorkspaceVi
         webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): WebResourceResponse? =
                 viewModel.shouldInterceptRequest(request.url)
+
+            override fun onReceivedError(
+                view: WebView,
+                request: WebResourceRequest,
+                error: android.webkit.WebResourceError
+            ) {
+                if (request.isForMainFrame) {
+                    viewModel.onPreviewPageError("页面加载失败: ${error.description} (${error.errorCode})")
+                }
+            }
+        }
+        webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
+                if (message.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
+                    val text = message.message().take(CONSOLE_MESSAGE_LIMIT)
+                    viewModel.onPreviewPageError("JS: $text")
+                }
+                return true
+            }
         }
     }
+
+private const val CONSOLE_MESSAGE_LIMIT = 200

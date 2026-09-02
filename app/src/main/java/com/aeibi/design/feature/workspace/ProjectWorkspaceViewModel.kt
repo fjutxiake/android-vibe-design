@@ -17,6 +17,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -33,7 +34,9 @@ internal enum class PreviewStatus {
 internal data class PreviewUiState(
     val status: PreviewStatus = PreviewStatus.STOPPED,
     val url: Uri? = null,
-    val errorMessage: String? = null
+    val errorMessage: String? = null,
+    /** 运行时错误（JS console ERROR / 页面加载失败），仅 RUNNING 时累积，保留最近 [MAX_PAGE_ERRORS] 条。 */
+    val pageErrors: List<String> = emptyList()
 )
 
 @Serializable
@@ -109,6 +112,19 @@ class ProjectWorkspaceViewModel internal constructor(
 
     fun shouldInterceptRequest(uri: Uri): WebResourceResponse? = assetLoader.shouldInterceptRequest(uri)
 
+    /** 页面运行时错误上报（JS console ERROR / onReceivedError），RUNNING 时累积。 */
+    fun onPreviewPageError(message: String) {
+        if (_previewUiState.value.status != PreviewStatus.RUNNING) return
+        _previewUiState.update { state ->
+            state.copy(pageErrors = (state.pageErrors + message).takeLast(MAX_PAGE_ERRORS))
+        }
+    }
+
+    /** 清除运行时错误（刷新/重启时）。 */
+    fun clearPreviewPageErrors() {
+        _previewUiState.update { it.copy(pageErrors = emptyList()) }
+    }
+
     private suspend fun startBackend(projectId: String): Uri {
         val workspace = projectRepository.workspaceDirectory(projectId).toPath().normalize()
         val configFile = File(workspace.toFile(), CONFIG_FILE)
@@ -143,5 +159,6 @@ class ProjectWorkspaceViewModel internal constructor(
 
     private companion object {
         const val CONFIG_FILE = "vibe.config.json"
+        const val MAX_PAGE_ERRORS = 5
     }
 }

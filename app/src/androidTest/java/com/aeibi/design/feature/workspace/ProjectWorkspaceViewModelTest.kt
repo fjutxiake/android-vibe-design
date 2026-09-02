@@ -112,6 +112,51 @@ class ProjectWorkspaceViewModelTest {
         fixture.stop()
     }
 
+    @Test
+    fun pageErrors_accumulateWhileRunningAndClearOnRefresh() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+
+        fixture.viewModel.onPreviewPageError("JS: ReferenceError: x is not defined")
+        fixture.viewModel.onPreviewPageError("页面加载失败: net::ERR_FILE_NOT_FOUND (2)")
+
+        val state = fixture.viewModel.previewUiState.value
+        assertEquals(2, state.pageErrors.size)
+        assertTrue(state.pageErrors[0].contains("ReferenceError"))
+
+        fixture.viewModel.clearPreviewPageErrors()
+        assertTrue(fixture.viewModel.previewUiState.value.pageErrors.isEmpty())
+        fixture.stop()
+    }
+
+    @Test
+    fun pageErrors_ignoredWhenNotRunning() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+
+        fixture.viewModel.onPreviewPageError("JS: should be ignored")
+
+        assertTrue(fixture.viewModel.previewUiState.value.pageErrors.isEmpty())
+        fixture.stop()
+    }
+
+    @Test
+    fun pageErrors_cappedAtMaxEntries() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+
+        repeat(10) { fixture.viewModel.onPreviewPageError("error-$it") }
+
+        val state = fixture.viewModel.previewUiState.value
+        assertEquals(5, state.pageErrors.size)
+        assertEquals("error-5", state.pageErrors.first())
+        fixture.stop()
+    }
+
     private fun fixture(config: String? = null): Fixture {
         val projectsRoot = temporaryFolder.newFolder()
         val workspace = File(File(projectsRoot, PROJECT_ID), "workspace").apply { mkdirs() }
