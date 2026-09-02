@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
-data class ProviderConfigItem(val config: ProviderConfig, val hasApiKey: Boolean, val selectedModelId: String? = null)
+data class ProviderConfigItem(val config: ProviderConfig, val selectedModelId: String? = null)
 
 data class AiProvidersUiState(
     val configuredProviders: List<ProviderConfigItem> = emptyList(),
@@ -39,7 +39,6 @@ class AiProvidersViewModel @Inject constructor(
             configuredProviders = settings.providers.map { config ->
                 ProviderConfigItem(
                     config = config,
-                    hasApiKey = repository.hasApiKey(config.id),
                     selectedModelId = settings.selectedModelId.takeIf { settings.selectedProviderId == config.id }
                 )
             },
@@ -102,6 +101,5 @@ private fun Throwable.safeMessageRes(): Int = when (message) {
     "Provider name is required" -> R.string.ai_err_name_empty
     "API endpoint is required" -> R.string.ai_err_endpoint_empty
     "At least one model is required" -> R.string.ai_err_models_empty
-    "API key is required" -> R.string.ai_err_key_empty
     else -> R.string.ai_save_failed
 }

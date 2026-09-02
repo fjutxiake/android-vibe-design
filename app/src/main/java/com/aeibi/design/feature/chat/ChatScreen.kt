@@ -20,7 +20,22 @@ fun ChatScreen(
     viewModel: ChatViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val timeline = uiState.timeline + listOfNotNull(
+    val streamingTimeline = uiState.streamingResponses.flatMap { response ->
+        listOfNotNull(
+            response.thinkingText.takeIf(String::isNotBlank)?.let {
+                ChatTimelineItem.Thinking(id = "streaming-thinking-${response.id}", text = it)
+            },
+            response.text.takeIf(String::isNotBlank)?.let {
+                ChatTimelineItem.Message(
+                    id = "streaming-assistant-${response.id}",
+                    role = ChatRole.ASSISTANT,
+                    text = it,
+                    status = ChatMessageStatus.WORKING
+                )
+            }
+        )
+    }
+    val timeline = uiState.timeline + streamingTimeline + listOfNotNull(
         uiState.streamingText?.let {
             ChatTimelineItem.Message(
                 id = "streaming-assistant",

@@ -47,12 +47,11 @@ sealed interface ChatTimelineItem {
         val status: ChatMessageStatus = ChatMessageStatus.COMPLETE
     ) : ChatTimelineItem
 
-    data class ToolCall(
-        override val id: String,
-        val name: String,
-        val isFinished: Boolean = false,
-        val isError: Boolean = false
-    ) : ChatTimelineItem
+    data class Thinking(override val id: String, val text: String) : ChatTimelineItem
+
+    data class ToolCall(override val id: String, val name: String) : ChatTimelineItem
+
+    data class ToolResult(override val id: String, val name: String, val isError: Boolean) : ChatTimelineItem
 }
 
 data class ChatUiState(
@@ -60,10 +59,13 @@ data class ChatUiState(
     val input: String = "",
     val timeline: List<ChatTimelineItem> = emptyList(),
     val isLoadingSession: Boolean = false,
+    val streamingResponses: List<StreamingResponse> = emptyList(),
     val streamingText: String? = null,
     val streamingStatus: ChatMessageStatus = ChatMessageStatus.WORKING,
     val isRunning: Boolean = false
 )
+
+data class StreamingResponse(val id: Int, val thinkingText: String = "", val text: String = "")
 
 @HiltViewModel
 class ChatViewModel @Inject constructor(
@@ -77,6 +79,8 @@ class ChatViewModel @Inject constructor(
     private var sessionId: String? = null
     private var entriesJob: Job? = null
     private var runJob: Job? = null
+    private var nextStreamingResponseId = 0
+    private var persistedAssistantMessageCount = 0
 
     fun bind(projectId: String, sessionId: String?) {
         if (this.projectId == projectId && this.sessionId == sessionId) return
@@ -85,6 +89,8 @@ class ChatViewModel @Inject constructor(
         entriesJob?.cancel()
         this.projectId = projectId
         this.sessionId = sessionId
+        nextStreamingResponseId = 0
+        persistedAssistantMessageCount = 0
         _uiState.value = ChatUiState(
             sessionId = sessionId,
             isLoadingSession = sessionId != null
@@ -110,6 +116,7 @@ class ChatViewModel @Inject constructor(
             it.copy(
                 sessionId = activeSessionId,
                 input = "",
+                streamingResponses = emptyList(),
                 streamingText = null,
                 streamingStatus = ChatMessageStatus.WORKING,
                 isRunning = true
@@ -150,21 +157,23 @@ class ChatViewModel @Inject constructor(
             sessionRepository.observeEntries(sessionId).collect { entries ->
                 if (this@ChatViewModel.sessionId != sessionId) return@collect
                 val timeline = entries.toTimeline(sessionRepository)
-                _uiState.update {
-                    it.copy(
+                val assistantMessageCount = entries.count { entry ->
+                    entry.type == SessionEntryType.MESSAGE.name &&
+                        sessionRepository.decodeMessage(entry).origin == MessageOrigin.ASSISTANT
+                }
+                val newAssistantMessages = (assistantMessageCount - persistedAssistantMessageCount).coerceAtLeast(0)
+                persistedAssistantMessageCount = assistantMessageCount
+                val turnFinished = entries.lastOrNull()?.type == SessionEntryType.TURN_FINISHED.name
+                _uiState.update { state ->
+                    state.copy(
                         timeline = timeline,
                         isLoadingSession = false,
-                        streamingText = when (entries.lastOrNull()?.type) {
-                            SessionEntryType.MESSAGE.name -> if (
-                                sessionRepository.decodeMessage(entries.last()).origin == MessageOrigin.ASSISTANT
-                            ) {
-                                null
-                            } else {
-                                it.streamingText
-                            }
-                            SessionEntryType.TURN_FINISHED.name -> null
-                            else -> it.streamingText
-                        }
+                        streamingResponses = if (turnFinished) {
+                            emptyList()
+                        } else {
+                            state.streamingResponses.drop(newAssistantMessages)
+                        },
+                        streamingText = if (turnFinished) null else state.streamingText
                     )
                 }
             }
@@ -172,9 +181,19 @@ class ChatViewModel @Inject constructor(
     }
 
     private fun onAgentEvent(event: AgentEvent) {
-        if (event is AgentEvent.TextDelta) {
-            _uiState.update { state ->
-                state.copy(streamingText = (state.streamingText ?: "") + event.text)
+        _uiState.update { state ->
+            when (event) {
+                AgentEvent.ResponseStarted -> state.copy(
+                    streamingResponses = state.streamingResponses + StreamingResponse(nextStreamingResponseId++)
+                )
+                is AgentEvent.TextDelta -> state.updateStreamingResponse { response ->
+                    response.copy(text = response.text + event.text)
+                }
+                is AgentEvent.ReasoningDelta -> state.updateStreamingResponse { response ->
+                    response.copy(thinkingText = response.thinkingText + event.text)
+                }
+                is AgentEvent.ToolStarted,
+                is AgentEvent.ToolFinished -> state
             }
         }
     }
@@ -194,6 +213,11 @@ class ChatViewModel @Inject constructor(
     }
 }
 
+private fun ChatUiState.updateStreamingResponse(transform: (StreamingResponse) -> StreamingResponse): ChatUiState {
+    val response = streamingResponses.lastOrNull() ?: return this
+    return copy(streamingResponses = streamingResponses.dropLast(1) + transform(response))
+}
+
 internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): List<ChatTimelineItem> {
     val timeline = mutableListOf<ChatTimelineItem>()
     forEach { entry ->
@@ -210,30 +234,42 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
                         MessageOrigin.TOOL -> {
                             message.parts
                                 .filterIsInstance<MessagePart.Tool.Result>()
-                                .forEach { result ->
-                                    val key = result.id ?: result.tool
-                                    val index = timeline.indexOfLast { it is ChatTimelineItem.ToolCall && it.id == key }
-                                    if (index >= 0) {
-                                        val call = timeline[index] as ChatTimelineItem.ToolCall
-                                        timeline[index] = call.copy(isFinished = true, isError = result.isError)
-                                    }
+                                .forEachIndexed { index, result ->
+                                    timeline += ChatTimelineItem.ToolResult(
+                                        id = "${entry.id}:tool-result:$index",
+                                        name = result.tool,
+                                        isError = result.isError
+                                    )
                                 }
                         }
                         MessageOrigin.ASSISTANT -> Unit
                     }
                     is Message.Assistant -> {
-                        message.textContent().takeIf(String::isNotBlank)?.let { text ->
-                            timeline += ChatTimelineItem.Message(
-                                id = entry.id.toString(),
-                                role = ChatRole.ASSISTANT,
-                                text = text
-                            )
-                        }
-                        message.parts.filterIsInstance<MessagePart.Tool.Call>().forEachIndexed { index, call ->
-                            timeline += ChatTimelineItem.ToolCall(
-                                id = call.id ?: "${entry.id}:$index",
-                                name = call.tool
-                            )
+                        message.parts.forEachIndexed { index, part ->
+                            when (part) {
+                                is MessagePart.Text -> part.text.takeIf(String::isNotBlank)?.let { text ->
+                                    timeline += ChatTimelineItem.Message(
+                                        id = "${entry.id}:text:$index",
+                                        role = ChatRole.ASSISTANT,
+                                        text = text
+                                    )
+                                }
+                                is MessagePart.Reasoning -> {
+                                    val text = part.content.ifEmpty { part.summary.orEmpty() }
+                                        .joinToString("\n")
+                                    text.takeIf(String::isNotBlank)?.let {
+                                        timeline += ChatTimelineItem.Thinking(
+                                            id = "${entry.id}:thinking:$index",
+                                            text = it
+                                        )
+                                    }
+                                }
+                                is MessagePart.Tool.Call -> timeline += ChatTimelineItem.ToolCall(
+                                    id = part.id ?: "${entry.id}:$index",
+                                    name = part.tool
+                                )
+                                else -> Unit
+                            }
                         }
                     }
                     is Message.System -> Unit
@@ -241,7 +277,14 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
             }
             SessionEntryType.TURN_FINISHED.name -> {
                 val payload = repository.decodeTurnFinished(entry)
+                val partialReasoning = payload.partialReasoning?.takeIf(String::isNotBlank)
                 val partialResponse = payload.partialResponse?.takeIf(String::isNotBlank)
+                partialReasoning?.let { text ->
+                    timeline += ChatTimelineItem.Thinking(
+                        id = "${entry.id}:partial-thinking",
+                        text = text
+                    )
+                }
                 partialResponse?.let { text ->
                     timeline += ChatTimelineItem.Message(
                         id = "${entry.id}:partial",

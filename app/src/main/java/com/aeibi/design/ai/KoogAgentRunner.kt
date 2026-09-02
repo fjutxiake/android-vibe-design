@@ -34,7 +34,9 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.toList
 
 sealed interface AgentEvent {
+    data object ResponseStarted : AgentEvent
     data class TextDelta(val text: String) : AgentEvent
+    data class ReasoningDelta(val text: String) : AgentEvent
     data class ToolStarted(val name: String) : AgentEvent
     data class ToolFinished(val name: String) : AgentEvent
 }
@@ -49,6 +51,7 @@ class KoogAgentRunner @Inject constructor(
     suspend fun run(projectId: String, sessionId: String, input: String, onEvent: (AgentEvent) -> Unit): String {
         val turnId = UUID.randomUUID().toString()
         val pendingText = StringBuilder()
+        val pendingReasoning = StringBuilder()
         var executor: MultiLLMPromptExecutor? = null
         try {
             sessionRepository.repairInterruptedToolCalls(sessionId)
@@ -85,10 +88,17 @@ class KoogAgentRunner @Inject constructor(
                 modelMessages = modelMessages,
                 persistUserMessage = false,
                 onEvent = { event ->
-                    if (event is AgentEvent.TextDelta) pendingText.append(event.text)
+                    when (event) {
+                        is AgentEvent.TextDelta -> pendingText.append(event.text)
+                        is AgentEvent.ReasoningDelta -> pendingReasoning.append(event.text)
+                        else -> Unit
+                    }
                     onEvent(event)
                 },
-                onAssistantMessageStored = pendingText::clear
+                onAssistantMessageStored = {
+                    pendingText.clear()
+                    pendingReasoning.clear()
+                }
             )
             sessionRepository.finishTurn(sessionId, turnId, TurnStatus.COMPLETE)
             return response
@@ -97,7 +107,8 @@ class KoogAgentRunner @Inject constructor(
                 sessionId = sessionId,
                 turnId = turnId,
                 status = TurnStatus.CANCELLED,
-                partialResponse = pendingText.toString().takeIf(String::isNotEmpty)
+                partialResponse = pendingText.toString().takeIf(String::isNotEmpty),
+                partialReasoning = pendingReasoning.toString().takeIf(String::isNotEmpty)
             )
             throw error
         } catch (error: Exception) {
@@ -106,7 +117,8 @@ class KoogAgentRunner @Inject constructor(
                 turnId = turnId,
                 status = TurnStatus.FAILED,
                 failure = error.toAgentFailure(),
-                partialResponse = pendingText.toString().takeIf(String::isNotEmpty)
+                partialResponse = pendingText.toString().takeIf(String::isNotEmpty),
+                partialReasoning = pendingReasoning.toString().takeIf(String::isNotEmpty)
             )
             throw error
         } finally {
@@ -136,6 +148,7 @@ internal suspend fun executeKoogAgent(
             sessionId,
             turnId,
             persistUserMessage,
+            onEvent,
             onAssistantMessageStored
         ),
         toolRegistry = ToolRegistry { tools(workspaceTools.asTools()) },
@@ -154,6 +167,11 @@ internal suspend fun executeKoogAgent(
                 if (frame is StreamFrame.TextDelta && frame.text.isNotEmpty()) {
                     onEvent(AgentEvent.TextDelta(frame.text))
                 }
+                if (frame is StreamFrame.ReasoningDelta) {
+                    (frame.summary ?: frame.text)
+                        ?.takeIf(String::isNotBlank)
+                        ?.let { onEvent(AgentEvent.ReasoningDelta(it)) }
+                }
             }
             onToolCallStarting { onEvent(AgentEvent.ToolStarted(it.toolName)) }
             onToolCallCompleted { onEvent(AgentEvent.ToolFinished(it.toolName)) }
@@ -167,6 +185,7 @@ private fun streamingReActStrategy(
     sessionId: String,
     turnId: String,
     persistUserMessage: Boolean,
+    onEvent: (AgentEvent) -> Unit,
     onAssistantMessageStored: () -> Unit
 ) = strategy<String, String>("streaming_react") {
     val appendUserMessage by node<String, Message.User> { input ->
@@ -177,6 +196,7 @@ private fun streamingReActStrategy(
         }
     }
     val requestModel by nodeLLMSendMessageStreaming().transform { frames ->
+        onEvent(AgentEvent.ResponseStarted)
         frames.toList().toMessageResponse()
     }
     val executeTools by nodeExecuteTools(parallel = false)
@@ -189,6 +209,7 @@ private fun streamingReActStrategy(
         }
     }
     val sendToolResults by nodeLLMSendMessageStreaming().transform { frames ->
+        onEvent(AgentEvent.ResponseStarted)
         frames.toList().toMessageResponse()
     }
     val appendAssistantMessage by node<Message.Assistant, Message.Assistant> { response ->

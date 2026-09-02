@@ -62,8 +62,8 @@
     <string name="chat_input_hint">Describe what you want to build</string>
     <string name="chat_cd_send">Send</string>
     <string name="chat_cd_cancel">Stop</string>
-    <string name="chat_cd_scroll_to_bottom">Scroll to bottom</string>
     <string name="chat_agent_working">Working…</string>
+    <string name="chat_agent_thinking">Thinking</string>
     <string name="chat_agent_cancelled">Task cancelled</string>
     <string name="chat_agent_failed">Agent execution failed</string>
     <string name="chat_tool_started">Running %1$s</string>

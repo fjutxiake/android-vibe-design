@@ -1,5 +1,7 @@
 package com.aeibi.design.data.sessions
 
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.map
@@ -40,6 +42,7 @@ class InMemorySessionDao : SessionDao {
         entries.value.filter { it.sessionId == sessionId }
 
     override suspend fun insertEntry(entry: SessionEntryEntity) {
+        currentCoroutineContext().ensureActive()
         entries.value += entry.copy(id = nextEntryId++)
     }
 

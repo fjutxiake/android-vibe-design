@@ -5,7 +5,9 @@ import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.RequestMetaInfo
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
@@ -55,14 +57,17 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         turnId: String,
         status: TurnStatus,
         failure: AgentFailure? = null,
-        partialResponse: String? = null
+        partialResponse: String? = null,
+        partialReasoning: String? = null
     ) {
-        appendEntry(
-            sessionId = sessionId,
-            turnId = turnId,
-            type = SessionEntryType.TURN_FINISHED,
-            payload = json.encodeToString(TurnFinishedPayload(status, failure, partialResponse))
-        )
+        withContext(NonCancellable) {
+            appendEntry(
+                sessionId = sessionId,
+                turnId = turnId,
+                type = SessionEntryType.TURN_FINISHED,
+                payload = json.encodeToString(TurnFinishedPayload(status, failure, partialResponse, partialReasoning))
+            )
+        }
     }
 
     suspend fun loadModelMessages(sessionId: String): List<Message> {
@@ -147,7 +152,7 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
 
     private companion object {
         const val INTERRUPTED_TURN_CONTEXT =
-            "The user interrupted the previous turn. Do not assume its response or tool calls completed."
+            "The previous turn was interrupted on purpose. Any interrupted tool calls may have partially executed. Inspect the workspace before continuing."
         const val UNKNOWN_TOOL_OUTCOME =
             "The tool execution was interrupted and its outcome is unknown. Inspect the workspace before retrying it."
     }

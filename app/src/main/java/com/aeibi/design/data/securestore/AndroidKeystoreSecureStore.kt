@@ -23,8 +23,6 @@ import kotlinx.coroutines.withContext
 class AndroidKeystoreSecureStore @Inject constructor(@ApplicationContext context: Context) : SecureStore {
     private val secureStoreDirectory = File(context.filesDir, SECURE_STORE_DIRECTORY)
 
-    override fun contains(key: String): Boolean = valueFile(key).isFile
-
     override suspend fun put(key: String, value: String) = withContext(Dispatchers.IO) {
         val file = valueFile(key)
         secureStoreDirectory.mkdirs()

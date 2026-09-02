@@ -44,6 +44,12 @@ class KoogAgentRunnerTest {
                 mockLLMToolCall(writeTool, arguments) onRequestEquals "Create the page"
                 mockLLMStream(
                     flowOf(
+                        StreamFrame.ReasoningDelta(text = "Checking the result. ", index = 0),
+                        StreamFrame.ReasoningComplete(
+                            id = null,
+                            content = listOf("Checking the result."),
+                            index = 0
+                        ),
                         StreamFrame.TextDelta("Created ", index = 0),
                         StreamFrame.TextDelta("the page.", index = 0),
                         StreamFrame.TextComplete("Created the page.", index = 0),
@@ -53,6 +59,7 @@ class KoogAgentRunnerTest {
             }
             val events = mutableListOf<AgentEvent>()
             val sessionRepository = SessionRepository(InMemorySessionDao())
+            var storedAssistantMessages = 0
 
             val result = try {
                 executeKoogAgent(
@@ -63,7 +70,8 @@ class KoogAgentRunnerTest {
                     sessionId = "session",
                     turnId = "turn",
                     input = "Create the page",
-                    onEvent = events::add
+                    onEvent = events::add,
+                    onAssistantMessageStored = { storedAssistantMessages++ }
                 )
             } finally {
                 executor.close()
@@ -75,10 +83,14 @@ class KoogAgentRunnerTest {
                 sessionRepository.loadModelMessages("session").map { it.textContent() }.filter(String::isNotBlank)
             )
             assertEquals("<h1>Hello</h1>", workspace.resolve("index.html").toFile().readText())
+            assertEquals(2, storedAssistantMessages)
             assertEquals(
                 listOf(
+                    AgentEvent.ResponseStarted,
                     AgentEvent.ToolStarted("write_file"),
                     AgentEvent.ToolFinished("write_file"),
+                    AgentEvent.ResponseStarted,
+                    AgentEvent.ReasoningDelta("Checking the result. "),
                     AgentEvent.TextDelta("Created "),
                     AgentEvent.TextDelta("the page.")
                 ),
@@ -116,7 +128,10 @@ class KoogAgentRunnerTest {
             }
 
             testScheduler.runCurrent()
-            assertEquals(listOf(AgentEvent.TextDelta("Partial response")), events)
+            assertEquals(
+                listOf(AgentEvent.ResponseStarted, AgentEvent.TextDelta("Partial response")),
+                events
+            )
 
             job.cancelAndJoin()
             assertTrue(job.isCancelled)

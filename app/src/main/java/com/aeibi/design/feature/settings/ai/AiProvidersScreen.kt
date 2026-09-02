@@ -161,8 +161,7 @@ private fun AiProvidersContent(
                         displayName = provider.displayName,
                         endpoint = provider.defaultEndpoint,
                         models = provider.defaultModels.ifEmpty { listOf("") }
-                    ),
-                    hasApiKey = false
+                    )
                 )
             }
         )
@@ -243,8 +242,7 @@ private fun AiProvidersConfiguredScreenPreview() {
                 displayName = "OpenAI 个人账号",
                 endpoint = "https://api.openai.com/v1",
                 models = listOf("gpt-5.6-sol", "gpt-5.6-terra")
-            ),
-            hasApiKey = true
+            )
         ),
         ProviderConfigItem(
             config = ProviderConfig(
@@ -253,8 +251,7 @@ private fun AiProvidersConfiguredScreenPreview() {
                 displayName = "DeepSeek",
                 endpoint = "https://api.deepseek.com",
                 models = listOf("deepseek-v4-flash")
-            ),
-            hasApiKey = true
+            )
         )
     )
     VibeDesignTheme(dynamicColor = false) {

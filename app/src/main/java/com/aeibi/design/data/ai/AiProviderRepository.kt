@@ -41,7 +41,6 @@ class AiProviderRepository @Inject constructor(
         require(normalized.displayName.isNotEmpty()) { "Provider name is required" }
         require(normalized.endpoint.isNotEmpty()) { "API endpoint is required" }
         require(normalized.models.isNotEmpty()) { "At least one model is required" }
-        require(apiKey.isNotBlank()) { "API key is required" }
 
         secureStore.put(normalized.id, apiKey)
 
@@ -88,8 +87,6 @@ class AiProviderRepository @Inject constructor(
         }
         secureStore.delete(configId)
     }
-
-    fun hasApiKey(configId: String): Boolean = secureStore.contains(configId)
 
     suspend fun readApiKey(configId: String): String? = secureStore.get(configId)
 

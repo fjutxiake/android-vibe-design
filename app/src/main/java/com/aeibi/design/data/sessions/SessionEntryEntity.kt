@@ -46,7 +46,12 @@ data class MessageEntryPayload(val origin: MessageOrigin, val message: Message)
 data class ContextReplacedPayload(val messages: List<Message>)
 
 @Serializable
-data class TurnFinishedPayload(val status: TurnStatus, val failure: AgentFailure?, val partialResponse: String? = null)
+data class TurnFinishedPayload(
+    val status: TurnStatus,
+    val failure: AgentFailure?,
+    val partialResponse: String? = null,
+    val partialReasoning: String? = null
+)
 
 @Serializable
 data class AgentFailure(val message: String, val code: String)

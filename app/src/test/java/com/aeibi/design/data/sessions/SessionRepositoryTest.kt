@@ -4,13 +4,75 @@ import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
+import kotlinx.coroutines.awaitCancellation
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class SessionRepositoryTest {
+    @Test
+    fun cancelledCallerStillPersistsTurnFinish() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        val job = launch {
+            try {
+                awaitCancellation()
+            } finally {
+                repository.finishTurn(
+                    sessionId = "session",
+                    turnId = "turn",
+                    status = TurnStatus.CANCELLED,
+                    partialResponse = "Partial answer",
+                    partialReasoning = "Partial reasoning"
+                )
+            }
+        }
+
+        testScheduler.runCurrent()
+        job.cancelAndJoin()
+
+        val entry = repository.observeEntries("session").first().single()
+        assertEquals(
+            TurnFinishedPayload(
+                TurnStatus.CANCELLED,
+                failure = null,
+                partialResponse = "Partial answer",
+                partialReasoning = "Partial reasoning"
+            ),
+            repository.decodeTurnFinished(entry)
+        )
+    }
+
+    @Test
+    fun cancelledTurnKeepsCompletedItemsInModelContext() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.appendMessage(
+            "session",
+            "turn",
+            MessageOrigin.USER,
+            Message.User("Update the app", RequestMetaInfo.Empty)
+        )
+        repository.appendMessage(
+            "session",
+            "turn",
+            MessageOrigin.ASSISTANT,
+            Message.Assistant("I updated the first file.", ResponseMetaInfo.Empty)
+        )
+        repository.finishTurn("session", "turn", TurnStatus.CANCELLED)
+
+        assertEquals(
+            listOf(
+                "Update the app",
+                "I updated the first file.",
+                "The previous turn was interrupted on purpose. Any interrupted tool calls may have partially executed. Inspect the workspace before continuing."
+            ),
+            repository.loadModelMessages("session").map { it.textContent() }
+        )
+    }
+
     @Test
     fun contextReplacementKeepsOnlyReplacementAndLaterMessagesInModelContext() = runTest {
         val repository = SessionRepository(InMemorySessionDao())

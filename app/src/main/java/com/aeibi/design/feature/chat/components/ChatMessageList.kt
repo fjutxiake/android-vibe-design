@@ -1,34 +1,28 @@
 package com.aeibi.design.feature.chat.components
 
+import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.unit.dp
-import com.aeibi.design.R
 import com.aeibi.design.feature.chat.ChatTimelineItem
 import com.aeibi.design.theme.spacing
 
@@ -44,6 +38,7 @@ fun ChatMessageList(
     val spacing = MaterialTheme.spacing
     val listState = rememberLazyListState()
     var followTail by rememberSaveable(sessionId) { mutableStateOf(true) }
+    var isAutoScrolling by remember { mutableStateOf(false) }
 
     LaunchedEffect(isRunning) {
         if (isRunning) followTail = true
@@ -51,9 +46,10 @@ fun ChatMessageList(
 
     LaunchedEffect(listState) {
         var userWasScrolling = false
-        snapshotFlow { listState.isScrollInProgress }.collect { isScrolling ->
-            if (isScrolling) {
+        snapshotFlow { listState.isScrollInProgress to isAutoScrolling }.collect { (isScrolling, autoScrolling) ->
+            if (isScrolling && !autoScrolling) {
                 userWasScrolling = true
+                followTail = false
             } else if (userWasScrolling) {
                 followTail = listState.isAtBottom()
                 userWasScrolling = false
@@ -61,9 +57,35 @@ fun ChatMessageList(
         }
     }
 
-    LaunchedEffect(timeline.lastOrNull(), timeline.size, followTail, isLoading) {
+    LaunchedEffect(sessionId, timeline.size, followTail, isLoading) {
         if (!isLoading && followTail && timeline.isNotEmpty()) {
-            listState.scrollToItem(timeline.size)
+            isAutoScrolling = true
+            try {
+                listState.scrollToItem(timeline.lastIndex, Int.MAX_VALUE)
+            } finally {
+                isAutoScrolling = false
+            }
+        }
+    }
+
+    LaunchedEffect(sessionId, timeline.lastOrNull(), followTail, isLoading) {
+        if (!isLoading && followTail && timeline.isNotEmpty()) {
+            withFrameNanos { }
+            if (listState.isScrollInProgress) return@LaunchedEffect
+
+            val layoutInfo = listState.layoutInfo
+            val lastItem = layoutInfo.visibleItemsInfo.lastOrNull { it.index == timeline.lastIndex }
+                ?: return@LaunchedEffect
+            val overflow = lastItem.offset + lastItem.size -
+                (layoutInfo.viewportEndOffset - layoutInfo.afterContentPadding)
+            if (overflow > 0) {
+                isAutoScrolling = true
+                try {
+                    listState.scrollBy(overflow.toFloat())
+                } finally {
+                    isAutoScrolling = false
+                }
+            }
         }
     }
 
@@ -79,39 +101,23 @@ fun ChatMessageList(
         return
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize().padding(horizontal = spacing.sm),
-            contentPadding = PaddingValues(vertical = spacing.sm),
-            verticalArrangement = Arrangement.spacedBy(spacing.sm)
-        ) {
-            items(timeline, key = ChatTimelineItem::id) { item ->
+    LazyColumn(
+        state = listState,
+        modifier = modifier.fillMaxSize().padding(horizontal = spacing.sm),
+        contentPadding = PaddingValues(spacing.xs),
+        verticalArrangement = Arrangement.spacedBy(spacing.md)
+    ) {
+        itemsIndexed(timeline, key = { _, item -> item.id }) { _, item ->
+            Box {
                 when (item) {
                     is ChatTimelineItem.Message -> ChatMessageItem(item)
+                    is ChatTimelineItem.Thinking -> ThinkingItem(item)
                     is ChatTimelineItem.ToolCall -> ToolEventItem(item)
+                    is ChatTimelineItem.ToolResult -> ToolEventItem(item)
                 }
-            }
-            item(key = "chat-bottom-anchor") { Spacer(Modifier.size(1.dp)) }
-        }
-
-        if (!followTail) {
-            FloatingActionButton(
-                onClick = { followTail = true },
-                modifier = Modifier.align(Alignment.BottomEnd).padding(spacing.sm)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.KeyboardArrowDown,
-                    contentDescription = stringResource(R.string.chat_cd_scroll_to_bottom)
-                )
             }
         }
     }
 }
 
-private fun LazyListState.isAtBottom(): Boolean {
-    val layoutInfo = layoutInfo
-    val lastVisibleItem = layoutInfo.visibleItemsInfo.lastOrNull() ?: return true
-    return lastVisibleItem.index == layoutInfo.totalItemsCount - 1 &&
-        lastVisibleItem.offset + lastVisibleItem.size <= layoutInfo.viewportEndOffset
-}
+private fun LazyListState.isAtBottom() = !canScrollForward
