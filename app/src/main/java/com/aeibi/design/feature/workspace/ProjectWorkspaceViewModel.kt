@@ -7,6 +7,8 @@ import android.webkit.WebResourceResponse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.data.projects.ProjectRepository
+import com.aeibi.design.data.runtimelogs.RuntimeLogEntry
+import com.aeibi.design.data.runtimelogs.RuntimeLogStore
 import com.aeibi.design.feature.preview.LocalStaticAssetLoader
 import com.aeibi.design.feature.preview.LocalStaticFileServer
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -55,26 +57,31 @@ class ProjectWorkspaceViewModel internal constructor(
     private val projectRepository: ProjectRepository,
     private val fileServer: LocalStaticFileServer,
     private val assetLoader: LocalStaticAssetLoader,
+    private val runtimeLogStore: RuntimeLogStore,
     private val ioDispatcher: CoroutineDispatcher
 ) : ViewModel() {
 
     @Inject
     constructor(
         projectRepository: ProjectRepository,
-        @ApplicationContext context: Context
+        @ApplicationContext context: Context,
+        runtimeLogStore: RuntimeLogStore
     ) : this(
         projectRepository,
         LocalStaticFileServer(),
         LocalStaticAssetLoader(context),
+        runtimeLogStore,
         Dispatchers.IO
     )
 
     private val json = Json { ignoreUnknownKeys = true }
     private val _previewUiState = MutableStateFlow(PreviewUiState())
     internal val previewUiState: StateFlow<PreviewUiState> = _previewUiState.asStateFlow()
+    private var projectId: String? = null
 
     fun startPreview(projectId: String) {
         if (_previewUiState.value.status !in listOf(PreviewStatus.STOPPED, PreviewStatus.FAILED)) return
+        this.projectId = projectId
         _previewUiState.value = PreviewUiState(status = PreviewStatus.STARTING)
 
         viewModelScope.launch {
@@ -113,17 +120,31 @@ class ProjectWorkspaceViewModel internal constructor(
     fun shouldInterceptRequest(uri: Uri): WebResourceResponse? = assetLoader.shouldInterceptRequest(uri)
 
     internal fun recordConsoleMessage(message: ConsoleMessage) {
+        val running = _previewUiState.value.status == PreviewStatus.RUNNING
+        if (!running) return
         _previewUiState.update { state ->
-            if (state.status != PreviewStatus.RUNNING) {
-                state
-            } else {
-                state.copy(consoleMessages = state.consoleMessages + message)
-            }
+            state.copy(consoleMessages = state.consoleMessages + message)
         }
+        // 数据层（agent 工具读取）：webkit 模型 → RuntimeLogEntry
+        val source = if (message.sourceId().isNotEmpty()) {
+            "${message.sourceId()}:${message.lineNumber()}"
+        } else {
+            ""
+        }
+        runtimeLogStore.record(
+            projectId = projectId ?: return,
+            entry = RuntimeLogEntry(
+                level = message.messageLevel().name,
+                message = message.message(),
+                source = source,
+                timestamp = System.currentTimeMillis()
+            )
+        )
     }
 
     internal fun clearConsoleMessages() {
         _previewUiState.update { it.copy(consoleMessages = emptyList()) }
+        projectId?.let(runtimeLogStore::clear)
     }
 
     private suspend fun startBackend(projectId: String): Uri {

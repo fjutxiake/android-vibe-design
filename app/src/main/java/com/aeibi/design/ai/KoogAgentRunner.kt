@@ -19,10 +19,12 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.toMessageResponse
 import com.aeibi.design.ai.provider.AiProviderRegistry
+import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.projectfiles.ProjectFileTools
 import com.aeibi.design.data.projects.ProjectRepository
+import com.aeibi.design.data.runtimelogs.RuntimeLogStore
 import com.aeibi.design.data.sessions.AgentFailure
 import com.aeibi.design.data.sessions.MessageOrigin
 import com.aeibi.design.data.sessions.SessionRepository
@@ -47,7 +49,8 @@ class KoogAgentRunner @Inject constructor(
     private val providerRepository: AiProviderRepository,
     private val providerRegistry: AiProviderRegistry,
     private val projectRepository: ProjectRepository,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val runtimeLogStore: RuntimeLogStore
 ) {
     suspend fun run(projectId: String, sessionId: String, input: String, onEvent: (AgentEvent) -> Unit): String {
         val turnId = UUID.randomUUID().toString()
@@ -82,6 +85,7 @@ class KoogAgentRunner @Inject constructor(
                 promptExecutor = createdExecutor,
                 model = provider.createModel(modelId),
                 workspaceTools = WorkspaceTools(ProjectFileTools(projectRepository.workspaceDirectory(projectId))),
+                runtimeLogsTool = RuntimeLogsTool(projectId, runtimeLogStore),
                 sessionRepository = sessionRepository,
                 sessionId = sessionId,
                 turnId = turnId,
@@ -132,6 +136,7 @@ internal suspend fun executeKoogAgent(
     promptExecutor: PromptExecutor,
     model: LLModel,
     workspaceTools: WorkspaceTools,
+    runtimeLogsTool: RuntimeLogsTool,
     sessionRepository: SessionRepository,
     sessionId: String,
     turnId: String,
@@ -152,7 +157,10 @@ internal suspend fun executeKoogAgent(
             onEvent,
             onAssistantMessageStored
         ),
-        toolRegistry = ToolRegistry { tools(workspaceTools.asTools()) },
+        toolRegistry = ToolRegistry {
+            tools(workspaceTools.asTools())
+            tools(runtimeLogsTool.asTools())
+        },
         agentConfig = AIAgentConfig(
             prompt = prompt(sessionId) {
                 system(SYSTEM_PROMPT)

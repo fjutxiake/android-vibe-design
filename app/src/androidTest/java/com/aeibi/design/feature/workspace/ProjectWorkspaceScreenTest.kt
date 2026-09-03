@@ -17,6 +17,7 @@ import androidx.lifecycle.ViewModelStore
 import androidx.test.core.app.ApplicationProvider
 import com.aeibi.design.R
 import com.aeibi.design.data.projects.ProjectRepository
+import com.aeibi.design.data.runtimelogs.RuntimeLogStore
 import com.aeibi.design.feature.preview.LocalStaticAssetLoader
 import com.aeibi.design.feature.preview.LocalStaticFileServer
 import java.io.File
@@ -141,6 +142,7 @@ class ProjectWorkspaceScreenTest {
             repository,
             LocalStaticFileServer(),
             LocalStaticAssetLoader(context),
+            RuntimeLogStore(),
             Dispatchers.IO
         )
         val store = ViewModelStore()

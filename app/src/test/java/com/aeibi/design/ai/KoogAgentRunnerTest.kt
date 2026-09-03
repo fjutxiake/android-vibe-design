@@ -7,8 +7,10 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.serialization.kotlinx.KotlinxSerializer
+import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.projectfiles.ProjectFileTools
+import com.aeibi.design.data.runtimelogs.RuntimeLogStore
 import com.aeibi.design.data.sessions.InMemorySessionDao
 import com.aeibi.design.data.sessions.SessionRepository
 import java.nio.file.Files
@@ -67,6 +69,7 @@ class KoogAgentRunnerTest {
                     promptExecutor = executor,
                     model = TEST_MODEL,
                     workspaceTools = tools,
+                    runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
                     sessionRepository = sessionRepository,
                     sessionId = "session",
                     turnId = "turn",
@@ -120,6 +123,7 @@ class KoogAgentRunnerTest {
                     promptExecutor = executor,
                     model = TEST_MODEL,
                     workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
+                    runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
                     sessionRepository = SessionRepository(InMemorySessionDao()),
                     sessionId = "cancel-session",
                     turnId = "turn",
