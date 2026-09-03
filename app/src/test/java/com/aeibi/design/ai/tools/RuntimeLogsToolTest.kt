@@ -9,13 +9,13 @@ import org.junit.Test
 class RuntimeLogsToolTest {
 
     private val store = RuntimeLogStore()
-    private val tool = RuntimeLogsTool(store)
+    private val tool = RuntimeLogsTool(PROJECT_ID, store)
 
     @Test
     fun readAll_returnsFormattedEntries() = runBlocking {
-        store.record(RuntimeLogEntry("ERROR", "ReferenceError: x", "app.js:3"))
-        store.record(RuntimeLogEntry("WARNING", "deprecated", "app.js:8"))
-        store.record(RuntimeLogEntry("LOG", "hello", ""))
+        store.record(PROJECT_ID, RuntimeLogEntry("ERROR", "ReferenceError: x", "app.js:3"))
+        store.record(PROJECT_ID, RuntimeLogEntry("WARNING", "deprecated", "app.js:8"))
+        store.record(PROJECT_ID, RuntimeLogEntry("LOG", "hello", ""))
 
         val output = tool.readRuntimeLogs()
 
@@ -26,8 +26,8 @@ class RuntimeLogsToolTest {
 
     @Test
     fun readErrorOnly_filtersOtherLevels() = runBlocking {
-        store.record(RuntimeLogEntry("ERROR", "boom", "app.js:1"))
-        store.record(RuntimeLogEntry("LOG", "noise", ""))
+        store.record(PROJECT_ID, RuntimeLogEntry("ERROR", "boom", "app.js:1"))
+        store.record(PROJECT_ID, RuntimeLogEntry("LOG", "noise", ""))
 
         val output = tool.readRuntimeLogs(level = "ERROR")
 
@@ -44,7 +44,7 @@ class RuntimeLogsToolTest {
 
     @Test
     fun clear_emptiesLogs() = runBlocking {
-        store.record(RuntimeLogEntry("ERROR", "boom", "app.js:1"))
+        store.record(PROJECT_ID, RuntimeLogEntry("ERROR", "boom", "app.js:1"))
         tool.clearRuntimeLogs()
 
         assertTrue(tool.readRuntimeLogs().contains("No runtime logs recorded"))
@@ -56,5 +56,9 @@ class RuntimeLogsToolTest {
         val names = setOf("ERROR", "WARNING", "LOG", "DEBUG", "TIP")
         assertTrue(names.contains("ERROR"))
         assertTrue(names.contains("WARNING"))
+    }
+
+    private companion object {
+        const val PROJECT_ID = "project"
     }
 }

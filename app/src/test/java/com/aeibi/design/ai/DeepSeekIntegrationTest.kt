@@ -41,7 +41,7 @@ class DeepSeekIntegrationTest {
                 promptExecutor = executor,
                 model = DEEPSEEK_CHAT_MODEL,
                 workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
-                runtimeLogsTool = RuntimeLogsTool(RuntimeLogStore()),
+                runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
                 sessionRepository = SessionRepository(InMemorySessionDao()),
                 sessionId = "deepseek-integration",
                 turnId = "turn",

@@ -13,10 +13,10 @@ class RuntimeLogStoreTest {
 
     @Test
     fun recordAndSnapshot_keepsOrder() {
-        store.record(entry(message = "first"))
-        store.record(entry(message = "second"))
+        store.record(PROJECT_A, entry(message = "first"))
+        store.record(PROJECT_A, entry(message = "second"))
 
-        val entries = store.snapshot()
+        val entries = store.snapshot(PROJECT_A)
         assertEquals(2, entries.size)
         assertEquals("first", entries[0].message)
         assertEquals("second", entries[1].message)
@@ -24,9 +24,9 @@ class RuntimeLogStoreTest {
 
     @Test
     fun record_capsAtMaxEntries() {
-        repeat(250) { store.record(entry(message = "m$it")) }
+        repeat(250) { store.record(PROJECT_A, entry(message = "m$it")) }
 
-        val entries = store.snapshot()
+        val entries = store.snapshot(PROJECT_A)
         assertEquals(200, entries.size)
         // 环形缓冲保留最新
         assertEquals("m50", entries.first().message)
@@ -35,9 +35,23 @@ class RuntimeLogStoreTest {
 
     @Test
     fun clear_emptiesSnapshot() {
-        store.record(entry())
-        store.clear()
+        store.record(PROJECT_A, entry())
+        store.clear(PROJECT_A)
 
-        assertTrue(store.snapshot().isEmpty())
+        assertTrue(store.snapshot(PROJECT_A).isEmpty())
+    }
+
+    @Test
+    fun snapshot_isIsolatedByProject() {
+        store.record(PROJECT_A, entry(message = "project-a"))
+        store.record(PROJECT_B, entry(message = "project-b"))
+
+        assertEquals(listOf("project-a"), store.snapshot(PROJECT_A).map { it.message })
+        assertEquals(listOf("project-b"), store.snapshot(PROJECT_B).map { it.message })
+    }
+
+    private companion object {
+        const val PROJECT_A = "project-a"
+        const val PROJECT_B = "project-b"
     }
 }

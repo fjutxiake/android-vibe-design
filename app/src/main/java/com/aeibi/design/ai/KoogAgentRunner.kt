@@ -85,7 +85,7 @@ class KoogAgentRunner @Inject constructor(
                 promptExecutor = createdExecutor,
                 model = provider.createModel(modelId),
                 workspaceTools = WorkspaceTools(ProjectFileTools(projectRepository.workspaceDirectory(projectId))),
-                runtimeLogsTool = RuntimeLogsTool(runtimeLogStore),
+                runtimeLogsTool = RuntimeLogsTool(projectId, runtimeLogStore),
                 sessionRepository = sessionRepository,
                 sessionId = sessionId,
                 turnId = turnId,

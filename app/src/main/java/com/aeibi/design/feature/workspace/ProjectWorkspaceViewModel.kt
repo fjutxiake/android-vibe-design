@@ -77,9 +77,11 @@ class ProjectWorkspaceViewModel internal constructor(
     private val json = Json { ignoreUnknownKeys = true }
     private val _previewUiState = MutableStateFlow(PreviewUiState())
     internal val previewUiState: StateFlow<PreviewUiState> = _previewUiState.asStateFlow()
+    private var projectId: String? = null
 
     fun startPreview(projectId: String) {
         if (_previewUiState.value.status !in listOf(PreviewStatus.STOPPED, PreviewStatus.FAILED)) return
+        this.projectId = projectId
         _previewUiState.value = PreviewUiState(status = PreviewStatus.STARTING)
 
         viewModelScope.launch {
@@ -130,7 +132,8 @@ class ProjectWorkspaceViewModel internal constructor(
             ""
         }
         runtimeLogStore.record(
-            RuntimeLogEntry(
+            projectId = projectId ?: return,
+            entry = RuntimeLogEntry(
                 level = message.messageLevel().name,
                 message = message.message(),
                 source = source,
@@ -141,7 +144,7 @@ class ProjectWorkspaceViewModel internal constructor(
 
     internal fun clearConsoleMessages() {
         _previewUiState.update { it.copy(consoleMessages = emptyList()) }
-        runtimeLogStore.clear()
+        projectId?.let(runtimeLogStore::clear)
     }
 
     private suspend fun startBackend(projectId: String): Uri {

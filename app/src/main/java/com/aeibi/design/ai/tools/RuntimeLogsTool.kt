@@ -13,7 +13,7 @@ import com.aeibi.design.data.runtimelogs.RuntimeLogStore
  * 是"构建-验证-修复"闭环的反馈输入（issue #17 的 RuntimeFeedback 落地形态）。
  */
 @LLMDescription("Tools for reading runtime console logs from the preview WebView.")
-class RuntimeLogsTool(private val store: RuntimeLogStore) : ToolSet {
+class RuntimeLogsTool(private val projectId: String, private val store: RuntimeLogStore) : ToolSet {
 
     @Tool(customName = "read_runtime_logs")
     @LLMDescription(
@@ -24,10 +24,11 @@ class RuntimeLogsTool(private val store: RuntimeLogStore) : ToolSet {
     suspend fun readRuntimeLogs(
         @LLMDescription("Optional filter: ERROR, WARNING, or ALL (default).") level: String = "ALL"
     ): String {
+        val entries = store.snapshot(projectId)
         val filtered = when (level.uppercase()) {
-            "ERROR" -> store.snapshot().filter { it.level == LEVEL_ERROR }
-            "WARNING" -> store.snapshot().filter { it.level == LEVEL_WARNING }
-            else -> store.snapshot()
+            "ERROR" -> entries.filter { it.level == LEVEL_ERROR }
+            "WARNING" -> entries.filter { it.level == LEVEL_WARNING }
+            else -> entries
         }
         return filtered.joinToString("\n") { entry -> formatEntry(entry) }
             .ifEmpty { "No runtime logs recorded." }
@@ -36,7 +37,7 @@ class RuntimeLogsTool(private val store: RuntimeLogStore) : ToolSet {
     @Tool(customName = "clear_runtime_logs")
     @LLMDescription("Clear recorded runtime logs (e.g. before a fresh preview round).")
     suspend fun clearRuntimeLogs(): String {
-        store.clear()
+        store.clear(projectId)
         return "Runtime logs cleared."
     }
 
