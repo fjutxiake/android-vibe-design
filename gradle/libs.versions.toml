@@ -21,6 +21,8 @@ hilt = "2.60.1"
 androidxHilt = "1.4.0"
 kotlinxSerializationJson = "1.10.0"
 ktor = "3.5.1"
+jsoup = "1.23.2"
+rhino = "1.9.1"
 koog = "1.2.0"
 koogDeepSeek = "1.2.0-beta"
 ktlint = "14.2.0"
@@ -68,6 +70,8 @@ hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hil
 androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "androidxHilt" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
+jsoup = { module = "org.jsoup:jsoup", version.ref = "jsoup" }
+rhino = { module = "org.mozilla:rhino", version.ref = "rhino" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

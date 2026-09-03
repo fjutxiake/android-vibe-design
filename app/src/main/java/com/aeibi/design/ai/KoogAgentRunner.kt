@@ -19,6 +19,7 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.toMessageResponse
 import com.aeibi.design.ai.provider.AiProviderRegistry
+import com.aeibi.design.ai.tools.LintTools
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.ai.AiProviderRepository
@@ -86,6 +87,7 @@ class KoogAgentRunner @Inject constructor(
                 model = provider.createModel(modelId),
                 workspaceTools = WorkspaceTools(ProjectFileTools(projectRepository.workspaceDirectory(projectId))),
                 runtimeLogsTool = RuntimeLogsTool(projectId, runtimeLogStore),
+                lintTools = LintTools(projectRepository.workspaceDirectory(projectId)),
                 sessionRepository = sessionRepository,
                 sessionId = sessionId,
                 turnId = turnId,
@@ -137,6 +139,7 @@ internal suspend fun executeKoogAgent(
     model: LLModel,
     workspaceTools: WorkspaceTools,
     runtimeLogsTool: RuntimeLogsTool,
+    lintTools: LintTools,
     sessionRepository: SessionRepository,
     sessionId: String,
     turnId: String,
@@ -160,6 +163,7 @@ internal suspend fun executeKoogAgent(
         toolRegistry = ToolRegistry {
             tools(workspaceTools.asTools())
             tools(runtimeLogsTool.asTools())
+            tools(lintTools.asTools())
         },
         agentConfig = AIAgentConfig(
             prompt = prompt(sessionId) {

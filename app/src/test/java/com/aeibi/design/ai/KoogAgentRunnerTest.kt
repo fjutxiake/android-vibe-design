@@ -7,6 +7,7 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.serialization.kotlinx.KotlinxSerializer
+import com.aeibi.design.ai.tools.LintTools
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.projectfiles.ProjectFileTools
@@ -70,6 +71,7 @@ class KoogAgentRunnerTest {
                     model = TEST_MODEL,
                     workspaceTools = tools,
                     runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
+                    lintTools = LintTools(workspace.toFile()),
                     sessionRepository = sessionRepository,
                     sessionId = "session",
                     turnId = "turn",
@@ -124,6 +126,7 @@ class KoogAgentRunnerTest {
                     model = TEST_MODEL,
                     workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
                     runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
+                    lintTools = LintTools(workspace.toFile()),
                     sessionRepository = SessionRepository(InMemorySessionDao()),
                     sessionId = "cancel-session",
                     turnId = "turn",

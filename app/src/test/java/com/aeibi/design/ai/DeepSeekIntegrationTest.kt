@@ -7,6 +7,7 @@ import ai.koog.prompt.executor.llms.MultiLLMPromptExecutor
 import ai.koog.prompt.llm.LLMCapability
 import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
+import com.aeibi.design.ai.tools.LintTools
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.projectfiles.ProjectFileTools
@@ -42,6 +43,7 @@ class DeepSeekIntegrationTest {
                 model = DEEPSEEK_CHAT_MODEL,
                 workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
                 runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
+                lintTools = LintTools(workspace.toFile()),
                 sessionRepository = SessionRepository(InMemorySessionDao()),
                 sessionId = "deepseek-integration",
                 turnId = "turn",
