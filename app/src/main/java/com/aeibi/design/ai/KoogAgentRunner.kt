@@ -59,6 +59,7 @@ class KoogAgentRunner @Inject constructor(
         var executor: MultiLLMPromptExecutor? = null
         try {
             sessionRepository.repairInterruptedToolCalls(sessionId)
+            sessionRepository.repairIncompleteTurns(sessionId)
             val modelMessages = sessionRepository.loadModelMessages(sessionId)
             sessionRepository.appendMessage(
                 sessionId,

@@ -34,7 +34,8 @@ enum class ChatMessageStatus {
     COMPLETE,
     WORKING,
     FAILED,
-    CANCELLED
+    CANCELLED,
+    INCOMPLETE
 }
 
 sealed interface ChatTimelineItem {
@@ -290,10 +291,10 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
                         id = "${entry.id}:partial",
                         role = ChatRole.ASSISTANT,
                         text = text,
-                        status = if (payload.status == TurnStatus.CANCELLED) {
-                            ChatMessageStatus.CANCELLED
-                        } else {
-                            ChatMessageStatus.COMPLETE
+                        status = when (payload.status) {
+                            TurnStatus.CANCELLED -> ChatMessageStatus.CANCELLED
+                            TurnStatus.INCOMPLETE -> ChatMessageStatus.INCOMPLETE
+                            else -> ChatMessageStatus.COMPLETE
                         }
                     )
                 }
@@ -304,12 +305,17 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
                         text = payload.failure?.message.orEmpty(),
                         status = ChatMessageStatus.FAILED
                     )
-                    TurnStatus.CANCELLED -> if (partialResponse == null) {
+                    TurnStatus.CANCELLED,
+                    TurnStatus.INCOMPLETE -> if (partialResponse == null) {
                         timeline += ChatTimelineItem.Message(
                             id = entry.id.toString(),
                             role = ChatRole.ASSISTANT,
                             text = "",
-                            status = ChatMessageStatus.CANCELLED
+                            status = if (payload.status == TurnStatus.CANCELLED) {
+                                ChatMessageStatus.CANCELLED
+                            } else {
+                                ChatMessageStatus.INCOMPLETE
+                            }
                         )
                     }
                     TurnStatus.COMPLETE -> Unit

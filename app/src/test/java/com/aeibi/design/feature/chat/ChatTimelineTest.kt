@@ -139,7 +139,8 @@ class ChatTimelineTest {
         assertEquals(
             listOf(
                 "Hello",
-                "The previous turn was interrupted on purpose. Any interrupted tool calls may have partially executed. Inspect the workspace before continuing."
+                "Partial answer",
+                "The previous turn was cancelled by the user. Any tool calls may have partially executed. Inspect the workspace before continuing."
             ),
             repository.loadModelMessages("session").map { it.textContent() }
         )

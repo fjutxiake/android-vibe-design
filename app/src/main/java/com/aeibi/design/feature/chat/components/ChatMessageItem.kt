@@ -26,6 +26,10 @@ fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modi
             message.text,
             stringResource(R.string.chat_agent_cancelled)
         ).filter(String::isNotBlank).joinToString("\n\n")
+        ChatMessageStatus.INCOMPLETE -> listOf(
+            message.text,
+            stringResource(R.string.chat_agent_incomplete)
+        ).filter(String::isNotBlank).joinToString("\n\n")
         ChatMessageStatus.FAILED -> message.text.ifBlank { stringResource(R.string.chat_agent_failed) }
         ChatMessageStatus.COMPLETE -> message.text
     }

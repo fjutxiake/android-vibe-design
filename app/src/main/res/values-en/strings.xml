@@ -67,6 +67,7 @@
     <string name="chat_cd_expand_thinking">Expand thinking section</string>
     <string name="chat_cd_collapse_thinking">Collapse thinking section</string>
     <string name="chat_agent_cancelled">Task cancelled</string>
+    <string name="chat_agent_incomplete">Task incomplete</string>
     <string name="chat_agent_failed">Agent execution failed</string>
     <string name="chat_tool_started">Running %1$s</string>
     <string name="chat_tool_finished">Finished %1$s</string>
