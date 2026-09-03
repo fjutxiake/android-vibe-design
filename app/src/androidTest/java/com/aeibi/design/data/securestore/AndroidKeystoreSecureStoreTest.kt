@@ -32,12 +32,12 @@ class AndroidKeystoreSecureStoreTest {
         try {
             store.put(key, value)
 
-            assertTrue(store.contains(key))
+            assertTrue(store.get(key) != null)
             assertEquals(value, store.get(key))
             assertFalse(encryptedFile.readBytes().toString(Charsets.UTF_8).contains(value))
 
             store.delete(key)
-            assertFalse(store.contains(key))
+            assertFalse(store.get(key) != null)
             assertNull(store.get(key))
         } finally {
             store.delete(key)
@@ -84,7 +84,7 @@ class AndroidKeystoreSecureStoreTest {
         try {
             repository.saveProvider(config, "")
 
-            assertTrue(secureStore.contains(config.id))
+            assertTrue(secureStore.get(config.id) != null)
             assertEquals("", repository.readApiKey(config.id))
         } finally {
             repository.deleteProvider(config.id)
