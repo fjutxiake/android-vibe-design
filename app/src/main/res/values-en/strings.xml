@@ -17,6 +17,7 @@
     <string name="session_actions_rename">Rename</string>
     <string name="session_actions_delete">Delete</string>
     <string name="cancel">Cancel</string>
+    <string name="close">Close</string>
     <string name="rename_session_title">Rename session</string>
     <string name="name_label">Name</string>
     <string name="save">Save</string>
@@ -55,6 +56,9 @@
     <string name="workspace_cd_actions">Project actions</string>
     <string name="workspace_action_build">Build &amp; package</string>
     <string name="workspace_action_versions">Versions</string>
+    <string name="workspace_action_verify">Verify code</string>
+    <string name="verify_passed">✅ All checks passed</string>
+    <string name="verify_failed">❌ %1$d errors found</string>
     <string name="workspace_action_project_settings">Project settings</string>
     <string name="workspace_action_app_settings">App settings</string>
     <!-- Chat -->

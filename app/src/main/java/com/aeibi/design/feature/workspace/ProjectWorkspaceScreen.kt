@@ -156,9 +156,18 @@ fun ProjectWorkspaceScreen(
             onDismiss = { showProjectActions = false },
             onBuildClick = onBuildClick,
             onVersionsClick = onVersionsClick,
+            onVerifyClick = { workspaceViewModel.verifyProject(projectId) },
             onProjectSettingsClick = onProjectSettingsClick,
             onAppSettingsClick = onAppSettingsClick,
             onDeleteClick = { showDeleteConfirm = true }
+        )
+    }
+
+    val verifyState by workspaceViewModel.verifyUiState.collectAsState()
+    verifyState.report?.let { report ->
+        VerifyReportDialog(
+            report = report,
+            onDismiss = { workspaceViewModel.clearVerifyReport() }
         )
     }
 

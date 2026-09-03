@@ -7,6 +7,10 @@ import android.webkit.WebResourceResponse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.data.projects.ProjectRepository
+import com.aeibi.design.data.verification.CheckResult
+import com.aeibi.design.data.verification.CheckSeverity
+import com.aeibi.design.data.verification.ProjectVerifier
+import com.aeibi.design.data.verification.VerifyReport
 import com.aeibi.design.feature.preview.LocalStaticAssetLoader
 import com.aeibi.design.feature.preview.LocalStaticFileServer
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -38,6 +42,9 @@ internal data class PreviewUiState(
     val errorMessage: String? = null,
     val consoleMessages: List<ConsoleMessage> = emptyList()
 )
+
+/** 独立代码验证状态（ktlint 式手动触发）。 */
+internal data class VerifyUiState(val isVerifying: Boolean = false, val report: VerifyReport? = null)
 
 @Serializable
 internal data class WorkspaceConfig(val preview: PreviewConfig = PreviewConfig())
@@ -111,6 +118,33 @@ class ProjectWorkspaceViewModel internal constructor(
     }
 
     fun shouldInterceptRequest(uri: Uri): WebResourceResponse? = assetLoader.shouldInterceptRequest(uri)
+
+    private val _verifyUiState = MutableStateFlow(VerifyUiState())
+    internal val verifyUiState: StateFlow<VerifyUiState> = _verifyUiState.asStateFlow()
+
+    /** 手动触发工作区验证（独立验证器演示入口，ktlint 式）。 */
+    fun verifyProject(projectId: String) {
+        if (_verifyUiState.value.isVerifying) return
+        _verifyUiState.value = VerifyUiState(isVerifying = true)
+        viewModelScope.launch {
+            val report = withContext(ioDispatcher) {
+                val workspace = projectRepository.workspaceDirectory(projectId)
+                runCatching { ProjectVerifier().verify(workspace) }
+                    .getOrElse { error ->
+                        VerifyReport(
+                            workspace.absolutePath,
+                            listOf(CheckResult("verify-run", CheckSeverity.ERROR, error.message ?: "验证失败"))
+                        )
+                    }
+            }
+            _verifyUiState.value = VerifyUiState(report = report)
+        }
+    }
+
+    /** 关闭验证报告。 */
+    internal fun clearVerifyReport() {
+        _verifyUiState.value = VerifyUiState()
+    }
 
     internal fun recordConsoleMessage(message: ConsoleMessage) {
         _previewUiState.update { state ->
