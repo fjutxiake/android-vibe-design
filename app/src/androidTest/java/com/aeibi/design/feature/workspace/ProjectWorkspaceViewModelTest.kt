@@ -1,6 +1,8 @@
 package com.aeibi.design.feature.workspace
 
 import android.content.Context
+import android.webkit.ConsoleMessage
+import android.webkit.ConsoleMessage.MessageLevel
 import androidx.test.core.app.ApplicationProvider
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.feature.preview.LocalStaticAssetLoader
@@ -113,49 +115,63 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
-    fun pageErrors_accumulateWhileRunningAndClearOnRefresh() {
+    fun consoleMessages_accumulateAllLevelsWhileRunningAndClear() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
         fixture.viewModel.startPreview(PROJECT_ID)
         awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
 
-        fixture.viewModel.onPreviewPageError("JS: ReferenceError: x is not defined")
-        fixture.viewModel.onPreviewPageError("页面加载失败: net::ERR_FILE_NOT_FOUND (2)")
+        fixture.viewModel.recordConsoleMessage(consoleMessage("JS: hello", MessageLevel.LOG))
+        fixture.viewModel.recordConsoleMessage(
+            consoleMessage("JS: ReferenceError: x is not defined", MessageLevel.ERROR)
+        )
+        fixture.viewModel.recordConsoleMessage(consoleMessage("JS: deprecation warning", MessageLevel.WARNING))
 
         val state = fixture.viewModel.previewUiState.value
-        assertEquals(2, state.pageErrors.size)
-        assertTrue(state.pageErrors[0].contains("ReferenceError"))
+        assertEquals(3, state.consoleMessages.size)
+        // 全级别保留
+        assertTrue(state.consoleMessages.any { it.message().contains("hello") })
+        assertTrue(state.consoleMessages.any { it.message().contains("ReferenceError") })
+        assertTrue(state.consoleMessages.any { it.message().contains("deprecation") })
+        // errorMessages 仅过滤 ERROR
+        assertEquals(1, state.errorMessages.size)
+        assertTrue(state.errorMessages[0].message().contains("ReferenceError"))
 
-        fixture.viewModel.clearPreviewPageErrors()
-        assertTrue(fixture.viewModel.previewUiState.value.pageErrors.isEmpty())
+        fixture.viewModel.clearConsoleMessages()
+        assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
         fixture.stop()
     }
 
     @Test
-    fun pageErrors_ignoredWhenNotRunning() {
+    fun consoleMessages_ignoredWhenNotRunning() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
 
-        fixture.viewModel.onPreviewPageError("JS: should be ignored")
+        fixture.viewModel.recordConsoleMessage(consoleMessage("JS: should be ignored", MessageLevel.ERROR))
 
-        assertTrue(fixture.viewModel.previewUiState.value.pageErrors.isEmpty())
+        assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
         fixture.stop()
     }
 
     @Test
-    fun pageErrors_cappedAtMaxEntries() {
+    fun consoleMessages_perLevelCapsDoNotEvictOtherLevels() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
         fixture.viewModel.startPreview(PROJECT_ID)
         awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
 
-        repeat(10) { fixture.viewModel.onPreviewPageError("error-$it") }
+        // 先记 1 条 ERROR，再灌 60 条 LOG——ERROR 不应被噪音挤掉
+        fixture.viewModel.recordConsoleMessage(consoleMessage("important error", MessageLevel.ERROR))
+        repeat(60) { fixture.viewModel.recordConsoleMessage(consoleMessage("noise-$it", MessageLevel.LOG)) }
 
         val state = fixture.viewModel.previewUiState.value
-        assertEquals(5, state.pageErrors.size)
-        assertEquals("error-5", state.pageErrors.first())
+        assertTrue("ERROR 被噪音挤掉", state.consoleMessages.any { it.message().contains("important error") })
+        assertEquals(1, state.errorMessages.size)
         fixture.stop()
     }
+
+    private fun consoleMessage(text: String, level: MessageLevel): ConsoleMessage =
+        ConsoleMessage(text, "test.js", 1, level)
 
     private fun fixture(config: String? = null): Fixture {
         val projectsRoot = temporaryFolder.newFolder()

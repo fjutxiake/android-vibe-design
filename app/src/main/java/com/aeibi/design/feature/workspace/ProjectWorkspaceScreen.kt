@@ -4,6 +4,8 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
+import android.webkit.ConsoleMessage
+import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -238,7 +240,7 @@ internal fun WorkspacePreviewPane(
         fullscreen = fullscreen,
         onBackClick = onBackClick,
         onRefreshClick = {
-            viewModel.clearPreviewPageErrors()
+            viewModel.clearConsoleMessages()
             webView?.reload()
         },
         onToggleBackendClick = {
@@ -248,7 +250,8 @@ internal fun WorkspacePreviewPane(
                 viewModel.startPreview(projectId)
             }
         },
-        onFullscreenClick = onFullscreenClick
+        onFullscreenClick = onFullscreenClick,
+        onClearConsoleClick = { viewModel.clearConsoleMessages() }
     ) { webViewModifier ->
         webView?.let { previewWebView ->
             AndroidView(
@@ -279,19 +282,23 @@ private fun createPreviewWebView(context: Context, viewModel: ProjectWorkspaceVi
                 error: android.webkit.WebResourceError
             ) {
                 if (request.isForMainFrame) {
-                    viewModel.onPreviewPageError("页面加载失败: ${error.description} (${error.errorCode})")
+                    viewModel.recordConsoleMessage(
+                        ConsoleMessage(
+                            "页面加载失败: ${error.description} (${error.errorCode})",
+                            request.url.toString(),
+                            NO_LINE_NUMBER,
+                            ConsoleMessage.MessageLevel.ERROR
+                        )
+                    )
                 }
             }
         }
-        webChromeClient = object : android.webkit.WebChromeClient() {
-            override fun onConsoleMessage(message: android.webkit.ConsoleMessage): Boolean {
-                if (message.messageLevel() == android.webkit.ConsoleMessage.MessageLevel.ERROR) {
-                    val text = message.message().take(CONSOLE_MESSAGE_LIMIT)
-                    viewModel.onPreviewPageError("JS: $text")
-                }
+        webChromeClient = object : WebChromeClient() {
+            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
+                viewModel.recordConsoleMessage(message)
                 return true
             }
         }
     }
 
-private const val CONSOLE_MESSAGE_LIMIT = 200
+private const val NO_LINE_NUMBER = -1

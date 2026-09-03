@@ -2,6 +2,7 @@ package com.aeibi.design.feature.workspace
 
 import android.content.Context
 import android.net.Uri
+import android.webkit.ConsoleMessage
 import android.webkit.WebResourceResponse
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -35,9 +36,13 @@ internal data class PreviewUiState(
     val status: PreviewStatus = PreviewStatus.STOPPED,
     val url: Uri? = null,
     val errorMessage: String? = null,
-    /** 运行时错误（JS console ERROR / 页面加载失败），仅 RUNNING 时累积，保留最近 [MAX_PAGE_ERRORS] 条。 */
-    val pageErrors: List<String> = emptyList()
-)
+    /** 页面 Console 日志（全级别），仅 RUNNING 时累积。分级保留：ERROR/WARNING/其他独立窗口。 */
+    val consoleMessages: List<ConsoleMessage> = emptyList()
+) {
+    /** ERROR 级消息（横幅快捷提示用）。 */
+    val errorMessages: List<ConsoleMessage>
+        get() = consoleMessages.filter { it.messageLevel() == ConsoleMessage.MessageLevel.ERROR }
+}
 
 @Serializable
 internal data class WorkspaceConfig(val preview: PreviewConfig = PreviewConfig())
@@ -112,17 +117,20 @@ class ProjectWorkspaceViewModel internal constructor(
 
     fun shouldInterceptRequest(uri: Uri): WebResourceResponse? = assetLoader.shouldInterceptRequest(uri)
 
-    /** 页面运行时错误上报（JS console ERROR / onReceivedError），RUNNING 时累积。 */
-    fun onPreviewPageError(message: String) {
-        if (_previewUiState.value.status != PreviewStatus.RUNNING) return
+    /** 页面 Console 消息记录（全级别），仅 RUNNING 时累积。分级保留：ERROR/WARNING 独立窗口不被噪音挤掉。 */
+    internal fun recordConsoleMessage(message: ConsoleMessage) {
         _previewUiState.update { state ->
-            state.copy(pageErrors = (state.pageErrors + message).takeLast(MAX_PAGE_ERRORS))
+            if (state.status != PreviewStatus.RUNNING) {
+                state
+            } else {
+                state.copy(consoleMessages = appendCapped(state.consoleMessages, message))
+            }
         }
     }
 
-    /** 清除运行时错误（刷新/重启时）。 */
-    fun clearPreviewPageErrors() {
-        _previewUiState.update { it.copy(pageErrors = emptyList()) }
+    /** 清除 Console 消息（手动清除/刷新时清噪音）。 */
+    internal fun clearConsoleMessages() {
+        _previewUiState.update { it.copy(consoleMessages = emptyList()) }
     }
 
     private suspend fun startBackend(projectId: String): Uri {
@@ -159,6 +167,21 @@ class ProjectWorkspaceViewModel internal constructor(
 
     private companion object {
         const val CONFIG_FILE = "vibe.config.json"
-        const val MAX_PAGE_ERRORS = 5
+        const val MAX_ERROR_MESSAGES = 200
+        const val MAX_WARNING_MESSAGES = 100
+        const val MAX_OTHER_MESSAGES = 50
+    }
+
+    /** 分级保留：ERROR/WARNING/其他独立窗口（各自截断，互不影响）。 */
+    private fun appendCapped(messages: List<ConsoleMessage>, message: ConsoleMessage): List<ConsoleMessage> {
+        val level = message.messageLevel()
+        val cap = when (level) {
+            ConsoleMessage.MessageLevel.ERROR -> MAX_ERROR_MESSAGES
+            ConsoleMessage.MessageLevel.WARNING -> MAX_WARNING_MESSAGES
+            else -> MAX_OTHER_MESSAGES
+        }
+        val otherLevels = messages.filterNot { it.messageLevel() == level }
+        val sameLevel = (messages.filter { it.messageLevel() == level } + message).takeLast(cap)
+        return otherLevels + sameLevel
     }
 }
