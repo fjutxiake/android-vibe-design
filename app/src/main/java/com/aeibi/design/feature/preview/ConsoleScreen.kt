@@ -120,7 +120,7 @@ private fun ConsoleMessageRow(message: ConsoleMessage, modifier: Modifier = Modi
                     ConsoleMessage.MessageLevel.ERROR,
                     ConsoleMessage.MessageLevel.WARNING -> color
                     else -> MaterialTheme.colorScheme.onSurface
-                },
+                }
             )
             if (message.sourceId().isNotEmpty()) {
                 Text(

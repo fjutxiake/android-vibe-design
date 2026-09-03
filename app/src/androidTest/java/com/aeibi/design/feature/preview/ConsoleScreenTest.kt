@@ -20,7 +20,7 @@ class ConsoleScreenTest {
 
     @Test
     fun emptyStateShowsMessageAndDisablesClear() {
-        composeTestRule.setContent { ConsoleScreen(emptyList()) }
+        composeTestRule.setContent { ConsoleScreen(messages = emptyList()) }
 
         composeTestRule.onNodeWithText(text(R.string.preview_console_empty)).assertExists()
         composeTestRule
