@@ -44,14 +44,16 @@ class ProjectPreviewScreenTest {
                 state = PreviewUiState(status = PreviewStatus.RUNNING),
                 onRefreshClick = { actions += "refresh" },
                 onToggleBackendClick = { actions += "stop" },
-                onFullscreenClick = { actions += "fullscreen" }
+                onFullscreenClick = { actions += "fullscreen" },
+                onConsoleClick = { actions += "console" }
             )
         }
 
         composeTestRule.onNodeWithContentDescription(text(R.string.preview_cd_refresh)).performClick()
         composeTestRule.onNodeWithContentDescription(text(R.string.preview_cd_stop)).performClick()
         composeTestRule.onNodeWithContentDescription(text(R.string.preview_cd_fullscreen)).performClick()
-        assertEquals(listOf("refresh", "stop", "fullscreen"), actions)
+        composeTestRule.onNodeWithContentDescription(text(R.string.preview_cd_console)).performClick()
+        assertEquals(listOf("refresh", "stop", "fullscreen", "console"), actions)
     }
 
     private fun text(id: Int): String = composeTestRule.activity.getString(id)

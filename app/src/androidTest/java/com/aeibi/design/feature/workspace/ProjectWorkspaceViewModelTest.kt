@@ -133,9 +133,6 @@ class ProjectWorkspaceViewModelTest {
         assertTrue(state.consoleMessages.any { it.message().contains("hello") })
         assertTrue(state.consoleMessages.any { it.message().contains("ReferenceError") })
         assertTrue(state.consoleMessages.any { it.message().contains("deprecation") })
-        // errorMessages 仅过滤 ERROR
-        assertEquals(1, state.errorMessages.size)
-        assertTrue(state.errorMessages[0].message().contains("ReferenceError"))
 
         fixture.viewModel.clearConsoleMessages()
         assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
@@ -154,19 +151,18 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
-    fun consoleMessages_perLevelCapsDoNotEvictOtherLevels() {
+    fun consoleMessages_areNotTruncated() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
         fixture.viewModel.startPreview(PROJECT_ID)
         awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
 
-        // 先记 1 条 ERROR，再灌 60 条 LOG——ERROR 不应被噪音挤掉
         fixture.viewModel.recordConsoleMessage(consoleMessage("important error", MessageLevel.ERROR))
         repeat(60) { fixture.viewModel.recordConsoleMessage(consoleMessage("noise-$it", MessageLevel.LOG)) }
 
         val state = fixture.viewModel.previewUiState.value
-        assertTrue("ERROR 被噪音挤掉", state.consoleMessages.any { it.message().contains("important error") })
-        assertEquals(1, state.errorMessages.size)
+        assertEquals(61, state.consoleMessages.size)
+        assertEquals("important error", state.consoleMessages.first().message())
         fixture.stop()
     }
 

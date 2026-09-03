@@ -74,14 +74,12 @@
     <string name="preview_cd_start">启动预览</string>
     <string name="preview_cd_stop">停止预览</string>
     <string name="preview_cd_fullscreen">全屏预览</string>
+    <string name="preview_cd_console">打开控制台</string>
     <string name="preview_stopped">预览已停止</string>
     <string name="preview_failed">预览启动失败</string>
-    <string name="preview_page_errors">页面错误（%1$d）</string>
-    <string name="preview_cd_console">控制台</string>
     <string name="preview_console_title">控制台</string>
-    <string name="preview_console_clear">清除</string>
-    <string name="preview_console_empty">暂无日志</string>
-    <string name="close">关闭</string>
+    <string name="preview_console_cd_clear">清空控制台</string>
+    <string name="preview_console_empty">暂无控制台消息</string>
     <string name="versions_title">版本管理</string>
     <string name="versions_placeholder">项目 %1$s 的版本记录区域</string>
     <string name="project_settings_title">项目设置</string>

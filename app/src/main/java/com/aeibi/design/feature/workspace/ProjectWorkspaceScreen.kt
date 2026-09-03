@@ -4,8 +4,6 @@ import android.annotation.SuppressLint
 import android.content.Context
 import android.view.View
 import android.view.ViewGroup
-import android.webkit.ConsoleMessage
-import android.webkit.WebChromeClient
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
@@ -43,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.aeibi.design.R
 import com.aeibi.design.feature.chat.ChatScreen
+import com.aeibi.design.feature.preview.ConsoleScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.sessions.SessionDrawer
@@ -50,7 +49,8 @@ import kotlinx.coroutines.launch
 
 private enum class WorkspacePane {
     CHAT,
-    PREVIEW
+    PREVIEW,
+    CONSOLE
 }
 
 @Composable
@@ -82,12 +82,14 @@ fun ProjectWorkspaceScreen(
     fun closePreview() {
         if (fullscreen) {
             fullscreen = false
+        } else if (pane == WorkspacePane.CONSOLE) {
+            pane = WorkspacePane.PREVIEW
         } else {
             pane = WorkspacePane.CHAT
         }
     }
 
-    BackHandler(enabled = pane == WorkspacePane.PREVIEW, onBack = ::closePreview)
+    BackHandler(enabled = pane != WorkspacePane.CHAT, onBack = ::closePreview)
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -135,8 +137,17 @@ fun ProjectWorkspaceScreen(
             state = previewState,
             viewModel = workspaceViewModel,
             onBackClick = ::closePreview,
-            onFullscreenClick = { fullscreen = true }
+            onFullscreenClick = { fullscreen = true },
+            onConsoleClick = { pane = WorkspacePane.CONSOLE }
         )
+
+        if (pane == WorkspacePane.CONSOLE) {
+            ConsoleScreen(
+                messages = previewState.consoleMessages,
+                onBackClick = ::closePreview,
+                onClearClick = workspaceViewModel::clearConsoleMessages
+            )
+        }
     }
 
     if (showProjectActions) {
@@ -194,6 +205,7 @@ internal fun WorkspacePreviewPane(
     modifier: Modifier = Modifier,
     onBackClick: () -> Unit = {},
     onFullscreenClick: () -> Unit = {},
+    onConsoleClick: () -> Unit = {},
     webViewFactory: (Context, ProjectWorkspaceViewModel) -> WebView = ::createPreviewWebView
 ) {
     val context = LocalContext.current
@@ -251,7 +263,7 @@ internal fun WorkspacePreviewPane(
             }
         },
         onFullscreenClick = onFullscreenClick,
-        onClearConsoleClick = { viewModel.clearConsoleMessages() }
+        onConsoleClick = onConsoleClick
     ) { webViewModifier ->
         webView?.let { previewWebView ->
             AndroidView(
@@ -275,30 +287,11 @@ private fun createPreviewWebView(context: Context, viewModel: ProjectWorkspaceVi
         webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): WebResourceResponse? =
                 viewModel.shouldInterceptRequest(request.url)
-
-            override fun onReceivedError(
-                view: WebView,
-                request: WebResourceRequest,
-                error: android.webkit.WebResourceError
-            ) {
-                if (request.isForMainFrame) {
-                    viewModel.recordConsoleMessage(
-                        ConsoleMessage(
-                            "页面加载失败: ${error.description} (${error.errorCode})",
-                            request.url.toString(),
-                            NO_LINE_NUMBER,
-                            ConsoleMessage.MessageLevel.ERROR
-                        )
-                    )
-                }
-            }
         }
-        webChromeClient = object : WebChromeClient() {
-            override fun onConsoleMessage(message: ConsoleMessage): Boolean {
-                viewModel.recordConsoleMessage(message)
+        webChromeClient = object : android.webkit.WebChromeClient() {
+            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {
+                viewModel.recordConsoleMessage(consoleMessage)
                 return true
             }
         }
     }
-
-private const val NO_LINE_NUMBER = -1

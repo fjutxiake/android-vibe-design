@@ -74,14 +74,12 @@
     <string name="preview_cd_start">Start preview</string>
     <string name="preview_cd_stop">Stop preview</string>
     <string name="preview_cd_fullscreen">Fullscreen preview</string>
+    <string name="preview_cd_console">Open console</string>
     <string name="preview_stopped">Preview stopped</string>
     <string name="preview_failed">Preview failed to start</string>
-    <string name="preview_page_errors">Page errors (%1$d)</string>
-    <string name="preview_cd_console">Console</string>
     <string name="preview_console_title">Console</string>
-    <string name="preview_console_clear">Clear</string>
-    <string name="preview_console_empty">No messages</string>
-    <string name="close">Close</string>
+    <string name="preview_console_cd_clear">Clear console</string>
+    <string name="preview_console_empty">No console messages</string>
     <string name="versions_title">Versions</string>
     <string name="versions_placeholder">Version history for project %1$s</string>
     <string name="project_settings_title">Project settings</string>
