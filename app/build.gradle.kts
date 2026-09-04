@@ -88,6 +88,9 @@ dependencies {
     implementation("io.coil-kt.coil3:coil-compose:3.5.0")
     // Serialization
     implementation(libs.kotlinx.serialization.json)
+    // Static lint (agent tools): HTML parser + JS syntax check
+    implementation(libs.jsoup)
+    implementation(libs.rhino)
     // Agent
     implementation(libs.koog.agents.core)
     implementation(libs.koog.agents.features.event.handler)
