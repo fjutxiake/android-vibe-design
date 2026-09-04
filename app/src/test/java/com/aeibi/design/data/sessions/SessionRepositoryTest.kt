@@ -162,6 +162,49 @@ class SessionRepositoryTest {
     }
 
     @Test
+    fun recoveryRepairsAnInterruptedSessionOnlyOnce() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.appendMessage(
+            "session",
+            "interrupted-turn",
+            MessageOrigin.ASSISTANT,
+            Message.Assistant(
+                MessagePart.Tool.Call(id = "call-1", tool = "write_file", args = "{}"),
+                ResponseMetaInfo.Empty
+            )
+        )
+
+        repository.recoverInterruptedSession("session")
+        repository.recoverInterruptedSession("session")
+
+        val entries = repository.observeEntries("session").first()
+        assertEquals(3, entries.size)
+        assertEquals(TurnStatus.INCOMPLETE, repository.decodeTurnFinished(entries.last()).status)
+        val toolResult = repository.decodeMessage(entries[1]).message as Message.User
+        assertEquals("call-1", (toolResult.parts.single() as MessagePart.Tool.Result).id)
+    }
+
+    @Test
+    fun recoveryDoesNotFinishAnActiveSessionRun() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.beginSessionRun("session")
+        repository.appendMessage(
+            "session",
+            "active-turn",
+            MessageOrigin.USER,
+            Message.User("Update the app", RequestMetaInfo.Empty)
+        )
+
+        repository.recoverInterruptedSession("session")
+        repository.finishTurn("session", "active-turn", TurnStatus.COMPLETE)
+        repository.endSessionRun("session")
+
+        val entries = repository.observeEntries("session").first()
+        assertEquals(2, entries.size)
+        assertEquals(TurnStatus.COMPLETE, repository.decodeTurnFinished(entries.last()).status)
+    }
+
+    @Test
     fun failedTurnKeepsStructuredFailureOutsideModelContext() = runTest {
         val repository = SessionRepository(InMemorySessionDao())
         repository.appendMessage("session", "turn", MessageOrigin.USER, Message.User("Hello", RequestMetaInfo.Empty))

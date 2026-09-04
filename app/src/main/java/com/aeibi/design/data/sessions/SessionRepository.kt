@@ -8,12 +8,16 @@ import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Singleton
 class SessionRepository @Inject constructor(private val sessionDao: SessionDao) {
+    private val recoveryMutex = Mutex()
+    private val activeSessionRunCounts = mutableMapOf<String, Int>()
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -98,8 +102,35 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         return messages
     }
 
-    suspend fun repairInterruptedToolCalls(sessionId: String) {
-        val entries = sessionDao.getEntries(sessionId)
+    suspend fun recoverInterruptedSession(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        recoverInterruptedSessionLocked(sessionId)
+    }
+
+    suspend fun beginSessionRun(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId !in activeSessionRunCounts) {
+            recoverInterruptedSessionLocked(sessionId)
+        }
+        activeSessionRunCounts[sessionId] = activeSessionRunCounts.getOrDefault(sessionId, 0) + 1
+    }
+
+    suspend fun endSessionRun(sessionId: String) = withContext(NonCancellable) {
+        recoveryMutex.withLock {
+            val remainingRuns = (activeSessionRunCounts[sessionId] ?: return@withLock) - 1
+            if (remainingRuns == 0) {
+                activeSessionRunCounts.remove(sessionId)
+            } else {
+                activeSessionRunCounts[sessionId] = remainingRuns
+            }
+        }
+    }
+
+    suspend fun repairInterruptedToolCalls(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        repairInterruptedToolCalls(sessionId, sessionDao.getEntries(sessionId))
+    }
+
+    private suspend fun repairInterruptedToolCalls(sessionId: String, entries: List<SessionEntryEntity>) {
         val calls = mutableListOf<Pair<String?, MessagePart.Tool.Call>>()
         val results = mutableSetOf<String?>()
         entries.forEach { entry ->
@@ -132,8 +163,12 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         }
     }
 
-    suspend fun repairIncompleteTurns(sessionId: String) {
-        val entries = sessionDao.getEntries(sessionId)
+    suspend fun repairIncompleteTurns(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        repairIncompleteTurns(sessionId, sessionDao.getEntries(sessionId))
+    }
+
+    private suspend fun repairIncompleteTurns(sessionId: String, entries: List<SessionEntryEntity>) {
         val finishedTurnIds = entries
             .filter { SessionEntryType.valueOf(it.type) == SessionEntryType.TURN_FINISHED }
             .mapNotNull(SessionEntryEntity::turnId)
@@ -143,6 +178,12 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
             .filter { it !in finishedTurnIds }
             .distinct()
             .forEach { finishTurn(sessionId, it, TurnStatus.INCOMPLETE) }
+    }
+
+    private suspend fun recoverInterruptedSessionLocked(sessionId: String) {
+        val entries = sessionDao.getEntries(sessionId)
+        repairInterruptedToolCalls(sessionId, entries)
+        repairIncompleteTurns(sessionId, entries)
     }
 
     suspend fun deleteSession(sessionId: String): Boolean = sessionDao.deleteSession(sessionId) > 0

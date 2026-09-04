@@ -155,6 +155,7 @@ class ChatViewModel @Inject constructor(
     private fun observeEntries(sessionId: String) {
         entriesJob?.cancel()
         entriesJob = viewModelScope.launch {
+            sessionRepository.recoverInterruptedSession(sessionId)
             sessionRepository.observeEntries(sessionId).collect { entries ->
                 if (this@ChatViewModel.sessionId != sessionId) return@collect
                 val timeline = entries.toTimeline(sessionRepository)
