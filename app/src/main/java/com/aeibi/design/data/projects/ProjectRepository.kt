@@ -2,6 +2,7 @@ package com.aeibi.design.data.projects
 
 import android.content.ContentResolver
 import android.content.res.AssetManager
+import android.net.Uri
 import androidx.core.net.toUri
 import androidx.core.util.AtomicFile
 import java.io.File
@@ -152,6 +153,58 @@ class ProjectRepository(
             pendingWorkspace.deleteRecursively()
             throw error
         }
+    }
+
+    /** 从 zip 文件导入初始化（本地/测试路径）。 */
+    suspend fun initializeFromZip(id: String, zipFile: File) = withContext(ioDispatcher) {
+        if (!zipFile.isFile) throw IOException("Zip not found: $zipFile")
+        initializeFromZipStream(id) { WorkspaceZip.importArchive(zipFile, it) }
+    }
+
+    /** 从 SAF uri 导入初始化（导入模板/项目包 zip）。 */
+    suspend fun initializeFromZip(id: String, uri: Uri) = withContext(ioDispatcher) {
+        val input = contentResolver.openInputStream(uri)
+            ?: throw IOException("Cannot open import file: $uri")
+        input.use { stream ->
+            initializeFromZipStream(id) { dir -> WorkspaceZip.importArchive(stream, dir) }
+        }
+    }
+
+    private suspend fun initializeFromZipStream(id: String, import: (File) -> Int) {
+        val dir = File(projectsDir, id)
+        val existing = readMetadata(dir) ?: error("Project not found: $id")
+        check(!existing.isInitialized) { "Project is already initialized: $id" }
+
+        val pendingWorkspace = File(dir, PENDING_WORKSPACE_DIR)
+        if (!pendingWorkspace.deleteRecursively() && pendingWorkspace.exists()) {
+            throw IOException("Could not clear pending workspace: ${pendingWorkspace.path}")
+        }
+        pendingWorkspace.mkdirs()
+
+        try {
+            if (import(pendingWorkspace) == 0) {
+                throw IOException("导入包为空或不可读")
+            }
+            replaceWorkspace(dir, pendingWorkspace)
+            writeMetadata(
+                dir,
+                existing.copy(
+                    updatedAt = System.currentTimeMillis(),
+                    isInitialized = true
+                )
+            )
+            _projects.value = listProjects()
+        } catch (error: Exception) {
+            pendingWorkspace.deleteRecursively()
+            throw error
+        }
+    }
+
+    /** 导出 workspace 为 zip（分享/备份/复用）。 */
+    suspend fun exportWorkspace(id: String, zipFile: File) = withContext(ioDispatcher) {
+        val workspace = workspaceDirectory(id)
+        if (!workspace.isDirectory) throw IOException("Workspace not found: $id")
+        WorkspaceZip.exportDirectory(workspace, zipFile)
     }
 
     private fun listProjects(): List<Project> = projectsDir.listFiles()

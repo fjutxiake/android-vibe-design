@@ -111,6 +111,17 @@ fun AppNavigation() {
                                 }
                             }
                         }
+                    },
+                    onImportTemplateClick = { uri, onResult ->
+                        projectsViewModel.initializeFromZip(route.projectId, uri) { result ->
+                            onResult(result)
+                            result.onSuccess {
+                                if (backStack.lastOrNull() == route) {
+                                    backStack.removeLastOrNull()
+                                    backStack.add(ProjectChat(route.projectId))
+                                }
+                            }
+                        }
                     }
                 )
             }

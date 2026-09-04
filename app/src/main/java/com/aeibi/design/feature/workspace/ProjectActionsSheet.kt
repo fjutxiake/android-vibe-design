@@ -7,6 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.History
+import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -27,6 +28,7 @@ fun ProjectActionsSheet(
     onDismiss: () -> Unit,
     onBuildClick: () -> Unit,
     onVersionsClick: () -> Unit,
+    onExportClick: () -> Unit,
     onProjectSettingsClick: () -> Unit,
     onAppSettingsClick: () -> Unit,
     onDeleteClick: () -> Unit
@@ -47,6 +49,14 @@ fun ProjectActionsSheet(
                 modifier = Modifier.clickable {
                     onDismiss()
                     onVersionsClick()
+                }
+            )
+            ListItem(
+                headlineContent = { Text(stringResource(R.string.workspace_action_export)) },
+                leadingContent = { Icon(Icons.Filled.Save, contentDescription = null) },
+                modifier = Modifier.clickable {
+                    onDismiss()
+                    onExportClick()
                 }
             )
             ListItem(
