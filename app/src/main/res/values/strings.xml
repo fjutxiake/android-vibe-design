@@ -89,6 +89,8 @@
     <string name="preview_console_title">控制台</string>
     <string name="preview_console_cd_clear">清空控制台</string>
     <string name="preview_console_empty">暂无控制台消息</string>
+    <string name="preview_error_title">预览加载失败</string>
+    <string name="preview_error_send_to_ai">发送给 AI 修复</string>
     <string name="versions_title">版本管理</string>
     <string name="versions_placeholder">项目 %1$s 的版本记录区域</string>
     <string name="project_settings_title">项目设置</string>

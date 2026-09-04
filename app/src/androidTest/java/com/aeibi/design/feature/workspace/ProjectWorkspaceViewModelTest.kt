@@ -152,6 +152,66 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
+    fun pageError_recordedOnlyWhileRunningAndClearedOnPageFinished() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+
+        fixture.viewModel.recordPageError(404, "HTTP 404", "http://localhost/index.html")
+        assertNull("Error before preview start is ignored", fixture.viewModel.previewUiState.value.pageError)
+
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+        fixture.viewModel.recordPageError(-6, "ERR_FILE_NOT_FOUND", "http://localhost/missing.html")
+        val firstError = fixture.viewModel.previewUiState.value.pageError
+        assertEquals(-6, requireNotNull(firstError).code)
+
+        fixture.viewModel.recordPageError(500, "HTTP 500", "http://localhost/other.html")
+        assertEquals(
+            "First error is kept while dialog is visible",
+            firstError,
+            fixture.viewModel.previewUiState.value.pageError
+        )
+
+        fixture.viewModel.onPageFinished()
+        assertNull("Page finished clears the error", fixture.viewModel.previewUiState.value.pageError)
+        fixture.stop()
+    }
+
+    @Test
+    fun agentTurnCompletedBumpsContentVersion() {
+        val fixture = fixture()
+        assertEquals(0, fixture.viewModel.previewUiState.value.contentVersion)
+
+        fixture.viewModel.onAgentTurnCompleted()
+        fixture.viewModel.onAgentTurnCompleted()
+
+        assertEquals(2, fixture.viewModel.previewUiState.value.contentVersion)
+        fixture.stop()
+    }
+
+    @Test
+    fun refreshClearsPanelButKeepsStore_explicitClearClearsBoth() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+
+        fixture.viewModel.recordConsoleMessage(consoleMessage("diagnostic error", MessageLevel.ERROR))
+        assertEquals(1, fixture.viewModel.previewUiState.value.consoleMessages.size)
+        assertEquals(1, fixture.storeSnapshot())
+
+        // 手动刷新（重新加载）只清展示面板——store 的错误留给 agent 下一回合诊断
+        fixture.viewModel.clearConsolePanel()
+        assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
+        assertEquals("Store keeps diagnostics across refresh", 1, fixture.storeSnapshot())
+
+        // 显式清空 = 面板 + store 双清
+        fixture.viewModel.clearConsoleMessages()
+        assertEquals(0, fixture.storeSnapshot())
+        fixture.stop()
+    }
+
+    @Test
     fun consoleMessages_areNotTruncated() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
@@ -180,17 +240,21 @@ class ProjectWorkspaceViewModelTest {
             context.assets,
             Dispatchers.IO
         )
+        val store = RuntimeLogStore()
         return Fixture(
             workspace,
             ProjectWorkspaceViewModel(
                 repository,
                 LocalStaticFileServer(),
                 LocalStaticAssetLoader(context),
-                RuntimeLogStore(),
+                store,
                 Dispatchers.IO
-            )
+            ),
+            store
         )
     }
+
+    private fun Fixture.storeSnapshot(): Int = store.snapshot(PROJECT_ID).size
 
     private fun awaitStatus(viewModel: ProjectWorkspaceViewModel, status: PreviewStatus): PreviewUiState {
         val timeout = System.currentTimeMillis() + 5_000
@@ -200,7 +264,11 @@ class ProjectWorkspaceViewModelTest {
         return viewModel.previewUiState.value.also { assertEquals(status, it.status) }
     }
 
-    private data class Fixture(val workspace: File, val viewModel: ProjectWorkspaceViewModel) {
+    private data class Fixture(
+        val workspace: File,
+        val viewModel: ProjectWorkspaceViewModel,
+        val store: RuntimeLogStore
+    ) {
         fun stop() {
             viewModel.stopPreview()
             val timeout = System.currentTimeMillis() + 5_000

@@ -34,11 +34,17 @@ internal enum class PreviewStatus {
     FAILED
 }
 
+/** 主 frame 页面加载失败（网络错误 / HTTP 错误）。 */
+internal data class PreviewPageError(val code: Int, val description: String, val url: String)
+
 internal data class PreviewUiState(
     val status: PreviewStatus = PreviewStatus.STOPPED,
     val url: Uri? = null,
     val errorMessage: String? = null,
-    val consoleMessages: List<ConsoleMessage> = emptyList()
+    val consoleMessages: List<ConsoleMessage> = emptyList(),
+    val pageError: PreviewPageError? = null,
+    /** agent 每完成一个回合 +1——预览据此知道工作区内容可能已变。 */
+    val contentVersion: Int = 0
 )
 
 @Serializable
@@ -119,6 +125,27 @@ class ProjectWorkspaceViewModel internal constructor(
 
     fun shouldInterceptRequest(uri: Uri): WebResourceResponse? = assetLoader.shouldInterceptRequest(uri)
 
+    internal fun recordPageError(code: Int, description: String, url: String) {
+        if (_previewUiState.value.status != PreviewStatus.RUNNING) return
+        if (_previewUiState.value.pageError != null) return
+        _previewUiState.update { it.copy(pageError = PreviewPageError(code, description, url)) }
+    }
+
+    /** 主 frame 加载完成——页面恢复则清除残留错误。 */
+    internal fun onPageFinished() {
+        if (_previewUiState.value.status != PreviewStatus.RUNNING) return
+        _previewUiState.update { it.copy(pageError = null) }
+    }
+
+    fun dismissPageError() {
+        _previewUiState.update { it.copy(pageError = null) }
+    }
+
+    /** agent 回合完成——工作区内容可能已变，预览需要按新版本重新加载。 */
+    fun onAgentTurnCompleted() {
+        _previewUiState.update { it.copy(contentVersion = it.contentVersion + 1) }
+    }
+
     internal fun recordConsoleMessage(message: ConsoleMessage) {
         val running = _previewUiState.value.status == PreviewStatus.RUNNING
         if (!running) return
@@ -142,7 +169,13 @@ class ProjectWorkspaceViewModel internal constructor(
         )
     }
 
-    internal fun clearConsoleMessages() {
+    /** 刷新/重新加载时调用：清展示面板，但保留 store——旧错误是 agent 下一回合的诊断依据。 */
+    internal fun clearConsolePanel() {
+        _previewUiState.update { it.copy(consoleMessages = emptyList()) }
+    }
+
+    /** 用户显式清空：面板与 store 双清。 */
+    fun clearConsoleMessages() {
         _previewUiState.update { it.copy(consoleMessages = emptyList()) }
         projectId?.let(runtimeLogStore::clear)
     }
