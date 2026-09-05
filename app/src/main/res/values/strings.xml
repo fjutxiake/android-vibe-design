@@ -90,7 +90,20 @@
     <string name="preview_console_cd_clear">清空控制台</string>
     <string name="preview_console_empty">暂无控制台消息</string>
     <string name="versions_title">版本管理</string>
-    <string name="versions_placeholder">项目 %1$s 的版本记录区域</string>
+    <string name="versions_create_snapshot">创建快照</string>
+    <string name="versions_restore">恢复</string>
+    <string name="versions_restore_confirm_title">恢复到此版本？</string>
+    <string name="versions_restore_confirm_message">恢复会以一条新记录写入历史，当前内容不会丢失，可以随时再恢复回来。</string>
+    <string name="versions_restore_commit_message">恢复到 %1$s</string>
+    <string name="versions_cancel">取消</string>
+    <string name="versions_not_ready">项目尚未初始化</string>
+    <string name="versions_manual_snapshot">手动快照</string>
+    <string name="versions_trigger_init">初始版本</string>
+    <string name="versions_trigger_auto_build">构建前快照</string>
+    <string name="versions_trigger_manual">手动</string>
+    <string name="versions_trigger_restore">恢复</string>
+    <string name="versions_trigger_pre_restore">恢复前</string>
+    <string name="versions_empty">还没有版本记录，点「创建快照」生成第一条</string>
     <string name="project_settings_title">项目设置</string>
     <string name="project_settings_placeholder">项目 %1$s 的设置区域</string>
     <!-- Project setup -->

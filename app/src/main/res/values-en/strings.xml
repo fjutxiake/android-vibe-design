@@ -90,7 +90,20 @@
     <string name="preview_console_cd_clear">Clear console</string>
     <string name="preview_console_empty">No console messages</string>
     <string name="versions_title">Versions</string>
-    <string name="versions_placeholder">Version history for project %1$s</string>
+    <string name="versions_create_snapshot">Create snapshot</string>
+    <string name="versions_restore">Restore</string>
+    <string name="versions_restore_confirm_title">Restore this version?</string>
+    <string name="versions_restore_confirm_message">Restoring writes a new entry into history — nothing is lost, and you can restore back at any time.</string>
+    <string name="versions_restore_commit_message">Restored to %1$s</string>
+    <string name="versions_cancel">Cancel</string>
+    <string name="versions_not_ready">Project not initialized</string>
+    <string name="versions_manual_snapshot">Manual snapshot</string>
+    <string name="versions_trigger_init">Initial version</string>
+    <string name="versions_trigger_auto_build">Pre-build snapshot</string>
+    <string name="versions_trigger_manual">Manual</string>
+    <string name="versions_trigger_restore">Restore</string>
+    <string name="versions_trigger_pre_restore">Pre-restore</string>
+    <string name="versions_empty">No versions yet. Tap "Create snapshot" to make the first one.</string>
     <string name="project_settings_title">Project settings</string>
     <string name="project_settings_placeholder">Settings for project %1$s</string>
     <!-- Project setup -->

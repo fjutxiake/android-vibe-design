@@ -1,10 +1,12 @@
 package com.aeibi.design.feature.projects
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.data.projects.Project
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.sessions.SessionRepository
+import com.aeibi.design.data.versions.VersionSnapshotService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.Flow
@@ -15,7 +17,8 @@ import kotlinx.coroutines.launch
 @HiltViewModel
 class ProjectsViewModel @Inject constructor(
     private val projectRepository: ProjectRepository,
-    private val sessionRepository: SessionRepository
+    private val sessionRepository: SessionRepository,
+    private val versionSnapshotService: VersionSnapshotService
 ) : ViewModel() {
 
     val projects: StateFlow<List<Project>> = projectRepository.projects
@@ -34,7 +37,14 @@ class ProjectsViewModel @Inject constructor(
 
     fun markInitialized(id: String, onResult: (Result<Unit>) -> Unit = {}) {
         viewModelScope.launch {
-            onResult(runCatching { projectRepository.markInitialized(id) })
+            onResult(
+                runCatching { projectRepository.markInitialized(id) }.onSuccess {
+                    // 初始化后补 INIT 首快照;失败不阻塞初始化流程,但记录日志,且
+                    // 版本页会在下次进入时自愈重试。
+                    runCatching { versionSnapshotService.ensureInitialSnapshot(id) }
+                        .onFailure { Log.w(TAG, "INIT 快照创建失败: $id", it) }
+                }
+            )
         }
     }
 
@@ -56,5 +66,9 @@ class ProjectsViewModel @Inject constructor(
             runCatching { sessionRepository.deleteSessionsForProject(id) }
             onResult(runCatching { projectRepository.deleteProject(id) })
         }
+    }
+
+    private companion object {
+        const val TAG = "ProjectsViewModel"
     }
 }

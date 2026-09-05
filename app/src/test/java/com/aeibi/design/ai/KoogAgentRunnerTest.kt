@@ -22,6 +22,7 @@ import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -106,6 +107,63 @@ class KoogAgentRunnerTest {
     }
 
     @Test
+    fun runsBeforeFirstToolRoundExactlyOnce() = runTest {
+        val workspace = Files.createTempDirectory("koog-agent-build-round-test")
+        try {
+            val tools = WorkspaceTools(ProjectFileTools(workspace.toFile()))
+
+            @Suppress("UNCHECKED_CAST")
+            val writeTool = tools.getTool("write_file") as ToolFromCallable<String>
+
+            fun writeArgs(path: String, content: String) = ToolFromCallable.Args(
+                writeTool.callable.valueParameters.associateWith { parameter ->
+                    when (parameter.name) {
+                        "path" -> path
+                        "content" -> content
+                        else -> error("Unexpected tool parameter: ${parameter.name}")
+                    }
+                }
+            )
+            val executor = getMockExecutor(KotlinxSerializer()) {
+                mockLLMToolCall(writeTool, writeArgs("index.html", "<h1>v1</h1>")) onRequestEquals "Build the page"
+                mockLLMToolCall(writeTool, writeArgs("style.css", "body {}")) onRequestContains "Updated index.html"
+                mockLLMStream(
+                    flowOf(
+                        StreamFrame.TextComplete("Done.", index = 0),
+                        StreamFrame.End(finishReason = "stop")
+                    )
+                ) onRequestContains "Updated style.css"
+            }
+            val buildRoundEvents = mutableListOf<String>()
+            try {
+                executeKoogAgent(
+                    promptExecutor = executor,
+                    model = TEST_MODEL,
+                    workspaceTools = tools,
+                    runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
+                    sessionRepository = SessionRepository(InMemorySessionDao()),
+                    sessionId = "build-round-session",
+                    turnId = "turn",
+                    input = "Build the page",
+                    onEvent = { event ->
+                        if (event is AgentEvent.ToolStarted) buildRoundEvents.add("tool:${event.name}")
+                    },
+                    beforeFirstToolRound = { buildRoundEvents.add("snapshot") }
+                )
+            } finally {
+                executor.close()
+            }
+
+            assertEquals("<h1>v1</h1>", workspace.resolve("index.html").toFile().readText())
+            assertEquals("body {}", workspace.resolve("style.css").toFile().readText())
+            // 两轮工具执行只产生一次构建前挂钩,且发生在第一轮工具之前。
+            assertEquals(listOf("snapshot", "tool:write_file", "tool:write_file"), buildRoundEvents)
+        } finally {
+            assertTrue(workspace.toFile().deleteRecursively())
+        }
+    }
+
+    @Test
     fun cancelsAnActiveTextStream() = runTest {
         val workspace = Files.createTempDirectory("koog-agent-cancellation-test")
         val executor = getMockExecutor(KotlinxSerializer()) {
@@ -117,6 +175,7 @@ class KoogAgentRunnerTest {
             ) onRequestEquals "Keep streaming"
         }
         val events = mutableListOf<AgentEvent>()
+        var buildRoundPrepared = false
         try {
             val job = launch {
                 executeKoogAgent(
@@ -128,7 +187,8 @@ class KoogAgentRunnerTest {
                     sessionId = "cancel-session",
                     turnId = "turn",
                     input = "Keep streaming",
-                    onEvent = events::add
+                    onEvent = events::add,
+                    beforeFirstToolRound = { buildRoundPrepared = true }
                 )
             }
 
@@ -140,6 +200,8 @@ class KoogAgentRunnerTest {
 
             job.cancelAndJoin()
             assertTrue(job.isCancelled)
+            // 纯文本回复没有工具执行轮,不应触发构建前挂钩。
+            assertFalse(buildRoundPrepared)
         } finally {
             executor.close()
             assertTrue(workspace.toFile().deleteRecursively())
