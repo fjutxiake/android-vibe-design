@@ -20,6 +20,8 @@ import com.aeibi.design.theme.spacing
 fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.spacing
     val isUser = message.role == ChatRole.USER
+    // markdown 只渲染 assistant 的完成态——流式/中间态保持纯文本（避免 ** 闪烁与重复解析）。
+    val renderMarkdown = !isUser && message.status == ChatMessageStatus.COMPLETE
     val displayedText = when (message.status) {
         ChatMessageStatus.WORKING -> message.text.ifBlank { stringResource(R.string.chat_agent_working) }
         ChatMessageStatus.CANCELLED -> listOf(
@@ -46,7 +48,21 @@ fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modi
             },
             shape = MaterialTheme.shapes.large
         ) {
-            Text(displayedText, modifier = Modifier.padding(spacing.sm))
+            if (renderMarkdown) {
+                val bubbleColor = MaterialTheme.colorScheme.surfaceContainer
+                MarkdownText(
+                    text = displayedText,
+                    modifier = Modifier.padding(spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.contentColorFor(bubbleColor)
+                )
+            } else {
+                Text(
+                    displayedText,
+                    modifier = Modifier.padding(spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }
