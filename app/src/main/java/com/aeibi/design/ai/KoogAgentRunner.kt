@@ -22,6 +22,7 @@ import ai.koog.prompt.streaming.toMessageResponse
 import com.aeibi.design.ai.provider.AiProviderRegistry
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
+import com.aeibi.design.data.agentmemory.AgentMemory
 import com.aeibi.design.data.ai.AiProviderRepository
 import com.aeibi.design.data.projectfiles.ProjectFileTools
 import com.aeibi.design.data.projects.ProjectRepository
@@ -97,6 +98,10 @@ class KoogAgentRunner @Inject constructor(
                 input = input,
                 modelMessages = modelMessages,
                 persistUserMessage = false,
+                memoryInjection = AgentMemory(
+                    projectRepository.workspaceDirectory(projectId),
+                    sessionId
+                ).readInjection(),
                 onEvent = { event ->
                     when (event) {
                         is AgentEvent.TextDelta -> pendingText.append(event.text)
@@ -160,6 +165,7 @@ internal suspend fun executeKoogAgent(
     input: String,
     modelMessages: List<Message>? = null,
     persistUserMessage: Boolean = true,
+    memoryInjection: String? = null,
     onEvent: (AgentEvent) -> Unit,
     onAssistantMessageStored: () -> Unit = {},
     beforeFirstToolRound: (suspend () -> Unit)? = null
@@ -183,6 +189,8 @@ internal suspend fun executeKoogAgent(
         agentConfig = AIAgentConfig(
             prompt = prompt(sessionId) {
                 system(SYSTEM_PROMPT)
+                // workspace 记忆/skill 投影——紧跟主提示的静态段（缓存友好），无文件时为零注入。
+                memoryInjection?.let { system(it) }
                 history.forEach(::message)
             },
             model = model,
