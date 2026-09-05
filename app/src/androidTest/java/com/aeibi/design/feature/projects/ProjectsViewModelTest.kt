@@ -8,6 +8,8 @@ import com.aeibi.design.data.sessions.SessionDao
 import com.aeibi.design.data.sessions.SessionEntity
 import com.aeibi.design.data.sessions.SessionEntryEntity
 import com.aeibi.design.data.sessions.SessionRepository
+import com.aeibi.design.data.versions.GitVersionStorage
+import com.aeibi.design.data.versions.VersionSnapshotService
 import java.io.File
 import java.io.FileInputStream
 import kotlinx.coroutines.Dispatchers
@@ -69,8 +71,14 @@ class ProjectsViewModelTest {
 
     private fun viewModel(root: File, dao: SessionDao = FakeSessionDao()): ProjectsViewModel {
         val repository = ProjectRepository(root, context.contentResolver, context.assets, dispatcher)
-        return ProjectsViewModel(repository, SessionRepository(dao))
+        return ProjectsViewModel(repository, SessionRepository(dao), versionService(repository))
     }
+
+    private fun versionService(repository: ProjectRepository): VersionSnapshotService = VersionSnapshotService(
+        GitVersionStorage(repository, dispatcher),
+        repository,
+        dispatcher
+    )
 
     @Test
     fun createProject_whenRepositoryFails_reportsFailure() = runTest {
@@ -100,7 +108,7 @@ class ProjectsViewModelTest {
         val created = repository.createProject("New project", "", null)
         var result: Result<Unit>? = null
 
-        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()))
+        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), versionService(repository))
             .markInitialized(created.id) { result = it }
 
         assertTrue(result?.isSuccess == true)
@@ -128,7 +136,7 @@ class ProjectsViewModelTest {
         var result: Result<Unit>? = null
 
         try {
-            ProjectsViewModel(repository, SessionRepository(FakeSessionDao()))
+            ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), versionService(repository))
                 .deleteProject(created.id) { result = it }
 
             assertTrue("应当上报失败,实际为 $result", result?.isFailure == true)
@@ -145,7 +153,7 @@ class ProjectsViewModelTest {
         val created = repository.createProject("待删", "", null)
         var result: Result<Unit>? = null
 
-        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()))
+        ProjectsViewModel(repository, SessionRepository(FakeSessionDao()), versionService(repository))
             .deleteProject(created.id) { result = it }
 
         assertTrue("应当上报成功,实际为 $result", result?.isSuccess == true)
@@ -160,7 +168,7 @@ class ProjectsViewModelTest {
         val failingDao = FakeSessionDao { throw IllegalStateException("数据库不可用") }
         var result: Result<Unit>? = null
 
-        ProjectsViewModel(repository, SessionRepository(failingDao))
+        ProjectsViewModel(repository, SessionRepository(failingDao), versionService(repository))
             .deleteProject(created.id) { result = it }
 
         // 会话清理是尽力而为:清理失败不应阻止项目删除,留下孤儿会话是可接受的。

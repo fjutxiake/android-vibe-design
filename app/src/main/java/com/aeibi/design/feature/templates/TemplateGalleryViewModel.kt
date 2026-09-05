@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.aeibi.design.data.projects.ProjectRepository
 import com.aeibi.design.data.templates.Template
 import com.aeibi.design.data.templates.TemplateRepository
+import com.aeibi.design.data.versions.VersionSnapshotService
 import dagger.hilt.android.lifecycle.HiltViewModel
 import jakarta.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -26,7 +27,8 @@ data class TemplateGalleryUiState(
 @HiltViewModel
 class TemplateGalleryViewModel @Inject constructor(
     private val templateRepository: TemplateRepository,
-    private val projectRepository: ProjectRepository
+    private val projectRepository: ProjectRepository,
+    private val versionSnapshotService: VersionSnapshotService
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(TemplateGalleryUiState())
@@ -93,6 +95,10 @@ class TemplateGalleryViewModel @Inject constructor(
             _uiState.update { it.copy(isApplyingTemplate = true, applyFailed = false) }
             val result = runCatching {
                 projectRepository.initializeFromTemplate(projectId, template.workspaceAssetPath)
+            }
+            if (result.isSuccess) {
+                // 初始化后补 INIT 首快照；失败不影响模板初始化结果。
+                runCatching { versionSnapshotService.ensureInitialSnapshot(projectId) }
             }
             _uiState.update {
                 it.copy(

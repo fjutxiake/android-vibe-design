@@ -18,3 +18,5 @@ prototype
 .idea
 .kotlin
 tmp
+app/src/main/cpp/libgit2/
+gradle/gradle-daemon-jvm.properties

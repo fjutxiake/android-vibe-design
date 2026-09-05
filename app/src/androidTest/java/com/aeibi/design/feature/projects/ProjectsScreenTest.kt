@@ -11,6 +11,7 @@ import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performSemanticsAction
 import androidx.compose.ui.test.performTextClearance
 import androidx.compose.ui.test.performTextInput
+import androidx.test.espresso.Espresso
 import androidx.test.espresso.Espresso.pressBack
 import com.aeibi.design.R
 import com.aeibi.design.data.projects.Project
@@ -78,6 +79,8 @@ class ProjectsScreenTest {
             .assertIsDisplayed()
         composeTestRule.onNodeWithTag("edit_project_name_input").performTextClearance()
         composeTestRule.onNodeWithTag("edit_project_name_input").performTextInput("新名称")
+        // 真机上输入会弹出软键盘,遮挡 sheet 底部的保存按钮,点击会落在键盘上。
+        Espresso.closeSoftKeyboard()
         composeTestRule
             .onNodeWithText(composeTestRule.activity.getString(R.string.save))
             .performClick()
@@ -123,6 +126,8 @@ class ProjectsScreenTest {
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
         composeTestRule.onNodeWithTag("project_description_input").performTextInput("描述")
+        // 真机上输入会弹出软键盘,遮挡 sheet 底部的创建按钮,点击会落在键盘上。
+        Espresso.closeSoftKeyboard()
         composeTestRule
             .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
             .performClick()
@@ -142,6 +147,7 @@ class ProjectsScreenTest {
 
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("新项目")
+        Espresso.closeSoftKeyboard()
         composeTestRule
             .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
             .performClick()
@@ -179,6 +185,7 @@ class ProjectsScreenTest {
 
         composeTestRule.onNodeWithTag("new_project_button").performClick()
         composeTestRule.onNodeWithTag("project_name_input").performTextInput("New project")
+        Espresso.closeSoftKeyboard()
         composeTestRule
             .onNodeWithText(composeTestRule.activity.getString(R.string.projects_create_button))
             .performClick()

@@ -4,6 +4,7 @@ import ai.koog.agents.core.agent.AIAgent
 import ai.koog.agents.core.agent.config.AIAgentConfig
 import ai.koog.agents.core.dsl.builder.node
 import ai.koog.agents.core.dsl.builder.strategy
+import ai.koog.agents.core.dsl.extension.ToolCalls
 import ai.koog.agents.core.dsl.extension.nodeExecuteTools
 import ai.koog.agents.core.dsl.extension.nodeLLMSendMessageStreaming
 import ai.koog.agents.core.dsl.extension.onTextMessage
@@ -29,6 +30,7 @@ import com.aeibi.design.data.sessions.AgentFailure
 import com.aeibi.design.data.sessions.MessageOrigin
 import com.aeibi.design.data.sessions.SessionRepository
 import com.aeibi.design.data.sessions.TurnStatus
+import com.aeibi.design.data.versions.VersionSnapshotService
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import java.util.UUID
@@ -50,7 +52,8 @@ class KoogAgentRunner @Inject constructor(
     private val providerRegistry: AiProviderRegistry,
     private val projectRepository: ProjectRepository,
     private val sessionRepository: SessionRepository,
-    private val runtimeLogStore: RuntimeLogStore
+    private val runtimeLogStore: RuntimeLogStore,
+    private val versionSnapshotService: VersionSnapshotService
 ) {
     suspend fun run(projectId: String, sessionId: String, input: String, onEvent: (AgentEvent) -> Unit): String {
         val turnId = UUID.randomUUID().toString()
@@ -78,7 +81,7 @@ class KoogAgentRunner @Inject constructor(
             val apiKey = providerRepository.readApiKey(providerConfig.id)
                 ?.takeIf(String::isNotBlank)
                 ?: error("The selected provider has no API key")
-            checkNotNull(projectRepository.getProject(projectId)) { "Project not found: $projectId" }
+            val project = checkNotNull(projectRepository.getProject(projectId)) { "Project not found: $projectId" }
 
             val provider = providerRegistry.get(providerConfig.providerType)
             val createdExecutor = MultiLLMPromptExecutor(provider.createClient(providerConfig, apiKey))
@@ -105,6 +108,14 @@ class KoogAgentRunner @Inject constructor(
                 onAssistantMessageStored = {
                     pendingText.clear()
                     pendingReasoning.clear()
+                },
+                beforeFirstToolRound = {
+                    // 构建前快照：在 Agent 真正动文件之前保住可回滚点。未初始化项目
+                    // 没有版本库，跳过（聊天不被版本功能阻断）；已初始化项目快照失败
+                    // 则让本轮失败，绝不在没有回滚点的情况下放行文件修改。
+                    if (project.isInitialized) {
+                        versionSnapshotService.snapshotBeforeBuildRound(projectId)
+                    }
                 }
             )
             sessionRepository.finishTurn(sessionId, turnId, TurnStatus.COMPLETE)
@@ -150,7 +161,8 @@ internal suspend fun executeKoogAgent(
     modelMessages: List<Message>? = null,
     persistUserMessage: Boolean = true,
     onEvent: (AgentEvent) -> Unit,
-    onAssistantMessageStored: () -> Unit = {}
+    onAssistantMessageStored: () -> Unit = {},
+    beforeFirstToolRound: (suspend () -> Unit)? = null
 ): String {
     val history = modelMessages ?: sessionRepository.loadModelMessages(sessionId)
     val agent = AIAgent(
@@ -161,7 +173,8 @@ internal suspend fun executeKoogAgent(
             turnId,
             persistUserMessage,
             onEvent,
-            onAssistantMessageStored
+            onAssistantMessageStored,
+            beforeFirstToolRound
         ),
         toolRegistry = ToolRegistry {
             tools(workspaceTools.asTools())
@@ -201,7 +214,8 @@ private fun streamingReActStrategy(
     turnId: String,
     persistUserMessage: Boolean,
     onEvent: (AgentEvent) -> Unit,
-    onAssistantMessageStored: () -> Unit
+    onAssistantMessageStored: () -> Unit,
+    beforeFirstToolRound: (suspend () -> Unit)? = null
 ) = strategy<String, String>("streaming_react") {
     val appendUserMessage by node<String, Message.User> { input ->
         Message.User(input, RequestMetaInfo.Empty).also {
@@ -215,6 +229,14 @@ private fun streamingReActStrategy(
         frames.toList().toMessageResponse()
     }
     val executeTools by nodeExecuteTools(parallel = false)
+    // 首轮工具执行前的挂钩（构建前快照等准备动作）：每轮对话只触发一次，
+    // 纯文本回复不经过工具节点，自然不触发。
+    var pendingBeforeToolRound = beforeFirstToolRound
+    val prepareFirstToolRound by node<ToolCalls, ToolCalls> { toolCalls ->
+        pendingBeforeToolRound?.invoke()
+        pendingBeforeToolRound = null
+        toolCalls
+    }
     val appendToolResults by node<ai.koog.agents.core.dsl.extension.ReceivedToolResults, Message.User> { results ->
         Message.User(
             results.toolResults.map { it.toMessagePart() },
@@ -239,7 +261,8 @@ private fun streamingReActStrategy(
     edge(nodeStart forwardTo appendUserMessage)
     edge(appendUserMessage forwardTo requestModel)
     edge(requestModel forwardTo appendAssistantMessage)
-    edge(appendAssistantMessage forwardTo executeTools onToolCalls { true })
+    edge(appendAssistantMessage forwardTo prepareFirstToolRound onToolCalls { true })
+    edge(prepareFirstToolRound forwardTo executeTools)
     edge(appendAssistantMessage forwardTo nodeFinish onTextMessage { true })
     edge(executeTools forwardTo appendToolResults)
     edge(appendToolResults forwardTo sendToolResults)
