@@ -88,6 +88,11 @@ class ChatViewModel @Inject constructor(
         MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
     val turnCompleted: SharedFlow<Unit> = _turnCompleted.asSharedFlow()
 
+    /** agent 回合内请求刷新预览（reload_preview 工具）——UI 层执行实际 reload。 */
+    private val _previewReloadRequested =
+        MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val previewReloadRequested: SharedFlow<Unit> = _previewReloadRequested.asSharedFlow()
+
     private var projectId: String? = null
     private var sessionId: String? = null
     private var entriesJob: Job? = null
@@ -222,6 +227,10 @@ class ChatViewModel @Inject constructor(
                 }
                 is AgentEvent.ToolStarted,
                 is AgentEvent.ToolFinished -> state
+                AgentEvent.PreviewReloadRequested -> {
+                    _previewReloadRequested.tryEmit(Unit)
+                    state
+                }
             }
         }
     }

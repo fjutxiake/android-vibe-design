@@ -240,6 +240,24 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
+    fun previewReloadRequestsAreCountedIndependently() {
+        val fixture = fixture()
+        assertEquals(0, fixture.viewModel.previewUiState.value.reloadRequestTick)
+
+        fixture.viewModel.onPreviewReloadRequested()
+        fixture.viewModel.onPreviewReloadRequested()
+        fixture.viewModel.onAgentTurnCompleted()
+
+        assertEquals(
+            "Reload requests tick independently of content version",
+            2,
+            fixture.viewModel.previewUiState.value.reloadRequestTick
+        )
+        assertEquals(1, fixture.viewModel.previewUiState.value.contentVersion)
+        fixture.stop()
+    }
+
+    @Test
     fun refreshClearsPanelButKeepsStore_explicitClearClearsBoth() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")

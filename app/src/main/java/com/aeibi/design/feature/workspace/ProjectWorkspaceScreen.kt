@@ -83,6 +83,10 @@ fun ProjectWorkspaceScreen(
     LaunchedEffect(Unit) {
         chatViewModel.turnCompleted.collect { workspaceViewModel.onAgentTurnCompleted() }
     }
+    // agent 回合内 reload_preview 工具请求 → 执行刷新（RUNNING 且可见时）。
+    LaunchedEffect(Unit) {
+        chatViewModel.previewReloadRequested.collect { workspaceViewModel.onPreviewReloadRequested() }
+    }
     // lambda 中无法调用 stringResource,先在组合作用域取好文本再闭包引用。
     val deleteFailedText = stringResource(R.string.projects_delete_failed)
 
@@ -231,6 +235,7 @@ internal fun WorkspacePreviewPane(
     var webView by remember(projectId) { mutableStateOf<WebView?>(null) }
     var loadedUrl by remember(projectId) { mutableStateOf<String?>(null) }
     var loadedContentVersion by remember(projectId) { mutableStateOf(-1) }
+    var handledReloadTick by remember(projectId) { mutableStateOf(0) }
 
     LaunchedEffect(visible, projectId) {
         if (visible) {
@@ -250,17 +255,24 @@ internal fun WorkspacePreviewPane(
         }
     }
 
-    // 内容版本驱动加载：首次/换地址 → loadUrl；agent 回合完成（版本 +1）→ 自动 reload。
-    LaunchedEffect(visible, state.status, state.url, state.contentVersion, webView) {
+    // 内容版本驱动加载：首次/换地址 → loadUrl；回合完成（版本 +1）或 agent 主动请求
+    // （reloadRequestTick +1）→ 自动 reload。
+    LaunchedEffect(visible, state.status, state.url, state.contentVersion, state.reloadRequestTick, webView) {
         if (!visible || state.status != PreviewStatus.RUNNING) return@LaunchedEffect
         val urlString = state.url?.toString() ?: return@LaunchedEffect
         if (urlString != loadedUrl) {
             loadedUrl = urlString
             loadedContentVersion = state.contentVersion
+            handledReloadTick = state.reloadRequestTick
             viewModel.onNavigationStarted()
             webView?.loadUrl(urlString)
         } else if (state.contentVersion > loadedContentVersion) {
             loadedContentVersion = state.contentVersion
+            handledReloadTick = state.reloadRequestTick
+            viewModel.onNavigationStarted()
+            webView?.reload()
+        } else if (state.reloadRequestTick > handledReloadTick) {
+            handledReloadTick = state.reloadRequestTick
             viewModel.onNavigationStarted()
             webView?.reload()
         }

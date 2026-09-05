@@ -51,7 +51,9 @@ internal data class PreviewUiState(
     val consoleMessages: List<ConsoleMessage> = emptyList(),
     val pageError: PreviewPageError? = null,
     /** agent 每完成一个回合 +1——预览据此知道工作区内容可能已变。 */
-    val contentVersion: Int = 0
+    val contentVersion: Int = 0,
+    /** agent 回合内 reload_preview 请求计数——每次 +1，Pane 观察到就执行 reload。 */
+    val reloadRequestTick: Int = 0
 )
 
 @Serializable
@@ -220,6 +222,11 @@ class ProjectWorkspaceViewModel internal constructor(
     /** agent 回合完成——工作区内容可能已变，预览需要按新版本重新加载。 */
     fun onAgentTurnCompleted() {
         _previewUiState.update { it.copy(contentVersion = it.contentVersion + 1) }
+    }
+
+    /** agent 回合内请求刷新预览（reload_preview 工具）。 */
+    fun onPreviewReloadRequested() {
+        _previewUiState.update { it.copy(reloadRequestTick = it.reloadRequestTick + 1) }
     }
 
     internal fun recordConsoleMessage(message: ConsoleMessage) {
