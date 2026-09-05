@@ -89,6 +89,9 @@
     <string name="preview_console_title">Console</string>
     <string name="preview_console_cd_clear">Clear console</string>
     <string name="preview_console_empty">No console messages</string>
+    <string name="preview_error_title">Preview failed to load</string>
+    <string name="preview_error_summary">%1$d error(s) at %2$s. See the console for details, or send to AI to fix.</string>
+    <string name="preview_error_send_to_ai">Send to AI to fix</string>
     <string name="versions_title">Versions</string>
     <string name="versions_placeholder">Version history for project %1$s</string>
     <string name="project_settings_title">Project settings</string>

@@ -19,6 +19,7 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.prompt.streaming.toMessageResponse
 import com.aeibi.design.ai.provider.AiProviderRegistry
+import com.aeibi.design.ai.tools.PreviewReloadTool
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.ai.AiProviderRepository
@@ -42,6 +43,9 @@ sealed interface AgentEvent {
     data class ReasoningDelta(val text: String) : AgentEvent
     data class ToolStarted(val name: String) : AgentEvent
     data class ToolFinished(val name: String) : AgentEvent
+
+    /** agent 请求刷新预览页（reload_preview 工具）——UI 层执行实际 reload。 */
+    data object PreviewReloadRequested : AgentEvent
 }
 
 @Singleton
@@ -88,6 +92,7 @@ class KoogAgentRunner @Inject constructor(
                 model = provider.createModel(modelId),
                 workspaceTools = WorkspaceTools(ProjectFileTools(projectRepository.workspaceDirectory(projectId))),
                 runtimeLogsTool = RuntimeLogsTool(projectId, runtimeLogStore),
+                previewReloadTool = PreviewReloadTool { onEvent(AgentEvent.PreviewReloadRequested) },
                 sessionRepository = sessionRepository,
                 sessionId = sessionId,
                 turnId = turnId,
@@ -143,6 +148,7 @@ internal suspend fun executeKoogAgent(
     model: LLModel,
     workspaceTools: WorkspaceTools,
     runtimeLogsTool: RuntimeLogsTool,
+    previewReloadTool: PreviewReloadTool? = null,
     sessionRepository: SessionRepository,
     sessionId: String,
     turnId: String,
@@ -166,6 +172,7 @@ internal suspend fun executeKoogAgent(
         toolRegistry = ToolRegistry {
             tools(workspaceTools.asTools())
             tools(runtimeLogsTool.asTools())
+            previewReloadTool?.let { tools(it.asTools()) }
         },
         agentConfig = AIAgentConfig(
             prompt = prompt(sessionId) {

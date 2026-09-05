@@ -7,6 +7,7 @@ import ai.koog.prompt.llm.LLMProvider
 import ai.koog.prompt.llm.LLModel
 import ai.koog.prompt.streaming.StreamFrame
 import ai.koog.serialization.kotlinx.KotlinxSerializer
+import com.aeibi.design.ai.tools.PreviewReloadTool
 import com.aeibi.design.ai.tools.RuntimeLogsTool
 import com.aeibi.design.ai.tools.WorkspaceTools
 import com.aeibi.design.data.projectfiles.ProjectFileTools
@@ -140,6 +141,55 @@ class KoogAgentRunnerTest {
 
             job.cancelAndJoin()
             assertTrue(job.isCancelled)
+        } finally {
+            executor.close()
+            assertTrue(workspace.toFile().deleteRecursively())
+        }
+    }
+
+    @Test
+    fun reloadPreviewToolEmitsPreviewReloadRequestedEvent() = runTest {
+        val workspace = Files.createTempDirectory("koog-agent-reload-test")
+        val events = mutableListOf<AgentEvent>()
+        // run 层包装等价物：工具执行 → onEvent(PreviewReloadRequested)
+        val reloadTool = PreviewReloadTool { events += AgentEvent.PreviewReloadRequested }
+
+        @Suppress("UNCHECKED_CAST")
+        val tool = reloadTool.getTool("reload_preview") as ToolFromCallable<String>
+        val arguments = ToolFromCallable.Args(
+            tool.callable.valueParameters.associateWith { parameter ->
+                error("reload_preview takes no parameters: ${parameter.name}")
+            }
+        )
+        val executor = getMockExecutor(KotlinxSerializer()) {
+            mockLLMToolCall(tool, arguments) onRequestEquals "Reload the preview"
+            mockLLMStream(
+                flowOf(
+                    StreamFrame.TextDelta("Reloaded.", index = 0),
+                    StreamFrame.TextComplete("Reloaded.", index = 0),
+                    StreamFrame.End(finishReason = "stop")
+                )
+            ) onRequestContains "Preview reload requested"
+        }
+        try {
+            val result = executeKoogAgent(
+                promptExecutor = executor,
+                model = TEST_MODEL,
+                workspaceTools = WorkspaceTools(ProjectFileTools(workspace.toFile())),
+                runtimeLogsTool = RuntimeLogsTool("project", RuntimeLogStore()),
+                previewReloadTool = reloadTool,
+                sessionRepository = SessionRepository(InMemorySessionDao()),
+                sessionId = "session",
+                turnId = "turn",
+                input = "Reload the preview",
+                onEvent = events::add
+            )
+
+            assertEquals("Reloaded.", result)
+            assertTrue(
+                "Tool invocation surfaces PreviewReloadRequested to the UI layer. events=$events",
+                events.any { it == AgentEvent.PreviewReloadRequested }
+            )
         } finally {
             executor.close()
             assertTrue(workspace.toFile().deleteRecursively())

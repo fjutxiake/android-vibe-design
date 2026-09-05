@@ -41,6 +41,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import com.aeibi.design.R
 import com.aeibi.design.feature.chat.ChatScreen
+import com.aeibi.design.feature.chat.ChatViewModel
 import com.aeibi.design.feature.preview.ConsoleScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
@@ -76,6 +77,16 @@ fun ProjectWorkspaceScreen(
     var fullscreen by rememberSaveable(projectId) { mutableStateOf(false) }
     val project by viewModel.observeProject(projectId).collectAsState(initial = null)
     val previewState by workspaceViewModel.previewUiState.collectAsState()
+    // 与 ChatScreen 内部 hiltViewModel() 同属本导航 entry 的 ViewModelStore——同一实例。
+    val chatViewModel: ChatViewModel = hiltViewModel()
+    // 回合完成（agent 可能改了文件）→ 预览内容版本 +1，可见时自动重新加载。
+    LaunchedEffect(Unit) {
+        chatViewModel.turnCompleted.collect { workspaceViewModel.onAgentTurnCompleted() }
+    }
+    // agent 回合内 reload_preview 工具请求 → 执行刷新（RUNNING 且可见时）。
+    LaunchedEffect(Unit) {
+        chatViewModel.previewReloadRequested.collect { workspaceViewModel.onPreviewReloadRequested() }
+    }
     // lambda 中无法调用 stringResource,先在组合作用域取好文本再闭包引用。
     val deleteFailedText = stringResource(R.string.projects_delete_failed)
 
@@ -139,7 +150,16 @@ fun ProjectWorkspaceScreen(
             viewModel = workspaceViewModel,
             onBackClick = ::closePreview,
             onFullscreenClick = { fullscreen = true },
-            onConsoleClick = { pane = WorkspacePane.CONSOLE }
+            onConsoleClick = { pane = WorkspacePane.CONSOLE },
+            onReportErrorToAi = { _ ->
+                // 报告文本（折叠摘要 + 时间轴表格）在 VM 组装；发送前取文本，dismiss 会清明细。
+                val reportText = workspaceViewModel.buildErrorReportText()
+                workspaceViewModel.dismissPageError()
+                if (reportText != null) {
+                    chatViewModel.sendText(reportText, onSessionCreated = { selectedSessionId = it })
+                }
+                pane = WorkspacePane.CHAT
+            }
         )
 
         if (pane == WorkspacePane.CONSOLE) {
@@ -207,11 +227,15 @@ internal fun WorkspacePreviewPane(
     onBackClick: () -> Unit = {},
     onFullscreenClick: () -> Unit = {},
     onConsoleClick: () -> Unit = {},
+    onReportErrorToAi: ((PreviewPageError) -> Unit)? = null,
     webViewFactory: (Context, ProjectWorkspaceViewModel) -> WebView = ::createPreviewWebView
 ) {
     val context = LocalContext.current
     var previewOpened by remember(projectId) { mutableStateOf(false) }
     var webView by remember(projectId) { mutableStateOf<WebView?>(null) }
+    var loadedUrl by remember(projectId) { mutableStateOf<String?>(null) }
+    var loadedContentVersion by remember(projectId) { mutableStateOf(-1) }
+    var handledReloadTick by remember(projectId) { mutableStateOf(0) }
 
     LaunchedEffect(visible, projectId) {
         if (visible) {
@@ -231,9 +255,26 @@ internal fun WorkspacePreviewPane(
         }
     }
 
-    LaunchedEffect(state.status, state.url, webView) {
-        if (state.status == PreviewStatus.RUNNING) {
-            state.url?.let { webView?.loadUrl(it.toString()) }
+    // 内容版本驱动加载：首次/换地址 → loadUrl；回合完成（版本 +1）或 agent 主动请求
+    // （reloadRequestTick +1）→ 自动 reload。
+    LaunchedEffect(visible, state.status, state.url, state.contentVersion, state.reloadRequestTick, webView) {
+        if (!visible || state.status != PreviewStatus.RUNNING) return@LaunchedEffect
+        val urlString = state.url?.toString() ?: return@LaunchedEffect
+        if (urlString != loadedUrl) {
+            loadedUrl = urlString
+            loadedContentVersion = state.contentVersion
+            handledReloadTick = state.reloadRequestTick
+            viewModel.onNavigationStarted()
+            webView?.loadUrl(urlString)
+        } else if (state.contentVersion > loadedContentVersion) {
+            loadedContentVersion = state.contentVersion
+            handledReloadTick = state.reloadRequestTick
+            viewModel.onNavigationStarted()
+            webView?.reload()
+        } else if (state.reloadRequestTick > handledReloadTick) {
+            handledReloadTick = state.reloadRequestTick
+            viewModel.onNavigationStarted()
+            webView?.reload()
         }
     }
 
@@ -253,7 +294,9 @@ internal fun WorkspacePreviewPane(
         fullscreen = fullscreen,
         onBackClick = onBackClick,
         onRefreshClick = {
-            viewModel.clearConsoleMessages()
+            // 只清展示面板——store 里的旧错误是 agent 下一回合的诊断依据（clear_runtime_logs/控制台显式清空才清 store）。
+            viewModel.clearConsolePanel()
+            viewModel.onNavigationStarted()
             webView?.reload()
         },
         onToggleBackendClick = {
@@ -276,6 +319,41 @@ internal fun WorkspacePreviewPane(
             )
         }
     }
+
+    // 主 frame 加载失败：纯确认弹窗（详情在控制台/AI 日志里）——用户裁决后发给 AI（Figma Make 节奏，不自动注入）。
+    state.pageError?.let { error ->
+        AlertDialog(
+            onDismissRequest = viewModel::dismissPageError,
+            title = { Text(stringResource(R.string.preview_error_title)) },
+            text = {
+                Text(
+                    stringResource(
+                        R.string.preview_error_summary,
+                        error.count,
+                        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(error.atMillis))
+                    ),
+                    style = MaterialTheme.typography.bodySmall
+                )
+            },
+            confirmButton = {
+                // dismiss 由 onReportErrorToAi 内部处理（发送前需先取报告文本，dismiss 会清明细）；未接线时兜底 dismiss。
+                TextButton(onClick = {
+                    if (onReportErrorToAi != null) {
+                        onReportErrorToAi?.invoke(error)
+                    } else {
+                        viewModel.dismissPageError()
+                    }
+                }) {
+                    Text(stringResource(R.string.preview_error_send_to_ai))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = viewModel::dismissPageError) {
+                    Text(stringResource(R.string.cancel))
+                }
+            }
+        )
+    }
 }
 
 @SuppressLint("SetJavaScriptEnabled")
@@ -288,6 +366,38 @@ private fun createPreviewWebView(context: Context, viewModel: ProjectWorkspaceVi
         webViewClient = object : WebViewClient() {
             override fun shouldInterceptRequest(view: WebView?, request: WebResourceRequest): WebResourceResponse? =
                 viewModel.shouldInterceptRequest(request.url)
+
+            override fun onReceivedError(
+                view: WebView?,
+                request: WebResourceRequest,
+                error: android.webkit.WebResourceError
+            ) {
+                if (request.isForMainFrame) {
+                    viewModel.recordPageError(
+                        error.errorCode,
+                        error.description?.toString().orEmpty(),
+                        request.url.toString()
+                    )
+                }
+            }
+
+            override fun onReceivedHttpError(
+                view: WebView?,
+                request: WebResourceRequest,
+                errorResponse: WebResourceResponse
+            ) {
+                if (request.isForMainFrame) {
+                    viewModel.recordPageError(
+                        errorResponse.statusCode,
+                        "HTTP ${errorResponse.statusCode}",
+                        request.url.toString()
+                    )
+                }
+            }
+
+            override fun onPageFinished(view: WebView?, url: String?) {
+                viewModel.onPageFinished()
+            }
         }
         webChromeClient = object : android.webkit.WebChromeClient() {
             override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage): Boolean {

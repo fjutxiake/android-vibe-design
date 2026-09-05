@@ -17,8 +17,12 @@ import jakarta.inject.Inject
 import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.collect
 import kotlinx.coroutines.flow.update
@@ -50,6 +54,9 @@ sealed interface ChatTimelineItem {
 
     data class Thinking(override val id: String, val text: String, val isStreaming: Boolean = false) : ChatTimelineItem
 
+    /** 预览加载失败报告——用户消息形态的折叠块：收起显示摘要，展开显示时间轴 + err 表格。 */
+    data class ErrorReport(override val id: String, val summary: String, val body: String) : ChatTimelineItem
+
     data class ToolCall(override val id: String, val name: String) : ChatTimelineItem
 
     data class ToolResult(override val id: String, val name: String, val isError: Boolean) : ChatTimelineItem
@@ -76,12 +83,23 @@ class ChatViewModel @Inject constructor(
     private val _uiState = MutableStateFlow(ChatUiState())
     val uiState: StateFlow<ChatUiState> = _uiState.asStateFlow()
 
+    /** 每完成一个 agent 回合（agent 可能改动了工作区文件）发一次，供预览联动刷新。 */
+    private val _turnCompleted =
+        MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val turnCompleted: SharedFlow<Unit> = _turnCompleted.asSharedFlow()
+
+    /** agent 回合内请求刷新预览（reload_preview 工具）——UI 层执行实际 reload。 */
+    private val _previewReloadRequested =
+        MutableSharedFlow<Unit>(extraBufferCapacity = 1, onBufferOverflow = BufferOverflow.DROP_OLDEST)
+    val previewReloadRequested: SharedFlow<Unit> = _previewReloadRequested.asSharedFlow()
+
     private var projectId: String? = null
     private var sessionId: String? = null
     private var entriesJob: Job? = null
     private var runJob: Job? = null
     private var nextStreamingResponseId = 0
     private var persistedAssistantMessageCount = 0
+    private var lastFinishedTurnEntryId: Long = -1
 
     fun bind(projectId: String, sessionId: String?) {
         if (this.projectId == projectId && this.sessionId == sessionId) return
@@ -92,6 +110,7 @@ class ChatViewModel @Inject constructor(
         this.sessionId = sessionId
         nextStreamingResponseId = 0
         persistedAssistantMessageCount = 0
+        lastFinishedTurnEntryId = -1
         _uiState.value = ChatUiState(
             sessionId = sessionId,
             isLoadingSession = sessionId != null
@@ -105,6 +124,13 @@ class ChatViewModel @Inject constructor(
 
     fun send(onSessionCreated: (String) -> Unit = {}) {
         val input = _uiState.value.input.trim()
+        if (input.isEmpty()) return
+        sendText(input, onSessionCreated)
+    }
+
+    /** 直接发送文本（组合框之外的入口，如预览加载失败回传）。 */
+    fun sendText(text: String, onSessionCreated: (String) -> Unit = {}) {
+        val input = text.trim()
         val activeProjectId = projectId ?: return
         if (input.isEmpty() || _uiState.value.isRunning) return
 
@@ -166,6 +192,11 @@ class ChatViewModel @Inject constructor(
                 val newAssistantMessages = (assistantMessageCount - persistedAssistantMessageCount).coerceAtLeast(0)
                 persistedAssistantMessageCount = assistantMessageCount
                 val turnFinished = entries.lastOrNull()?.type == SessionEntryType.TURN_FINISHED.name
+                val (newSeenId, completed) = entries.completedTurnSeen(lastFinishedTurnEntryId, sessionRepository)
+                lastFinishedTurnEntryId = newSeenId
+                if (completed) {
+                    _turnCompleted.tryEmit(Unit)
+                }
                 _uiState.update { state ->
                     state.copy(
                         timeline = timeline,
@@ -196,6 +227,10 @@ class ChatViewModel @Inject constructor(
                 }
                 is AgentEvent.ToolStarted,
                 is AgentEvent.ToolFinished -> state
+                AgentEvent.PreviewReloadRequested -> {
+                    _previewReloadRequested.tryEmit(Unit)
+                    state
+                }
             }
         }
     }
@@ -220,6 +255,35 @@ private fun ChatUiState.updateStreamingResponse(transform: (StreamingResponse) -
     return copy(streamingResponses = streamingResponses.dropLast(1) + transform(response))
 }
 
+const val ERROR_REPORT_MARKER = "[error-report] "
+
+/**
+ * 把错误报告消息文本解析为折叠的 ErrorReport 条目（收起 = 摘要首行，展开 = 时间轴表格）。
+ * 非报告消息返回 null，走普通用户消息渲染。
+ */
+internal fun String.toErrorReport(id: String): ChatTimelineItem.ErrorReport? {
+    if (!startsWith(ERROR_REPORT_MARKER)) return null
+    val lines = lineSequence().map(String::trimEnd).toList()
+    val summary = lines.first().removePrefix(ERROR_REPORT_MARKER)
+    val body = lines.drop(1).filter(String::isNotBlank).joinToString("\n")
+    return ChatTimelineItem.ErrorReport(id = id, summary = summary, body = body)
+}
+
+/**
+ * 检测条目流里「新出现」的回合完成条目。
+ * @return 处理到的最大条目 id（下次继续用），以及该回合是否为 COMPLETE 完成。
+ */
+internal fun List<SessionEntryEntity>.completedTurnSeen(
+    lastSeenId: Long,
+    repository: SessionRepository
+): Pair<Long, Boolean> {
+    // 取最后一个 TURN_FINISHED（其后可能已追加新消息），id 推进后夹在中间的消息不影响检测。
+    val lastFinished = lastOrNull { it.type == SessionEntryType.TURN_FINISHED.name } ?: return lastSeenId to false
+    if (lastFinished.id <= lastSeenId) return lastSeenId to false
+    val completed = repository.decodeTurnFinished(lastFinished).status == TurnStatus.COMPLETE
+    return lastFinished.id to completed
+}
+
 internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository): List<ChatTimelineItem> {
     val timeline = mutableListOf<ChatTimelineItem>()
     forEach { entry ->
@@ -228,11 +292,19 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
                 val payload = repository.decodeMessage(entry)
                 when (val message = payload.message) {
                     is Message.User -> when (payload.origin) {
-                        MessageOrigin.USER -> timeline += ChatTimelineItem.Message(
-                            id = entry.id.toString(),
-                            role = ChatRole.USER,
-                            text = message.textContent()
-                        )
+                        MessageOrigin.USER -> {
+                            val text = message.textContent()
+                            val report = text.toErrorReport(entry.id.toString())
+                            if (report != null) {
+                                timeline += report
+                            } else {
+                                timeline += ChatTimelineItem.Message(
+                                    id = entry.id.toString(),
+                                    role = ChatRole.USER,
+                                    text = text
+                                )
+                            }
+                        }
                         MessageOrigin.TOOL -> {
                             message.parts
                                 .filterIsInstance<MessagePart.Tool.Result>()
