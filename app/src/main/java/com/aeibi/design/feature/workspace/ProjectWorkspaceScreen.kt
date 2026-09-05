@@ -147,13 +147,13 @@ fun ProjectWorkspaceScreen(
             onBackClick = ::closePreview,
             onFullscreenClick = { fullscreen = true },
             onConsoleClick = { pane = WorkspacePane.CONSOLE },
-            onReportErrorToAi = { error ->
-                chatViewModel.sendText(
-                    "The preview page failed to load: ${error.description} " +
-                        "(error code ${error.code}) at ${error.url}. " +
-                        "Please inspect the workspace files and fix the issue.",
-                    onSessionCreated = { selectedSessionId = it }
-                )
+            onReportErrorToAi = { _ ->
+                // 报告文本（折叠摘要 + 时间轴表格）在 VM 组装；发送前取文本，dismiss 会清明细。
+                val reportText = workspaceViewModel.buildErrorReportText()
+                workspaceViewModel.dismissPageError()
+                if (reportText != null) {
+                    chatViewModel.sendText(reportText, onSessionCreated = { selectedSessionId = it })
+                }
                 pane = WorkspacePane.CHAT
             }
         )
@@ -257,9 +257,11 @@ internal fun WorkspacePreviewPane(
         if (urlString != loadedUrl) {
             loadedUrl = urlString
             loadedContentVersion = state.contentVersion
+            viewModel.onNavigationStarted()
             webView?.loadUrl(urlString)
         } else if (state.contentVersion > loadedContentVersion) {
             loadedContentVersion = state.contentVersion
+            viewModel.onNavigationStarted()
             webView?.reload()
         }
     }
@@ -282,6 +284,7 @@ internal fun WorkspacePreviewPane(
         onRefreshClick = {
             // 只清展示面板——store 里的旧错误是 agent 下一回合的诊断依据（clear_runtime_logs/控制台显式清空才清 store）。
             viewModel.clearConsolePanel()
+            viewModel.onNavigationStarted()
             webView?.reload()
         },
         onToggleBackendClick = {
@@ -305,24 +308,30 @@ internal fun WorkspacePreviewPane(
         }
     }
 
-    // 主 frame 加载失败：小弹窗——用户手动确认后发给 AI（Figma Make 节奏，不自动注入）。
+    // 主 frame 加载失败：纯确认弹窗（详情在控制台/AI 日志里）——用户裁决后发给 AI（Figma Make 节奏，不自动注入）。
     state.pageError?.let { error ->
         AlertDialog(
             onDismissRequest = viewModel::dismissPageError,
             title = { Text(stringResource(R.string.preview_error_title)) },
             text = {
                 Text(
-                    "${error.description} (${error.code})\n${error.url}",
+                    stringResource(
+                        R.string.preview_error_summary,
+                        error.count,
+                        android.text.format.DateFormat.getTimeFormat(context).format(java.util.Date(error.atMillis))
+                    ),
                     style = MaterialTheme.typography.bodySmall
                 )
             },
             confirmButton = {
-                TextButton(
-                    onClick = {
-                        viewModel.dismissPageError()
+                // dismiss 由 onReportErrorToAi 内部处理（发送前需先取报告文本，dismiss 会清明细）；未接线时兜底 dismiss。
+                TextButton(onClick = {
+                    if (onReportErrorToAi != null) {
                         onReportErrorToAi?.invoke(error)
+                    } else {
+                        viewModel.dismissPageError()
                     }
-                ) {
+                }) {
                     Text(stringResource(R.string.preview_error_send_to_ai))
                 }
             },

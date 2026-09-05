@@ -11,6 +11,7 @@ import com.aeibi.design.feature.preview.LocalStaticFileServer
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Rule
@@ -152,28 +153,77 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
-    fun pageError_recordedOnlyWhileRunningAndClearedOnPageFinished() {
+    fun pageError_countsErrorsAndClearsAfterSuccessfulNavigation() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
 
         fixture.viewModel.recordPageError(404, "HTTP 404", "http://localhost/index.html")
         assertNull("Error before preview start is ignored", fixture.viewModel.previewUiState.value.pageError)
+        assertEquals("Nothing recorded before running", 0, fixture.storeSnapshot())
 
         fixture.viewModel.startPreview(PROJECT_ID)
         awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
         fixture.viewModel.recordPageError(-6, "ERR_FILE_NOT_FOUND", "http://localhost/missing.html")
         val firstError = fixture.viewModel.previewUiState.value.pageError
-        assertEquals(-6, requireNotNull(firstError).code)
+        assertEquals("Dialog carries an error count", 1, requireNotNull(firstError).count)
+        assertEquals("Error carries a file anchor for the AI", "missing.html", firstError.file)
+        assertEquals(
+            "Detail lands in console panel for the user",
+            1,
+            fixture.viewModel.previewUiState.value.consoleMessages.size
+        )
+        assertEquals("Detail lands in store for the agent tool", 1, fixture.storeSnapshot())
 
         fixture.viewModel.recordPageError(500, "HTTP 500", "http://localhost/other.html")
         assertEquals(
-            "First error is kept while dialog is visible",
-            firstError,
-            fixture.viewModel.previewUiState.value.pageError
+            "Dialog stays open with an accumulating count",
+            2,
+            fixture.viewModel.previewUiState.value.pageError?.count
         )
+        assertEquals(2, fixture.storeSnapshot())
 
+        // 错误导航完成（错误页自身也会 finished）不清错误
         fixture.viewModel.onPageFinished()
-        assertNull("Page finished clears the error", fixture.viewModel.previewUiState.value.pageError)
+        assertNotNull("Failed navigation's finished keeps the error", fixture.viewModel.previewUiState.value.pageError)
+
+        // 新一轮无错误导航完成才算页面恢复
+        fixture.viewModel.onNavigationStarted()
+        fixture.viewModel.onPageFinished()
+        assertNull("Successful navigation clears the error", fixture.viewModel.previewUiState.value.pageError)
+
+        // 恢复后再次失败 → 新计数从头累计
+        fixture.viewModel.recordPageError(500, "HTTP 500", "http://localhost/other.html")
+        assertEquals(1, fixture.viewModel.previewUiState.value.pageError?.count)
+        assertEquals(3, fixture.storeSnapshot())
+        fixture.stop()
+    }
+
+    @Test
+    fun errorReportText_buildsCollapsibleTimelineTable() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+
+        assertNull("No report without a failure", fixture.viewModel.buildErrorReportText())
+
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+        fixture.viewModel.recordPageError(404, "HTTP 404", "http://localhost/missing.html")
+        fixture.viewModel.recordPageError(-6, "ERR_FILE_NOT_FOUND", "http://localhost/missing.html")
+
+        val report = fixture.viewModel.buildErrorReportText()
+        assertTrue(
+            requireNotNull(report).startsWith("[error-report] Preview load failure — 2 error(s) on missing.html at ")
+        )
+        assertTrue(report.contains("| # | Time | Error | File |"))
+        assertTrue(report.contains("| 1 |"))
+        assertTrue(report.contains("| HTTP 404 |"))
+        assertTrue(report.contains("| 2 |"))
+        assertTrue(report.contains("| ERR_FILE_NOT_FOUND |"))
+        assertTrue("Rows carry workspace file paths, not raw URLs", report.contains("| missing.html |"))
+
+        // dismiss 清明细——再发就是 null（本次失败周期结束）
+        fixture.viewModel.dismissPageError()
+        assertNull(fixture.viewModel.buildErrorReportText())
         fixture.stop()
     }
 

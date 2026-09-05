@@ -54,6 +54,9 @@ sealed interface ChatTimelineItem {
 
     data class Thinking(override val id: String, val text: String, val isStreaming: Boolean = false) : ChatTimelineItem
 
+    /** 预览加载失败报告——用户消息形态的折叠块：收起显示摘要，展开显示时间轴 + err 表格。 */
+    data class ErrorReport(override val id: String, val summary: String, val body: String) : ChatTimelineItem
+
     data class ToolCall(override val id: String, val name: String) : ChatTimelineItem
 
     data class ToolResult(override val id: String, val name: String, val isError: Boolean) : ChatTimelineItem
@@ -243,6 +246,20 @@ private fun ChatUiState.updateStreamingResponse(transform: (StreamingResponse) -
     return copy(streamingResponses = streamingResponses.dropLast(1) + transform(response))
 }
 
+const val ERROR_REPORT_MARKER = "[error-report] "
+
+/**
+ * 把错误报告消息文本解析为折叠的 ErrorReport 条目（收起 = 摘要首行，展开 = 时间轴表格）。
+ * 非报告消息返回 null，走普通用户消息渲染。
+ */
+internal fun String.toErrorReport(id: String): ChatTimelineItem.ErrorReport? {
+    if (!startsWith(ERROR_REPORT_MARKER)) return null
+    val lines = lineSequence().map(String::trimEnd).toList()
+    val summary = lines.first().removePrefix(ERROR_REPORT_MARKER)
+    val body = lines.drop(1).filter(String::isNotBlank).joinToString("\n")
+    return ChatTimelineItem.ErrorReport(id = id, summary = summary, body = body)
+}
+
 /**
  * 检测条目流里「新出现」的回合完成条目。
  * @return 处理到的最大条目 id（下次继续用），以及该回合是否为 COMPLETE 完成。
@@ -266,11 +283,19 @@ internal fun List<SessionEntryEntity>.toTimeline(repository: SessionRepository):
                 val payload = repository.decodeMessage(entry)
                 when (val message = payload.message) {
                     is Message.User -> when (payload.origin) {
-                        MessageOrigin.USER -> timeline += ChatTimelineItem.Message(
-                            id = entry.id.toString(),
-                            role = ChatRole.USER,
-                            text = message.textContent()
-                        )
+                        MessageOrigin.USER -> {
+                            val text = message.textContent()
+                            val report = text.toErrorReport(entry.id.toString())
+                            if (report != null) {
+                                timeline += report
+                            } else {
+                                timeline += ChatTimelineItem.Message(
+                                    id = entry.id.toString(),
+                                    role = ChatRole.USER,
+                                    text = text
+                                )
+                            }
+                        }
                         MessageOrigin.TOOL -> {
                             message.parts
                                 .filterIsInstance<MessagePart.Tool.Result>()
