@@ -67,6 +67,7 @@
     <string name="chat_cd_expand_thinking">展开思考过程</string>
     <string name="chat_cd_collapse_thinking">收起思考过程</string>
     <string name="chat_agent_cancelled">任务已取消</string>
+    <string name="chat_agent_incomplete">任务未完成</string>
     <string name="chat_agent_failed">Agent 执行失败</string>
     <string name="chat_tool_started">正在执行 %1$s</string>
     <string name="chat_tool_finished">已完成 %1$s</string>

@@ -57,8 +57,10 @@ class KoogAgentRunner @Inject constructor(
         val pendingText = StringBuilder()
         val pendingReasoning = StringBuilder()
         var executor: MultiLLMPromptExecutor? = null
+        var sessionRunStarted = false
         try {
-            sessionRepository.repairInterruptedToolCalls(sessionId)
+            sessionRepository.beginSessionRun(sessionId)
+            sessionRunStarted = true
             val modelMessages = sessionRepository.loadModelMessages(sessionId)
             sessionRepository.appendMessage(
                 sessionId,
@@ -127,7 +129,11 @@ class KoogAgentRunner @Inject constructor(
             )
             throw error
         } finally {
-            executor?.close()
+            try {
+                executor?.close()
+            } finally {
+                if (sessionRunStarted) sessionRepository.endSessionRun(sessionId)
+            }
         }
     }
 }

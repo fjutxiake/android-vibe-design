@@ -47,7 +47,7 @@ class SessionRepositoryTest {
     }
 
     @Test
-    fun cancelledTurnKeepsCompletedItemsInModelContext() = runTest {
+    fun cancelledTurnKeepsPartialResponseAndCompletedItemsInModelContext() = runTest {
         val repository = SessionRepository(InMemorySessionDao())
         repository.appendMessage(
             "session",
@@ -61,13 +61,19 @@ class SessionRepositoryTest {
             MessageOrigin.ASSISTANT,
             Message.Assistant("I updated the first file.", ResponseMetaInfo.Empty)
         )
-        repository.finishTurn("session", "turn", TurnStatus.CANCELLED)
+        repository.finishTurn(
+            "session",
+            "turn",
+            TurnStatus.CANCELLED,
+            partialResponse = "I was updating the second file."
+        )
 
         assertEquals(
             listOf(
                 "Update the app",
                 "I updated the first file.",
-                "The previous turn was interrupted on purpose. Any interrupted tool calls may have partially executed. Inspect the workspace before continuing."
+                "I was updating the second file.",
+                "The previous turn was cancelled by the user. Any tool calls may have partially executed. Inspect the workspace before continuing."
             ),
             repository.loadModelMessages("session").map { it.textContent() }
         )
@@ -120,6 +126,82 @@ class SessionRepositoryTest {
             "The tool execution was interrupted and its outcome is unknown. Inspect the workspace before retrying it.",
             part.output
         )
+    }
+
+    @Test
+    fun incompleteTurnGetsIncompleteFinishAndModelContext() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.appendMessage(
+            "session",
+            "completed-turn",
+            MessageOrigin.USER,
+            Message.User("Summarize the change", RequestMetaInfo.Empty)
+        )
+        repository.finishTurn("session", "completed-turn", TurnStatus.COMPLETE)
+        repository.appendMessage(
+            "session",
+            "interrupted-turn",
+            MessageOrigin.USER,
+            Message.User("Update the app", RequestMetaInfo.Empty)
+        )
+
+        repository.repairIncompleteTurns("session")
+
+        val entries = repository.observeEntries("session").first()
+        val repairedFinish = entries.last()
+        assertEquals("interrupted-turn", repairedFinish.turnId)
+        assertEquals(TurnStatus.INCOMPLETE, repository.decodeTurnFinished(repairedFinish).status)
+        assertEquals(
+            listOf(
+                "Summarize the change",
+                "Update the app",
+                "The previous turn did not finish normally. Any tool calls may have partially executed. Inspect the workspace before continuing."
+            ),
+            repository.loadModelMessages("session").map { it.textContent() }
+        )
+    }
+
+    @Test
+    fun recoveryRepairsAnInterruptedSessionOnlyOnce() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.appendMessage(
+            "session",
+            "interrupted-turn",
+            MessageOrigin.ASSISTANT,
+            Message.Assistant(
+                MessagePart.Tool.Call(id = "call-1", tool = "write_file", args = "{}"),
+                ResponseMetaInfo.Empty
+            )
+        )
+
+        repository.recoverInterruptedSession("session")
+        repository.recoverInterruptedSession("session")
+
+        val entries = repository.observeEntries("session").first()
+        assertEquals(3, entries.size)
+        assertEquals(TurnStatus.INCOMPLETE, repository.decodeTurnFinished(entries.last()).status)
+        val toolResult = repository.decodeMessage(entries[1]).message as Message.User
+        assertEquals("call-1", (toolResult.parts.single() as MessagePart.Tool.Result).id)
+    }
+
+    @Test
+    fun recoveryDoesNotFinishAnActiveSessionRun() = runTest {
+        val repository = SessionRepository(InMemorySessionDao())
+        repository.beginSessionRun("session")
+        repository.appendMessage(
+            "session",
+            "active-turn",
+            MessageOrigin.USER,
+            Message.User("Update the app", RequestMetaInfo.Empty)
+        )
+
+        repository.recoverInterruptedSession("session")
+        repository.finishTurn("session", "active-turn", TurnStatus.COMPLETE)
+        repository.endSessionRun("session")
+
+        val entries = repository.observeEntries("session").first()
+        assertEquals(2, entries.size)
+        assertEquals(TurnStatus.COMPLETE, repository.decodeTurnFinished(entries.last()).status)
     }
 
     @Test

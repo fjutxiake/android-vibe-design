@@ -67,5 +67,6 @@ enum class MessageOrigin {
 enum class TurnStatus {
     COMPLETE,
     FAILED,
-    CANCELLED
+    CANCELLED,
+    INCOMPLETE
 }

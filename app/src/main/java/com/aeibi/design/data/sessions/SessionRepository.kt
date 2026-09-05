@@ -3,16 +3,21 @@ package com.aeibi.design.data.sessions
 import ai.koog.prompt.message.Message
 import ai.koog.prompt.message.MessagePart
 import ai.koog.prompt.message.RequestMetaInfo
+import ai.koog.prompt.message.ResponseMetaInfo
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 
 @Singleton
 class SessionRepository @Inject constructor(private val sessionDao: SessionDao) {
+    private val recoveryMutex = Mutex()
+    private val activeSessionRunCounts = mutableMapOf<String, Int>()
     private val json = Json {
         encodeDefaults = true
         ignoreUnknownKeys = true
@@ -79,8 +84,17 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
                     messages = decodeContextReplacement(entry).messages.toMutableList()
                 }
                 SessionEntryType.TURN_FINISHED -> {
-                    if (decodeTurnFinished(entry).status == TurnStatus.CANCELLED) {
-                        messages += Message.User(INTERRUPTED_TURN_CONTEXT, RequestMetaInfo.Empty)
+                    val finished = decodeTurnFinished(entry)
+                    val context = when (finished.status) {
+                        TurnStatus.CANCELLED -> CANCELLED_TURN_CONTEXT
+                        TurnStatus.INCOMPLETE -> INCOMPLETE_TURN_CONTEXT
+                        else -> null
+                    }
+                    context?.let {
+                        finished.partialResponse
+                            ?.takeIf(String::isNotBlank)
+                            ?.let { messages += Message.Assistant(it, ResponseMetaInfo.Empty) }
+                        messages += Message.User(it, RequestMetaInfo.Empty)
                     }
                 }
             }
@@ -88,8 +102,35 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         return messages
     }
 
-    suspend fun repairInterruptedToolCalls(sessionId: String) {
-        val entries = sessionDao.getEntries(sessionId)
+    suspend fun recoverInterruptedSession(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        recoverInterruptedSessionLocked(sessionId)
+    }
+
+    suspend fun beginSessionRun(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId !in activeSessionRunCounts) {
+            recoverInterruptedSessionLocked(sessionId)
+        }
+        activeSessionRunCounts[sessionId] = activeSessionRunCounts.getOrDefault(sessionId, 0) + 1
+    }
+
+    suspend fun endSessionRun(sessionId: String) = withContext(NonCancellable) {
+        recoveryMutex.withLock {
+            val remainingRuns = (activeSessionRunCounts[sessionId] ?: return@withLock) - 1
+            if (remainingRuns == 0) {
+                activeSessionRunCounts.remove(sessionId)
+            } else {
+                activeSessionRunCounts[sessionId] = remainingRuns
+            }
+        }
+    }
+
+    suspend fun repairInterruptedToolCalls(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        repairInterruptedToolCalls(sessionId, sessionDao.getEntries(sessionId))
+    }
+
+    private suspend fun repairInterruptedToolCalls(sessionId: String, entries: List<SessionEntryEntity>) {
         val calls = mutableListOf<Pair<String?, MessagePart.Tool.Call>>()
         val results = mutableSetOf<String?>()
         entries.forEach { entry ->
@@ -122,6 +163,29 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         }
     }
 
+    suspend fun repairIncompleteTurns(sessionId: String) = recoveryMutex.withLock {
+        if (sessionId in activeSessionRunCounts) return@withLock
+        repairIncompleteTurns(sessionId, sessionDao.getEntries(sessionId))
+    }
+
+    private suspend fun repairIncompleteTurns(sessionId: String, entries: List<SessionEntryEntity>) {
+        val finishedTurnIds = entries
+            .filter { SessionEntryType.valueOf(it.type) == SessionEntryType.TURN_FINISHED }
+            .mapNotNull(SessionEntryEntity::turnId)
+            .toSet()
+        entries
+            .mapNotNull(SessionEntryEntity::turnId)
+            .filter { it !in finishedTurnIds }
+            .distinct()
+            .forEach { finishTurn(sessionId, it, TurnStatus.INCOMPLETE) }
+    }
+
+    private suspend fun recoverInterruptedSessionLocked(sessionId: String) {
+        val entries = sessionDao.getEntries(sessionId)
+        repairInterruptedToolCalls(sessionId, entries)
+        repairIncompleteTurns(sessionId, entries)
+    }
+
     suspend fun deleteSession(sessionId: String): Boolean = sessionDao.deleteSession(sessionId) > 0
 
     suspend fun deleteSessionsForProject(projectId: String): Int = sessionDao.deleteSessionsForProject(projectId)
@@ -151,8 +215,10 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
     }
 
     private companion object {
-        const val INTERRUPTED_TURN_CONTEXT =
-            "The previous turn was interrupted on purpose. Any interrupted tool calls may have partially executed. Inspect the workspace before continuing."
+        const val CANCELLED_TURN_CONTEXT =
+            "The previous turn was cancelled by the user. Any tool calls may have partially executed. Inspect the workspace before continuing."
+        const val INCOMPLETE_TURN_CONTEXT =
+            "The previous turn did not finish normally. Any tool calls may have partially executed. Inspect the workspace before continuing."
         const val UNKNOWN_TOOL_OUTCOME =
             "The tool execution was interrupted and its outcome is unknown. Inspect the workspace before retrying it."
     }
