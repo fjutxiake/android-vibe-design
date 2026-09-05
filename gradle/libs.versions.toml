@@ -26,6 +26,8 @@ koogDeepSeek = "1.2.0-beta"
 ktlint = "14.2.0"
 dataStore = "1.2.1"
 ucrop = "2.2.11"
+arscLib = "1.4.0"
+apksig = "9.3.1"
 
 [libraries]
 androidx-core-ktx = { module = "androidx.core:core-ktx", version.ref = "androidxCore" }
@@ -69,6 +71,8 @@ hilt-compiler = { module = "com.google.dagger:hilt-compiler", version.ref = "hil
 androidx-hilt-lifecycle-viewmodel-compose = { module = "androidx.hilt:hilt-lifecycle-viewmodel-compose", version.ref = "androidxHilt" }
 androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 ucrop = { module = "com.github.yalantis:ucrop", version.ref = "ucrop" }
+apksig = { module = "com.android.tools.build:apksig", version.ref = "apksig" }
+arsc-lib = { module = "io.github.reandroid:ARSCLib", version.ref = "arscLib" }
 [plugins]
 android-application = { id = "com.android.application", version.ref = "androidGradlePlugin" }
 compose-compiler = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }

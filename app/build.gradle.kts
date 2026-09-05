@@ -97,6 +97,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.webkit)
     implementation(libs.ucrop)
+    implementation(libs.apksig)
+    implementation(libs.arsc.lib)
 
     // Compose
     implementation(libs.androidx.compose.ui)
