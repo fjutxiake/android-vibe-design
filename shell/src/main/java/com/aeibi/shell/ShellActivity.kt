@@ -1,18 +1,26 @@
 package com.aeibi.shell
 
-import android.app.Activity
+import android.content.res.Configuration
 import android.os.Bundle
+import android.view.Gravity
+import android.view.View
+import android.webkit.RenderProcessGoneDetail
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
-import androidx.webkit.WebViewAssetLoader
+import android.widget.FrameLayout
+import android.widget.ProgressBar
+import androidx.activity.ComponentActivity
+import androidx.activity.OnBackPressedCallback
 import java.io.File
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.Json
 
-class ShellActivity : Activity() {
+class ShellActivity : ComponentActivity() {
     private var webView: WebView? = null
+    private var loadingIndicator: ProgressBar? = null
+    private var assetLoader: LocalStaticAssetLoader? = null
     private var server: LocalStaticFileServer? = null
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -21,49 +29,96 @@ class ShellActivity : Activity() {
         val config = readConfig()
         val newWebView = WebView(this)
         webView = newWebView
-        setContentView(newWebView)
-        configureWebView(newWebView)
+        setContentView(createContentView(newWebView))
+        newWebView.settings.javaScriptEnabled = true
+        newWebView.settings.domStorageEnabled = true
+        newWebView.settings.allowFileAccess = false
+        newWebView.settings.allowContentAccess = false
+        newWebView.webViewClient = RenderProcessHandlingWebViewClient()
+        onBackPressedDispatcher.addCallback(
+            this,
+            object : OnBackPressedCallback(true) {
+                override fun handleOnBackPressed() {
+                    navigateBack()
+                }
+            }
+        )
 
         when (config.build.mode) {
             "asset-loader" -> loadFromAssets(newWebView, config.build)
             "http-server" -> loadFromLocalServer(newWebView, config.build)
-            else -> error("Unsupported build mode: ${config.build.mode}")
+            else -> loadingIndicator?.visibility = View.GONE
         }
     }
 
     override fun onDestroy() {
+        assetLoader?.stop()
         server?.stop()
         webView?.destroy()
         super.onDestroy()
+    }
+
+    private fun navigateBack() {
+        val currentWebView = webView
+        if (currentWebView?.canGoBack() == true) {
+            currentWebView.goBack()
+        } else {
+            finish()
+        }
+    }
+
+    private fun createContentView(webView: WebView): FrameLayout = FrameLayout(this).apply {
+        addView(
+            webView,
+            FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT
+            )
+        )
+        loadingIndicator = ProgressBar(this@ShellActivity).also { indicator ->
+            addView(
+                indicator,
+                FrameLayout.LayoutParams(
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    FrameLayout.LayoutParams.WRAP_CONTENT,
+                    Gravity.CENTER
+                )
+            )
+        }
+    }
+
+    override fun onConfigurationChanged(newConfig: Configuration) {
+        super.onConfigurationChanged(newConfig)
+        webView?.invalidate()
     }
 
     private fun readConfig(): WorkspaceConfig = assets.open("vibe.config.json").bufferedReader().use {
         configJson.decodeFromString(WorkspaceConfig.serializer(), it.readText())
     }
 
-    private fun configureWebView(webView: WebView) {
-        webView.settings.javaScriptEnabled = true
-        webView.settings.domStorageEnabled = true
-        webView.settings.allowFileAccess = false
-        webView.settings.allowContentAccess = false
-    }
-
     private fun loadFromAssets(webView: WebView, config: WebRuntimeConfig) {
-        val assetLoader = WebViewAssetLoader.Builder()
-            .addPathHandler("/assets/", WebViewAssetLoader.AssetsPathHandler(this))
-            .build()
-        webView.webViewClient = object : WebViewClient() {
+        val frontendAssets = extractFrontendAssets().toPath()
+        val frontendRoot = frontendAssets.resolve(config.root).normalize()
+        require(frontendRoot.startsWith(frontendAssets)) { "Build root must stay inside frontend assets" }
+        val entry = frontendRoot.resolve(config.entry).normalize()
+        require(entry.startsWith(frontendRoot)) { "Build entry must stay inside frontend assets" }
+        val newAssetLoader = LocalStaticAssetLoader(this)
+        assetLoader = newAssetLoader
+        webView.webViewClient = object : RenderProcessHandlingWebViewClient() {
             override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? =
-                assetLoader.shouldInterceptRequest(request.url)
+                newAssetLoader.shouldInterceptRequest(request.url)
         }
-        webView.loadUrl("https://appassets.androidplatform.net/assets/frontend_app/${config.entry}")
+        val entryPath = frontendRoot.relativize(entry).toString().replace(File.separatorChar, '/')
+        webView.loadUrl(newAssetLoader.start(frontendRoot, entryPath).toString())
     }
 
     private fun loadFromLocalServer(webView: WebView, config: WebRuntimeConfig) {
-        val frontendDirectory = extractFrontendAssets()
+        val frontendAssets = extractFrontendAssets().toPath()
+        val frontendRoot = frontendAssets.resolve(config.root).normalize()
+        require(frontendRoot.startsWith(frontendAssets)) { "Build root must stay inside frontend assets" }
         val newServer = LocalStaticFileServer()
         server = newServer
-        val endpoint = runBlocking { newServer.start(frontendDirectory.toPath(), 0, config.fallback) }
+        val endpoint = runBlocking { newServer.start(frontendRoot, 0, config.fallback) }
         webView.loadUrl(endpoint.resolve(config.entry).toString())
     }
 
@@ -91,5 +146,18 @@ class ShellActivity : Activity() {
 
     private companion object {
         val configJson = Json { ignoreUnknownKeys = true }
+    }
+
+    private open inner class RenderProcessHandlingWebViewClient : WebViewClient() {
+        override fun onPageCommitVisible(view: WebView, url: String) {
+            if (webView === view) loadingIndicator?.visibility = View.GONE
+        }
+
+        override fun onRenderProcessGone(view: WebView, detail: RenderProcessGoneDetail): Boolean {
+            if (webView === view) webView = null
+            view.destroy()
+            finish()
+            return true
+        }
     }
 }

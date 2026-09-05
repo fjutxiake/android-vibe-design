@@ -38,6 +38,7 @@ kotlin {
 }
 
 dependencies {
+    implementation(libs.androidx.activity)
     implementation(libs.androidx.webkit)
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.ktor.server.core)
