@@ -9,6 +9,8 @@ import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -45,6 +47,7 @@ import com.aeibi.design.feature.preview.ConsoleScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.sessions.SessionDrawer
+import java.io.File
 import kotlinx.coroutines.launch
 
 private enum class WorkspacePane {
@@ -78,6 +81,37 @@ fun ProjectWorkspaceScreen(
     val previewState by workspaceViewModel.previewUiState.collectAsState()
     // lambda 中无法调用 stringResource,先在组合作用域取好文本再闭包引用。
     val deleteFailedText = stringResource(R.string.projects_delete_failed)
+    val exportFailedText = stringResource(R.string.workspace_export_failed)
+    val exportSavedText = stringResource(R.string.workspace_export_saved)
+    val context = LocalContext.current
+    var exporting by rememberSaveable { mutableStateOf(false) }
+    // 导出：用户选保存位置（CreateDocument）→ 导出 zip → 写入所选 uri
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("application/zip")
+    ) { uri ->
+        if (uri != null && !exporting) {
+            exporting = true
+            val outputFile = File(context.cacheDir, "export-${System.currentTimeMillis()}.zip")
+            viewModel.exportWorkspace(projectId, outputFile) { result ->
+                result
+                    .onSuccess { file ->
+                        runCatching {
+                            context.contentResolver.openOutputStream(uri)?.use { out ->
+                                file.inputStream().use { it.copyTo(out) }
+                            } ?: error("Cannot open export destination")
+                        }.onFailure {
+                            scope.launch { snackbarHostState.showSnackbar(exportFailedText) }
+                        }
+                        file.delete()
+                        scope.launch { snackbarHostState.showSnackbar(exportSavedText) }
+                    }
+                    .onFailure {
+                        scope.launch { snackbarHostState.showSnackbar(exportFailedText) }
+                    }
+                exporting = false
+            }
+        }
+    }
 
     fun closePreview() {
         if (fullscreen) {
@@ -158,7 +192,12 @@ fun ProjectWorkspaceScreen(
             onVersionsClick = onVersionsClick,
             onProjectSettingsClick = onProjectSettingsClick,
             onAppSettingsClick = onAppSettingsClick,
-            onDeleteClick = { showDeleteConfirm = true }
+            onDeleteClick = { showDeleteConfirm = true },
+            onExportClick = {
+                if (!exporting) {
+                    exportLauncher.launch("${project?.name?.takeIf(String::isNotBlank) ?: "project"}.zip")
+                }
+            }
         )
     }
 

@@ -55,6 +55,9 @@
     <string name="workspace_cd_actions">项目操作</string>
     <string name="workspace_action_build">打包与构建</string>
     <string name="workspace_action_versions">版本管理</string>
+    <string name="workspace_action_export">导出项目（zip）</string>
+    <string name="workspace_export_saved">已导出</string>
+    <string name="workspace_export_failed">导出失败</string>
     <string name="workspace_action_project_settings">项目设置</string>
     <string name="workspace_action_app_settings">应用设置</string>
     <!-- Chat -->
@@ -96,7 +99,9 @@
     <!-- Project setup -->
     <string name="project_setup_title">项目初始化</string>
     <string name="project_setup_template_title">从模板开始</string>
-    <string name="project_setup_start_blank">从空白项目开始</string>
+    <string name="project_setup_start_blank">空白模板</string>
+    <string name="project_setup_custom_title">自定义模板</string>
+    <string name="project_setup_import_template">导入模板（zip）</string>
     <string name="project_setup_start_failed">无法初始化项目，请重试</string>
     <!-- Template gallery -->
     <string name="template_gallery_title">选择模板</string>

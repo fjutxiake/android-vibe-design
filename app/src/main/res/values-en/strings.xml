@@ -55,6 +55,9 @@
     <string name="workspace_cd_actions">Project actions</string>
     <string name="workspace_action_build">Build &amp; package</string>
     <string name="workspace_action_versions">Versions</string>
+    <string name="workspace_action_export">Export project (zip)</string>
+    <string name="workspace_export_saved">Exported</string>
+    <string name="workspace_export_failed">Export failed</string>
     <string name="workspace_action_project_settings">Project settings</string>
     <string name="workspace_action_app_settings">App settings</string>
     <!-- Chat -->
@@ -96,7 +99,9 @@
     <!-- Project setup -->
     <string name="project_setup_title">Project setup</string>
     <string name="project_setup_template_title">Start from a template</string>
-    <string name="project_setup_start_blank">Start with a blank project</string>
+    <string name="project_setup_start_blank">Blank template</string>
+    <string name="project_setup_custom_title">Custom template</string>
+    <string name="project_setup_import_template">Import template (zip)</string>
     <string name="project_setup_start_failed">Could not initialize the project. Try again</string>
     <!-- Template gallery -->
     <string name="template_gallery_title">Choose a template</string>

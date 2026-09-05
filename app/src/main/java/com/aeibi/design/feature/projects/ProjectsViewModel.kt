@@ -38,6 +38,25 @@ class ProjectsViewModel @Inject constructor(
         }
     }
 
+    /** 从 zip 导入初始化（导入模板/项目包）。 */
+    fun initializeFromZip(id: String, uri: android.net.Uri, onResult: (Result<Unit>) -> Unit = {}) {
+        viewModelScope.launch {
+            onResult(runCatching { projectRepository.initializeFromZip(id, uri) })
+        }
+    }
+
+    /** 导出 workspace 为 zip。 */
+    fun exportWorkspace(id: String, outFile: java.io.File, onResult: (Result<java.io.File>) -> Unit = {}) {
+        viewModelScope.launch {
+            onResult(
+                runCatching {
+                    projectRepository.exportWorkspace(id, outFile)
+                    outFile
+                }
+            )
+        }
+    }
+
     fun updateProject(
         id: String,
         name: String,
