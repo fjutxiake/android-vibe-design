@@ -7,6 +7,14 @@ plugins {
     alias(libs.plugins.hilt)
 }
 
+val shellAssetsDirectory = layout.buildDirectory.dir("generated/shell-assets")
+val packageShellApk by tasks.registering(Copy::class) {
+    dependsOn(":shell:assembleRelease")
+    from(project(":shell").layout.buildDirectory.file("outputs/apk/release/shell-release-unsigned.apk"))
+    into(shellAssetsDirectory)
+    rename { "shell.apk" }
+}
+
 android {
     namespace = "com.aeibi.design"
     compileSdk = 37
@@ -52,6 +60,16 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.sources.assets?.addStaticSourceDirectory(shellAssetsDirectory.get().asFile.absolutePath)
+    }
+}
+
+tasks.named("preBuild") {
+    dependsOn(packageShellApk)
+}
+
 kotlin {
     jvmToolchain(17)
     compilerOptions {
@@ -79,6 +97,8 @@ dependencies {
     implementation(libs.androidx.datastore.preferences)
     implementation(libs.androidx.webkit)
     implementation(libs.ucrop)
+    implementation(libs.apksig)
+    implementation(libs.arsc.lib)
 
     // Compose
     implementation(libs.androidx.compose.ui)
