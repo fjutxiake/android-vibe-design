@@ -201,17 +201,22 @@ class ChatViewModel @Inject constructor(
     }
 
     private suspend fun ensureSession(projectId: String, sessionId: String, firstMessage: String) {
-        if (sessionRepository.getSession(sessionId) != null) return
         val now = System.currentTimeMillis()
-        sessionRepository.saveSession(
-            SessionEntity(
-                id = sessionId,
-                projectId = projectId,
-                title = firstMessage.take(48),
-                createdAt = now,
-                updatedAt = now
+        val existing = sessionRepository.getSession(sessionId)
+        if (existing == null) {
+            sessionRepository.saveSession(
+                SessionEntity(
+                    id = sessionId,
+                    projectId = projectId,
+                    title = firstMessage.take(48),
+                    createdAt = now,
+                    updatedAt = now
+                )
             )
-        )
+        } else if (existing.title.isBlank()) {
+            // 预创建的空会话：首条消息到达即自动命名
+            sessionRepository.renameSession(sessionId, firstMessage.take(48), now)
+        }
     }
 }
 

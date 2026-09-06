@@ -38,6 +38,10 @@ class InMemorySessionDao : SessionDao {
     override fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>> =
         entries.map { values -> values.filter { it.sessionId == sessionId } }
 
+    override suspend fun findEmptySession(projectId: String): SessionEntity? = sessions.values
+        .filter { it.projectId == projectId && it.id !in entries.value.map { e -> e.sessionId } }
+        .maxByOrNull(SessionEntity::updatedAt)
+
     override suspend fun getEntries(sessionId: String): List<SessionEntryEntity> =
         entries.value.filter { it.sessionId == sessionId }
 

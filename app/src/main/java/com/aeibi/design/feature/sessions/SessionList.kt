@@ -105,7 +105,9 @@ fun SessionList(
                             MaterialTheme.colorScheme.onSurface
                         }
                     ),
-                    headlineContent = { Text(session.title) }
+                    headlineContent = {
+                        Text(session.title.ifBlank { stringResource(R.string.new_session) })
+                    }
                 )
                 Box(modifier = Modifier.align(Alignment.TopStart)) {
                     DropdownMenu(

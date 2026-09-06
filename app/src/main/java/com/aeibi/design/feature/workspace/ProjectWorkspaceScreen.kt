@@ -41,12 +41,14 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.aeibi.design.R
 import com.aeibi.design.feature.chat.ChatScreen
 import com.aeibi.design.feature.preview.ConsoleScreen
 import com.aeibi.design.feature.preview.ProjectPreviewScreen
 import com.aeibi.design.feature.projects.ProjectsViewModel
 import com.aeibi.design.feature.sessions.SessionDrawer
+import com.aeibi.design.feature.sessions.SessionViewModel
 import java.io.File
 import kotlinx.coroutines.launch
 
@@ -79,6 +81,21 @@ fun ProjectWorkspaceScreen(
     var fullscreen by rememberSaveable(projectId) { mutableStateOf(false) }
     val project by viewModel.observeProject(projectId).collectAsState(initial = null)
     val previewState by workspaceViewModel.previewUiState.collectAsState()
+    // 重进项目自动恢复最近会话——直觉是"继续上次的对话"。仅自动一次：
+    // 用户在本轮显式点"新建会话"（清空选择）后不再拉回。
+    val sessionViewModel: SessionViewModel = hiltViewModel()
+    var autoRestoredSession by remember(projectId) { mutableStateOf(false) }
+    LaunchedEffect(projectId) { sessionViewModel.observe(projectId) }
+    val projectSessions by sessionViewModel.sessions.collectAsStateWithLifecycle()
+    LaunchedEffect(projectId, projectSessions, selectedSessionId) {
+        if (!autoRestoredSession && selectedSessionId == null) {
+            val latest = projectSessions.maxByOrNull { it.updatedAt }
+            if (latest != null) {
+                autoRestoredSession = true
+                selectedSessionId = latest.id
+            }
+        }
+    }
     // lambda 中无法调用 stringResource,先在组合作用域取好文本再闭包引用。
     val deleteFailedText = stringResource(R.string.projects_delete_failed)
     val exportFailedText = stringResource(R.string.workspace_export_failed)

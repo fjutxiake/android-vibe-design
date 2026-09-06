@@ -47,6 +47,7 @@ class ProjectsViewModelTest {
         override suspend fun touchSession(sessionId: String, updatedAt: Long): Int = 0
 
         override fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>> = flowOf(emptyList())
+        override suspend fun findEmptySession(projectId: String): SessionEntity? = null
 
         override suspend fun getEntries(sessionId: String): List<SessionEntryEntity> = emptyList()
 

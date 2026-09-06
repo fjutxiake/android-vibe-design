@@ -6,6 +6,7 @@ import ai.koog.prompt.message.RequestMetaInfo
 import ai.koog.prompt.message.ResponseMetaInfo
 import jakarta.inject.Inject
 import jakarta.inject.Singleton
+import java.util.UUID
 import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.sync.Mutex
@@ -38,6 +39,23 @@ class SessionRepository @Inject constructor(private val sessionDao: SessionDao) 
         sessionDao.touchSession(sessionId, updatedAt) > 0
 
     fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>> = sessionDao.observeEntries(sessionId)
+
+    /** 项目内最早的空会话（无消息），无则 null。 */
+    suspend fun findEmptySession(projectId: String): SessionEntity? = sessionDao.findEmptySession(projectId)
+
+    /** 创建一个空会话（title 留空 = 未命名，首条消息到达时自动命名）。 */
+    suspend fun createEmptySession(projectId: String): SessionEntity {
+        val now = System.currentTimeMillis()
+        val session = SessionEntity(
+            id = UUID.randomUUID().toString(),
+            projectId = projectId,
+            title = "",
+            createdAt = now,
+            updatedAt = now
+        )
+        sessionDao.upsertSession(session)
+        return session
+    }
 
     suspend fun appendMessage(sessionId: String, turnId: String, origin: MessageOrigin, message: Message) {
         appendEntry(

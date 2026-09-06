@@ -60,7 +60,11 @@ fun SessionDrawer(
         Column(modifier = Modifier.padding(spacing.md), verticalArrangement = Arrangement.spacedBy(spacing.xxs)) {
             Button(
                 onClick = {
-                    onSessionSelected(null)
+                    // 新建 = 复用/创建持久空会话（多次点击只保留一个；发消息后才允许再建）。
+                    // 抽屉关闭由上层 onSessionSelected 回调处理。
+                    scope.launch {
+                        onSessionSelected(viewModel.openOrCreateEmptySession(projectId))
+                    }
                 },
                 modifier = Modifier.fillMaxWidth()
             ) {

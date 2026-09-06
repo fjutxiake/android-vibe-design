@@ -40,6 +40,17 @@ interface SessionDao {
     @Query("SELECT * FROM session_entries WHERE session_id = :sessionId ORDER BY id ASC")
     fun observeEntries(sessionId: String): Flow<List<SessionEntryEntity>>
 
+    /** 项目内最早的空会话（无任何消息）——「新建会话」复用它而不是反复创建。 */
+    @Query(
+        """
+      SELECT * FROM sessions
+      WHERE project_id = :projectId
+        AND id NOT IN (SELECT DISTINCT session_id FROM session_entries)
+      ORDER BY updated_at DESC LIMIT 1
+    """
+    )
+    suspend fun findEmptySession(projectId: String): SessionEntity?
+
     @Query("SELECT * FROM session_entries WHERE session_id = :sessionId ORDER BY id ASC")
     suspend fun getEntries(sessionId: String): List<SessionEntryEntity>
 
