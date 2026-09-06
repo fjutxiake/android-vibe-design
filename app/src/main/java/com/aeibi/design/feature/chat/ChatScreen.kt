@@ -64,8 +64,10 @@ fun ChatScreen(
         )
         ChatComposer(
             input = uiState.input,
+            attachment = uiState.attachment,
             isRunning = uiState.isRunning,
             onInputChange = viewModel::updateInput,
+            onRemoveAttachment = viewModel::removeAttachment,
             onSend = { viewModel.send(onSessionCreated) },
             onCancel = viewModel::cancel
         )

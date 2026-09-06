@@ -62,6 +62,7 @@
     <string name="workspace_action_app_settings">App settings</string>
     <!-- Chat -->
     <string name="chat_cd_add_tool">Add tool</string>
+    <string name="chat_cd_remove_attachment">Remove attachment</string>
     <string name="chat_input_hint">Describe what you want to build</string>
     <string name="chat_cd_send">Send</string>
     <string name="chat_cd_cancel">Stop</string>
@@ -91,6 +92,8 @@
     <string name="preview_failed">Preview failed to start</string>
     <string name="preview_console_title">Console</string>
     <string name="preview_console_cd_clear">Clear console</string>
+    <string name="preview_console_add_selected">Add to chat (%1$d)</string>
+    <string name="preview_console_cd_clear_selection">Clear selection</string>
     <string name="preview_console_empty">No console messages</string>
     <string name="versions_title">Versions</string>
     <string name="versions_create_snapshot">Create snapshot</string>
