@@ -5,6 +5,7 @@ import android.graphics.Color
 import androidx.test.core.app.ApplicationProvider
 import com.android.apksig.ApkVerifier
 import com.reandroid.apk.ApkModule
+import com.reandroid.app.AndroidManifest
 import java.io.File
 import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
@@ -62,6 +63,8 @@ class ApkExporterTest {
 
         ApkModule.loadApkFile(output).use { apk ->
             assertEquals("com.example.project", apk.androidManifest.packageName)
+            assertDynamicReceiverPermissionWasRenamed(apk)
+            assertStartupProviderAuthorityWasRenamed(apk)
             assertEquals("Project", apk.androidManifest.applicationLabelString)
             assertEquals(1, apk.androidManifest.versionCode)
             assertEquals("1.0", apk.androidManifest.versionName)
@@ -110,5 +113,38 @@ class ApkExporterTest {
     private fun assertAssetEquals(apk: ApkModule, path: String, expected: File) {
         val source = requireNotNull(apk.getInputSource(path))
         assertArrayEquals(expected.readBytes(), source.openStream().use { it.readBytes() })
+    }
+
+    private fun assertDynamicReceiverPermissionWasRenamed(apk: ApkModule) {
+        val oldPermission = "com.aeibi.shell.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        val newPermission = "com.example.project.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        with(apk.androidManifest) {
+            assertEquals(
+                null,
+                getNamedElement(AndroidManifest.PATH_MANIFEST.element(AndroidManifest.TAG_permission), oldPermission)
+            )
+            assertTrue(
+                getNamedElement(AndroidManifest.PATH_MANIFEST.element(AndroidManifest.TAG_permission), newPermission) !=
+                    null
+            )
+            assertTrue(getUsesPermissions().contains(newPermission))
+            assertTrue(!getUsesPermissions().contains(oldPermission))
+        }
+    }
+
+    private fun assertStartupProviderAuthorityWasRenamed(apk: ApkModule) {
+        val oldAuthority = "com.aeibi.shell.androidx-startup"
+        val newAuthority = "com.example.project.androidx-startup"
+        val providers = apk.androidManifest.listApplicationElementsByTag(AndroidManifest.TAG_provider)
+        assertTrue(
+            providers.any { provider ->
+                provider.searchAttributeByResourceId(AndroidManifest.ID_authorities)?.valueAsString == newAuthority
+            }
+        )
+        assertTrue(
+            providers.none { provider ->
+                provider.searchAttributeByResourceId(AndroidManifest.ID_authorities)?.valueAsString == oldAuthority
+            }
+        )
     }
 }

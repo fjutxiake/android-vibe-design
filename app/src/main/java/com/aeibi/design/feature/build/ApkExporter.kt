@@ -5,6 +5,7 @@ import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.android.apksig.ApkSigner
 import com.reandroid.apk.ApkModule
+import com.reandroid.app.AndroidManifest
 import com.reandroid.archive.FileInputSource
 import java.io.File
 import java.security.KeyPairGenerator
@@ -29,7 +30,18 @@ class ApkExporter(private val context: Context) {
             }
 
             ApkModule.loadApkFile(template).use { apk ->
+                val templatePackageName = apk.androidManifest.packageName
                 apk.setPackageName(packageName)
+                rewriteDynamicReceiverPermission(
+                    apk = apk,
+                    templatePackageName = templatePackageName,
+                    packageName = packageName
+                )
+                rewriteStartupProviderAuthority(
+                    apk = apk,
+                    templatePackageName = templatePackageName,
+                    packageName = packageName
+                )
                 apk.androidManifest.apply {
                     setApplicationLabel(appName)
                     setVersionCode(versionCode)
@@ -71,6 +83,33 @@ class ApkExporter(private val context: Context) {
             template.delete()
             unsigned.delete()
         }
+    }
+
+    private fun rewriteDynamicReceiverPermission(apk: ApkModule, templatePackageName: String?, packageName: String) {
+        if (templatePackageName.isNullOrEmpty() || templatePackageName == packageName) return
+
+        val oldPermission = "$templatePackageName.$DYNAMIC_RECEIVER_PERMISSION_SUFFIX"
+        val newPermission = "$packageName.$DYNAMIC_RECEIVER_PERMISSION_SUFFIX"
+        with(apk.androidManifest) {
+            listOf(AndroidManifest.TAG_permission, AndroidManifest.TAG_uses_permission).forEach { tag ->
+                getNamedElement(AndroidManifest.PATH_MANIFEST.element(tag), oldPermission)
+                    ?.getOrCreateAndroidAttribute(AndroidManifest.NAME_name, AndroidManifest.ID_name)
+                    ?.setValueAsString(newPermission)
+            }
+        }
+    }
+
+    private fun rewriteStartupProviderAuthority(apk: ApkModule, templatePackageName: String?, packageName: String) {
+        if (templatePackageName.isNullOrEmpty() || templatePackageName == packageName) return
+
+        val oldAuthority = "$templatePackageName.$STARTUP_PROVIDER_AUTHORITY_SUFFIX"
+        val newAuthority = "$packageName.$STARTUP_PROVIDER_AUTHORITY_SUFFIX"
+        apk.androidManifest.listApplicationElementsByTag(AndroidManifest.TAG_provider)
+            .forEach { provider ->
+                provider.searchAttributeByResourceId(AndroidManifest.ID_authorities)
+                    ?.takeIf { it.valueAsString == oldAuthority }
+                    ?.setValueAsString(newAuthority)
+            }
     }
 
     private fun signingConfig(): ApkSigner.SignerConfig {
@@ -116,5 +155,7 @@ class ApkExporter(private val context: Context) {
         const val KEY_ALIAS = "vibe_design_apk_exporter_v1"
         const val PROJECT_ICON_RESOURCE_NAME = "project_icon"
         const val PROJECT_ICON_RESOURCE_PATH = "res/drawable/project_icon.png"
+        const val DYNAMIC_RECEIVER_PERMISSION_SUFFIX = "DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+        const val STARTUP_PROVIDER_AUTHORITY_SUFFIX = "androidx-startup"
     }
 }
