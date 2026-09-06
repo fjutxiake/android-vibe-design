@@ -96,7 +96,7 @@ fun SessionDrawer(
 
     deleteTarget?.let { session ->
         DeleteSessionDialog(
-            sessionTitle = session.title,
+            sessionTitle = session.title.ifBlank { stringResource(R.string.new_session) },
             onDismiss = { deleteTarget = null },
             onConfirm = {
                 deleteTarget = null

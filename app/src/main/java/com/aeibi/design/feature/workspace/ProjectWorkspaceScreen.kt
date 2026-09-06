@@ -89,10 +89,15 @@ fun ProjectWorkspaceScreen(
     val projectSessions by sessionViewModel.sessions.collectAsStateWithLifecycle()
     LaunchedEffect(projectId, projectSessions, selectedSessionId) {
         if (!autoRestoredSession && selectedSessionId == null) {
-            val latest = projectSessions.maxByOrNull { it.updatedAt }
-            if (latest != null) {
-                autoRestoredSession = true
-                selectedSessionId = latest.id
+            autoRestoredSession = true
+            if (projectSessions.isEmpty()) {
+                // 新项目默认就有一个空会话（可立即开聊；发首条消息后自动命名）
+                selectedSessionId = sessionViewModel.openOrCreateEmptySession(projectId)
+            } else {
+                val latest = projectSessions.maxByOrNull { it.updatedAt }
+                if (latest != null) {
+                    selectedSessionId = latest.id
+                }
             }
         }
     }
