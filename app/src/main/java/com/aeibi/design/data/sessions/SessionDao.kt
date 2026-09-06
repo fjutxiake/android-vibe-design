@@ -14,7 +14,7 @@ interface SessionDao {
         """
       SELECT * FROM sessions
       WHERE project_id = :projectId
-      ORDER BY updated_at DESC
+      ORDER BY (id NOT IN (SELECT DISTINCT session_id FROM session_entries)) DESC, updated_at DESC
     """
     )
     fun observeSessions(projectId: String): Flow<List<SessionEntity>>
