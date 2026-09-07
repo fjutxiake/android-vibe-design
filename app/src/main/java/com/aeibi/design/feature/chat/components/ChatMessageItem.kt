@@ -20,6 +20,10 @@ import com.aeibi.design.theme.spacing
 fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modifier) {
     val spacing = MaterialTheme.spacing
     val isUser = message.role == ChatRole.USER
+    // assistant 完成态走全文渲染；WORKING（流式）走 streaming 渲染（只渲染已闭合块）。
+    // 占位文本/状态拼接文案保持纯文本。
+    val isStreamingMarkdown = !isUser && message.status == ChatMessageStatus.WORKING && message.text.isNotBlank()
+    val renderMarkdown = !isUser && message.status == ChatMessageStatus.COMPLETE
     val displayedText = when (message.status) {
         ChatMessageStatus.WORKING -> message.text.ifBlank { stringResource(R.string.chat_agent_working) }
         ChatMessageStatus.CANCELLED -> listOf(
@@ -46,7 +50,29 @@ fun ChatMessageItem(message: ChatTimelineItem.Message, modifier: Modifier = Modi
             },
             shape = MaterialTheme.shapes.large
         ) {
-            Text(displayedText, modifier = Modifier.padding(spacing.sm))
+            if (isStreamingMarkdown) {
+                val bubbleColor = MaterialTheme.colorScheme.surfaceContainer
+                StreamingMarkdownText(
+                    textDelta = message.textDelta.orEmpty(),
+                    modifier = Modifier.padding(spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.contentColorFor(bubbleColor)
+                )
+            } else if (renderMarkdown) {
+                val bubbleColor = MaterialTheme.colorScheme.surfaceContainer
+                MarkdownText(
+                    text = displayedText,
+                    modifier = Modifier.padding(spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = androidx.compose.material3.contentColorFor(bubbleColor)
+                )
+            } else {
+                Text(
+                    displayedText,
+                    modifier = Modifier.padding(spacing.sm),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
         }
     }
 }

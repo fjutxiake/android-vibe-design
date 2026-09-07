@@ -49,7 +49,9 @@ sealed interface ChatTimelineItem {
         override val id: String,
         val role: ChatRole,
         val text: String,
-        val status: ChatMessageStatus = ChatMessageStatus.COMPLETE
+        val status: ChatMessageStatus = ChatMessageStatus.COMPLETE,
+        /** 流式消息的本次增量（自上次 item 之后新增的文本）——markdown streaming append 用。 */
+        val textDelta: String? = null
     ) : ChatTimelineItem
 
     data class Thinking(override val id: String, val text: String, val isStreaming: Boolean = false) : ChatTimelineItem
@@ -72,7 +74,13 @@ data class ChatUiState(
     val attachment: PendingAttachment? = null
 )
 
-data class StreamingResponse(val id: Int, val thinkingText: String = "", val text: String = "")
+data class StreamingResponse(
+    val id: Int,
+    val thinkingText: String = "",
+    val text: String = "",
+    /** 最近一次 TextDelta 增量——供流式 markdown append（text 保留作状态恢复）。 */
+    val lastDelta: String = ""
+)
 
 /**
  * 待发送附件——输入框上方可折叠的引用条（运行日志/未来的文件/截图引用都走这里）。
@@ -193,10 +201,14 @@ class ChatViewModel @Inject constructor(
     private fun observeEntries(sessionId: String) {
         entriesJob?.cancel()
         entriesJob = viewModelScope.launch {
+            android.util.Log.d("ChatDebug", "observeEntries start recover session=$sessionId")
             sessionRepository.recoverInterruptedSession(sessionId)
+            android.util.Log.d("ChatDebug", "observeEntries recover done, collecting session=$sessionId")
             sessionRepository.observeEntries(sessionId).collect { entries ->
                 if (this@ChatViewModel.sessionId != sessionId) return@collect
+                android.util.Log.d("ChatDebug", "observeEntries emit count=${entries.size} session=$sessionId")
                 val timeline = entries.toTimeline(sessionRepository)
+                android.util.Log.d("ChatDebug", "observeEntries timeline=${timeline.size}")
                 val assistantMessageCount = entries.count { entry ->
                     entry.type == SessionEntryType.MESSAGE.name &&
                         sessionRepository.decodeMessage(entry).origin == MessageOrigin.ASSISTANT
@@ -227,7 +239,7 @@ class ChatViewModel @Inject constructor(
                     streamingResponses = state.streamingResponses + StreamingResponse(nextStreamingResponseId++)
                 )
                 is AgentEvent.TextDelta -> state.updateStreamingResponse { response ->
-                    response.copy(text = response.text + event.text)
+                    response.copy(text = response.text + event.text, lastDelta = event.text)
                 }
                 is AgentEvent.ReasoningDelta -> state.updateStreamingResponse { response ->
                     response.copy(thinkingText = response.thinkingText + event.text)

@@ -36,6 +36,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
@@ -153,7 +154,15 @@ fun ProjectWorkspaceScreen(
         modifier = modifier.fillMaxSize()
     ) {
         Scaffold(
-            modifier = if (pane == WorkspacePane.CHAT) Modifier.fillMaxSize() else Modifier.size(0.dp),
+            modifier = if (pane == WorkspacePane.CHAT) {
+                Modifier.fillMaxSize()
+            } else {
+                // 隐藏聊天面板但要保持组合（状态/解析不丢）：不能用 size(0) 让子节点
+                // 在 0 宽下布局——markdown 在退化宽度下解析/缓存后，切回真实宽度会
+                // 重排失控（真机：内容炸高 22600px→塌缩为 0、逐行下落）。不 measure
+                // 子节点：组合继续、状态保鲜，返回时第一次 measure 即真实宽度。
+                Modifier.layout { _, _ -> layout(0, 0) {} }
+            },
             topBar = {
                 ProjectTopBar(
                     projectName = project?.name ?: stringResource(R.string.workspace_unnamed_project),

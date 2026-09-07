@@ -17,5 +17,6 @@ prototype
 .agents
 .idea
 .kotlin
-tmpgradle/gradle-daemon-jvm.properties
+tmp
+gradle/gradle-daemon-jvm.properties
 app/src/main/cpp/libgit2/
