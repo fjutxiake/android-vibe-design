@@ -18,6 +18,7 @@ import java.util.UUID
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.channels.BufferOverflow
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -175,7 +176,13 @@ class ChatViewModel @Inject constructor(
             try {
                 ensureSession(activeProjectId, activeSessionId, message)
                 agentStarted = true
-                agentRunner.run(activeProjectId, activeSessionId, message, ::onAgentEvent)
+                // 临时诊断入口（PR 前删除）：#mdtest = token-free 本地合成流式 markdown
+                // 回复——复现真实 LLM 的增量节奏（闭合块解析/迟到生长），测试滚动跟随。
+                if (message.trim() == MD_TEST_COMMAND) {
+                    fakeMarkdownStream()
+                } else {
+                    agentRunner.run(activeProjectId, activeSessionId, message, ::onAgentEvent)
+                }
             } catch (error: CancellationException) {
                 throw error
             } catch (error: Exception) {
@@ -196,6 +203,125 @@ class ChatViewModel @Inject constructor(
 
     fun cancel() {
         runJob?.cancel()
+    }
+
+    /**
+     * 临时诊断流（PR 前删除）：本地合成一段 markdown 回复，按真实 LLM 的增量节奏
+     * 逐 chunk 发 TextDelta——闭合块（代码/表格/列表）完成后流式渲染器会做一次
+     * 异步解析 → 布局生长迟到于文本到达，正是滚动竞态的复现条件。不触网、不耗 token。
+     */
+    private suspend fun fakeMarkdownStream() {
+        onAgentEvent(AgentEvent.ResponseStarted)
+        try {
+            // 简短 reasoning 前缀（同步渲染 Thinking 流式条目）。
+            for (chunk in "（本地诊断流：以下为合成 markdown，无 token 消耗）".chunked(4)) {
+                delay(14)
+                onAgentEvent(AgentEvent.ReasoningDelta(chunk))
+            }
+            val doc = FAKE_MARKDOWN_DOC
+            var i = 0
+            while (i < doc.length) {
+                val size = kotlin.random.Random.nextInt(4, 18)
+                val end = minOf(i + size, doc.length)
+                val chunk = doc.substring(i, end)
+                i = end
+                // 越行边界处给一帧停顿，让段落/块按真实节奏闭合。
+                val crossesLine = chunk.contains('\n')
+                onAgentEvent(AgentEvent.TextDelta(chunk))
+                if (crossesLine) {
+                    delay(kotlin.random.Random.nextLong(80L, 260L))
+                } else {
+                    delay(16L)
+                }
+            }
+            // 流结束：模拟真实回复的最后一块文本落定（渲染收敛后再停）。
+            delay(400L)
+        } catch (error: kotlinx.coroutines.CancellationException) {
+            // 用户取消：清掉半截虚拟流，避免幽灵气泡残留。
+            _uiState.update {
+                it.copy(streamingResponses = emptyList(), streamingText = null)
+            }
+            throw error
+        }
+    }
+
+    private companion object {
+        /** 临时诊断命令（PR 前删除）。 */
+        const val MD_TEST_COMMAND = "#mdtest"
+
+        /** 合成 markdown：多闭合块 + 混合结构，制造足够多的异步解析生长点。 */
+        const val FAKE_MARKDOWN_DOC = """# 合成回复诊断文档
+
+这是**本地合成**的一段 markdown 回复，用于在没有 LLM token 消耗的情况下复现流式渲染与滚动跟随的手势竞态。
+
+## 流式特性说明
+
+真实回复流式到达时，只有**已闭合的块**会被完整渲染：
+
+- 段落遇到空行才闭合
+- 代码块遇到结束反引号才闭合
+- 表格的行逐步追加
+
+所以闭合块解析完成的时刻**滞后**于文本到达——这就是布局生长迟到、与用户手势竞争的来源。
+
+## 一个 Kotlin 代码块
+
+下面这段代码会在反引号闭合时做一次完整解析：
+
+```kotlin
+fun main() {
+    val messages = listOf(
+        "上划读历史应断开跟随",
+        "下滑触底才恢复跟随",
+        "按住期间不自动滚动"
+    )
+    messages.forEachIndexed { index, text ->
+        println("#${'$'}{index + 1} ${'$'}text")
+        Thread.sleep(50L)
+    }
+}
+```
+
+### 列表与嵌套
+
+1. 第一层：流式增量
+   - 增量走事件层 append
+   - 全量文本保留用于状态恢复
+2. 第二层：收敛滚动
+   - 内容高度每增长一次滚一次
+   - 解析再撑高会再次触发
+
+> 引用块：竞态只在「跟随还开着 + 生长事件在用户手势之后到达」时发生。
+
+## 表格演示
+
+| 手势 | 开关 | 说明 |
+|---|---|---|
+| 上划（读历史） | 断开 | 第一帧即断，无范围容差 |
+| 按住 | 断开 | 拖动停顿超过阈值 |
+| 下滑触底 | 跟随 | 瞬时碰到底即通 |
+
+## 第二个代码块（JSON）
+
+```json
+{
+  "scroll": {
+    "follow": true,
+    "reason": "底部姿态",
+    "locked": false
+  },
+  "gesture": "drag-up",
+  "frames": [1, 2, 3, 4, 5, 6, 7, 8]
+}
+```
+
+## 收尾说明
+
+- 诊断入口命令为 `#mdtest`，发送即触发
+- 回复结束后条目保留为工作态，再次发送会清掉重来
+- 该入口随 PR 清理移除，不进入正式代码
+
+合成结束。如果这段内容渲染平滑、三个手势点都正常，竞态就修好了。"""
     }
 
     private fun observeEntries(sessionId: String) {
