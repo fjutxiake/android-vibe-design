@@ -32,3 +32,4 @@ plugins {
 
 rootProject.name = "Vibe Design"
 include(":app")
+include(":shell")

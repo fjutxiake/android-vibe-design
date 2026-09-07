@@ -1,4 +1,4 @@
-package com.aeibi.design.feature.preview
+package com.aeibi.shell
 
 import android.content.Context
 import android.net.Uri

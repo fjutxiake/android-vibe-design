@@ -3,5 +3,10 @@
     "mode": "asset-loader",
     "root": ".",
     "entry": "index.html"
+  },
+  "build": {
+    "mode": "asset-loader",
+    "root": ".",
+    "entry": "index.html"
   }
 }

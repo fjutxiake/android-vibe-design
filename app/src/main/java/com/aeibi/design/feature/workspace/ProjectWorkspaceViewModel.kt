@@ -4,6 +4,7 @@ import android.content.Context
 import android.net.Uri
 import android.webkit.ConsoleMessage
 import android.webkit.WebResourceResponse
+import androidx.core.net.toUri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.aeibi.design.data.projects.ProjectRepository
@@ -162,7 +163,7 @@ class ProjectWorkspaceViewModel internal constructor(
 
         return when (config.preview.mode) {
             "asset-loader" -> assetLoader.start(previewRoot, config.preview.entry)
-            "http-server" -> Uri.parse(fileServer.start(previewRoot, 0, config.preview.fallback).toString())
+            "http-server" -> fileServer.start(previewRoot, 0, config.preview.fallback).toString().toUri()
             else -> error("Unsupported preview mode: ${config.preview.mode}")
         }
     }
