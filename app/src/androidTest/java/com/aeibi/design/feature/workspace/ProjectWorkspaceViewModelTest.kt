@@ -116,7 +116,7 @@ class ProjectWorkspaceViewModelTest {
     }
 
     @Test
-    fun consoleMessages_accumulateAllLevelsWhileRunningAndClear() {
+    fun consoleMessages_accumulateInStoreAllLevelsWhileRunningAndClear() {
         val fixture = fixture()
         File(fixture.workspace, "index.html").writeText("preview")
         fixture.viewModel.startPreview(PROJECT_ID)
@@ -128,15 +128,15 @@ class ProjectWorkspaceViewModelTest {
         )
         fixture.viewModel.recordConsoleMessage(consoleMessage("JS: deprecation warning", MessageLevel.WARNING))
 
-        val state = fixture.viewModel.previewUiState.value
-        assertEquals(3, state.consoleMessages.size)
-        // 全级别保留
-        assertTrue(state.consoleMessages.any { it.message().contains("hello") })
-        assertTrue(state.consoleMessages.any { it.message().contains("ReferenceError") })
-        assertTrue(state.consoleMessages.any { it.message().contains("deprecation") })
+        val entries = fixture.store.snapshot(PROJECT_ID)
+        assertEquals(3, entries.size)
+        // 全级别保留（单一日志源：Console 展示与 agent 工具读同一份）
+        assertTrue(entries.any { it.message.contains("hello") })
+        assertTrue(entries.any { it.message.contains("ReferenceError") })
+        assertTrue(entries.any { it.message.contains("deprecation") })
 
-        fixture.viewModel.clearConsoleMessages()
-        assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
+        fixture.viewModel.clearLogs()
+        assertTrue(fixture.store.snapshot(PROJECT_ID).isEmpty())
         fixture.stop()
     }
 
@@ -147,7 +147,7 @@ class ProjectWorkspaceViewModelTest {
 
         fixture.viewModel.recordConsoleMessage(consoleMessage("JS: should be ignored", MessageLevel.ERROR))
 
-        assertTrue(fixture.viewModel.previewUiState.value.consoleMessages.isEmpty())
+        assertTrue(fixture.store.snapshot(PROJECT_ID).isEmpty())
         fixture.stop()
     }
 
@@ -161,9 +161,28 @@ class ProjectWorkspaceViewModelTest {
         fixture.viewModel.recordConsoleMessage(consoleMessage("important error", MessageLevel.ERROR))
         repeat(60) { fixture.viewModel.recordConsoleMessage(consoleMessage("noise-$it", MessageLevel.LOG)) }
 
-        val state = fixture.viewModel.previewUiState.value
-        assertEquals(61, state.consoleMessages.size)
-        assertEquals("important error", state.consoleMessages.first().message())
+        val entries = fixture.store.snapshot(PROJECT_ID)
+        assertEquals(61, entries.size)
+        assertEquals("important error", entries.first().message)
+        fixture.stop()
+    }
+
+    @Test
+    fun pageLoadFailureIsRecordedAsLogWithoutDialog() {
+        val fixture = fixture()
+        File(fixture.workspace, "index.html").writeText("preview")
+        fixture.viewModel.startPreview(PROJECT_ID)
+        awaitStatus(fixture.viewModel, PreviewStatus.RUNNING)
+
+        fixture.viewModel.recordPageError(404, "HTTP 404", "http://localhost/index.html")
+        fixture.viewModel.recordPageError(-6, "ERR_FILE_NOT_FOUND", "http://localhost/missing.html")
+
+        val entries = fixture.store.snapshot(PROJECT_ID)
+        assertEquals(2, entries.size)
+        assertTrue(entries.all { it.level == "ERROR" })
+        assertTrue(entries.any { it.message.contains("HTTP 404") })
+        // 无弹窗状态——失败只进日志
+        assertNull(fixture.viewModel.previewUiState.value.errorMessage)
         fixture.stop()
     }
 
@@ -180,15 +199,17 @@ class ProjectWorkspaceViewModelTest {
             context.assets,
             Dispatchers.IO
         )
+        val store = RuntimeLogStore()
         return Fixture(
             workspace,
             ProjectWorkspaceViewModel(
                 repository,
                 LocalStaticFileServer(),
                 LocalStaticAssetLoader(context),
-                RuntimeLogStore(),
+                store,
                 Dispatchers.IO
-            )
+            ),
+            store
         )
     }
 
@@ -200,7 +221,11 @@ class ProjectWorkspaceViewModelTest {
         return viewModel.previewUiState.value.also { assertEquals(status, it.status) }
     }
 
-    private data class Fixture(val workspace: File, val viewModel: ProjectWorkspaceViewModel) {
+    private data class Fixture(
+        val workspace: File,
+        val viewModel: ProjectWorkspaceViewModel,
+        val store: RuntimeLogStore
+    ) {
         fun stop() {
             viewModel.stopPreview()
             val timeout = System.currentTimeMillis() + 5_000
