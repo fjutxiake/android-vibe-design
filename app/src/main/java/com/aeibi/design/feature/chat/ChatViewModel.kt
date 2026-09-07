@@ -178,8 +178,8 @@ class ChatViewModel @Inject constructor(
                 agentStarted = true
                 // 临时诊断入口（PR 前删除）：#mdtest = token-free 本地合成流式 markdown
                 // 回复——复现真实 LLM 的增量节奏（闭合块解析/迟到生长），测试滚动跟随。
-                if (message.trim() == MD_TEST_COMMAND) {
-                    fakeMarkdownStream()
+                if (message.trim() == MD_TEST_COMMAND || message.trim() == MD_TEST_COMMAND_PLAIN) {
+                    fakeMarkdownStream(plain = message.trim() == MD_TEST_COMMAND_PLAIN)
                 } else {
                     agentRunner.run(activeProjectId, activeSessionId, message, ::onAgentEvent)
                 }
@@ -210,13 +210,27 @@ class ChatViewModel @Inject constructor(
      * 逐 chunk 发 TextDelta——闭合块（代码/表格/列表）完成后流式渲染器会做一次
      * 异步解析 → 布局生长迟到于文本到达，正是滚动竞态的复现条件。不触网、不耗 token。
      */
-    private suspend fun fakeMarkdownStream() {
+    private suspend fun fakeMarkdownStream(plain: Boolean = false) {
         onAgentEvent(AgentEvent.ResponseStarted)
         try {
             // 简短 reasoning 前缀（同步渲染 Thinking 流式条目）。
             for (chunk in "（本地诊断流：以下为合成 markdown，无 token 消耗）".chunked(4)) {
                 delay(14)
                 onAgentEvent(AgentEvent.ReasoningDelta(chunk))
+            }
+            if (plain) {
+                // 纯文本对照流：无任何 markdown 语法——渲染树恒定，只有文本行增长。
+                val doc = PLAIN_TEST_DOC
+                var i = 0
+                while (i < doc.length) {
+                    val size = kotlin.random.Random.nextInt(4, 18)
+                    val end = minOf(i + size, doc.length)
+                    val chunk = doc.substring(i, end)
+                    i = end
+                    onAgentEvent(AgentEvent.TextDelta(chunk))
+                    delay(if (chunk.contains('\n')) kotlin.random.Random.nextLong(60L, 180L) else 14L)
+                }
+                return
             }
             val doc = FAKE_MARKDOWN_DOC
             var i = 0
@@ -248,6 +262,16 @@ class ChatViewModel @Inject constructor(
     private companion object {
         /** 临时诊断命令（PR 前删除）。 */
         const val MD_TEST_COMMAND = "#mdtest"
+
+        /** 临时纯文本对照流（PR 前删除）——无 markdown 语法。 */
+        const val MD_TEST_COMMAND_PLAIN = "#mdtest-plain"
+
+        /** 纯文本对照文档：长段落，无任何 md 结构。 */
+        const val PLAIN_TEST_DOC = """纯文本对照回复。这一整段没有任何 markdown 语法，只有连续的中文句子被逐字流式到达。用于区分 preview 往返的逐行下落是 markdown 渲染树特有的问题，还是所有文本行共有的重排问题。
+
+第二段继续纯文本。如果这段文字在 preview 往返时也逐行下落，说明问题在文本行布局与隐藏-恢复机制的交互；如果只有带 markdown 结构的回复才下落，说明问题在 markdown 渲染器内部。这里补足行数，让内容足够长以便观察多行。这一段文字会继续写下去，直到长度足够撑出十几行文本，这样切 preview 再回来时，行与行之间的落位差异会很明显。
+
+第三段。收尾。"""
 
         /** 合成 markdown：多闭合块 + 混合结构，制造足够多的异步解析生长点。 */
         const val FAKE_MARKDOWN_DOC = """# 合成回复诊断文档
