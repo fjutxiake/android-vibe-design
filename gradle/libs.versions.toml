@@ -24,6 +24,7 @@ ktor = "3.5.1"
 koog = "1.2.0"
 koogDeepSeek = "1.2.0-beta"
 ktlint = "14.2.0"
+ndk = "29.0.14206865"
 dataStore = "1.2.1"
 ucrop = "2.2.11"
 

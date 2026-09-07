@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onNodeWithText
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.unit.dp
 import androidx.test.espresso.Espresso.pressBack
 import com.aeibi.design.data.templates.Template
 import org.junit.Assert.assertEquals
@@ -79,7 +80,14 @@ class TemplateGalleryScreenTest {
             initialState = loadedState().copy(selectedTemplate = templates[1], readme = "README")
         )
 
-        composeTestRule.onNodeWithTag("template_preview_pager").performTouchInput { swipeLeft() }
+        composeTestRule.onNodeWithTag("template_preview_pager").performTouchInput {
+            // 真机手势导航会把从屏幕右缘开始的横滑识别成返回手势,起点必须内缩。
+            swipeLeft(
+                startX = right - 32.dp.toPx(),
+                endX = left + 32.dp.toPx(),
+                durationMillis = 1000
+            )
+        }
         composeTestRule.waitForIdle()
 
         composeTestRule.onNodeWithTag("template_pager_page_2").assertExists()

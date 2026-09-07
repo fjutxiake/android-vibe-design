@@ -7,9 +7,6 @@ import androidx.core.net.toUri
 import androidx.core.util.AtomicFile
 import java.io.File
 import java.io.IOException
-import java.nio.file.AtomicMoveNotSupportedException
-import java.nio.file.Files
-import java.nio.file.StandardCopyOption
 import java.util.UUID
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -114,6 +111,8 @@ class ProjectRepository(
             if (!pendingWorkspace.deleteRecursively() && pendingWorkspace.exists()) {
                 throw IOException("Could not clear pending workspace: ${pendingWorkspace.path}")
             }
+            // 重建意味着旧工作区（含整体替换残留的 backup）一律作废，清掉避免泄漏。
+            File(dir, BACKUP_WORKSPACE_DIR).deleteRecursively()
             writeMetadata(
                 dir,
                 existing.copy(
@@ -140,7 +139,7 @@ class ProjectRepository(
             if (!pendingWorkspace.isDirectory) {
                 throw IOException("Template workspace is not a directory: $workspaceAssetPath")
             }
-            replaceWorkspace(dir, pendingWorkspace)
+            replaceWorkspaceDirectory(dir, pendingWorkspace)
             writeMetadata(
                 dir,
                 existing.copy(
@@ -185,7 +184,7 @@ class ProjectRepository(
             if (import(pendingWorkspace) == 0) {
                 throw IOException("导入包为空或不可读")
             }
-            replaceWorkspace(dir, pendingWorkspace)
+            replaceWorkspaceDirectory(dir, pendingWorkspace)
             writeMetadata(
                 dir,
                 existing.copy(
@@ -270,28 +269,6 @@ class ProjectRepository(
         }
     }
 
-    private fun replaceWorkspace(projectDir: File, pendingWorkspace: File) {
-        val workspace = File(projectDir, WORKSPACE_DIR)
-        if (!workspace.deleteRecursively() && workspace.exists()) {
-            throw IOException("Could not replace workspace: ${workspace.path}")
-        }
-
-        try {
-            try {
-                Files.move(
-                    pendingWorkspace.toPath(),
-                    workspace.toPath(),
-                    StandardCopyOption.ATOMIC_MOVE
-                )
-            } catch (_: AtomicMoveNotSupportedException) {
-                Files.move(pendingWorkspace.toPath(), workspace.toPath())
-            }
-        } catch (error: Exception) {
-            workspace.mkdirs()
-            throw error
-        }
-    }
-
     private fun ProjectMetadata.toProject(id: String, dir: File): Project {
         val iconFile = resolveIconFileName(dir)?.let { File(dir, it) }
         return Project(
@@ -308,7 +285,7 @@ class ProjectRepository(
     private fun ProjectMetadata.resolveIconFileName(dir: File): String? = iconFileName
         ?.takeIf { File(it).name == it && File(dir, it).isFile }
 
-    private companion object {
+    internal companion object {
         const val PROJECT_JSON = "project.json"
         const val PENDING_WORKSPACE_DIR = "workspace.pending"
     }
