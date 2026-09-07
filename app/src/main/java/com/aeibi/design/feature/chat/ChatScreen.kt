@@ -34,7 +34,8 @@ fun ChatScreen(
                     id = "streaming-assistant-${response.id}",
                     role = ChatRole.ASSISTANT,
                     text = it,
-                    status = ChatMessageStatus.WORKING
+                    status = ChatMessageStatus.WORKING,
+                    textDelta = response.lastDelta.takeIf(String::isNotBlank)
                 )
             }
         )

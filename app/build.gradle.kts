@@ -117,6 +117,7 @@ dependencies {
     implementation(libs.ucrop)
     implementation(libs.apksig)
     implementation(libs.arsc.lib)
+    implementation(libs.markdown.renderer.m3)
 
     // Compose
     implementation(libs.androidx.compose.ui)
