@@ -17,11 +17,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import com.aeibi.design.feature.chat.ChatTimelineItem
 import com.aeibi.design.theme.spacing
+import kotlinx.coroutines.flow.drop
 
 /**
  * 消息列表——Column（非虚拟化）。
@@ -44,12 +44,13 @@ fun ChatMessageList(
 
     var followTail by rememberSaveable(sessionId) { mutableStateOf(true) }
 
+    // 用户手势与跟随的仲裁：拖拽/上滑 → 停止跟随；滚回底部 → 恢复跟随。
     LaunchedEffect(scrollState) {
         snapshotFlow {
             scrollState.isScrollInProgress to scrollState.value
-        }.collect { (dragging, _) ->
+        }.collect { (dragging, position) ->
             if (dragging) followTail = false
-            if (scrollState.value >= scrollState.maxValue) followTail = true
+            if (position >= scrollState.maxValue) followTail = true
         }
     }
 
@@ -57,14 +58,17 @@ fun ChatMessageList(
         if (isRunning) followTail = true
     }
 
-    LaunchedEffect(sessionId, followTail, timeline.lastOrNull(), timeline.size, isLoading) {
-        if (!isLoading && followTail && timeline.isNotEmpty()) {
-            // 收敛式补滚：消息内容渲染/增长撑高后持续滚到底，直到布局稳定
-            repeat(MAX_FOLLOW_ROUNDS) {
-                scrollState.scrollTo(scrollState.maxValue)
-                withFrameNanos { }
-                if (scrollState.value >= scrollState.maxValue) return@repeat
-            }
+    // 增量跟随：只在内容高度（maxValue）增长后滚动一次到底——不随每个 chunk 重启、
+    // 不与用户手势竞争（isScrollInProgress 时不滚）。渲染再撑高会再次触发。
+    LaunchedEffect(sessionId, followTail, isLoading) {
+        if (!isLoading && followTail) {
+            snapshotFlow { scrollState.maxValue }
+                .drop(1)
+                .collect { maxValue ->
+                    if (!scrollState.isScrollInProgress) {
+                        scrollState.scrollTo(maxValue)
+                    }
+                }
         }
     }
 
